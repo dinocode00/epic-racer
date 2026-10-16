@@ -66,7 +66,13 @@ export interface KartState {
   place: number;
 }
 
-export function createKart(id: number, vehicle: VehicleDef, track: Track, s: number, lateral: number): KartState {
+export function createKart(
+  id: number,
+  vehicle: VehicleDef,
+  track: Track,
+  s: number,
+  lateral: number,
+): KartState {
   const f = track.frameAtS(s);
   const params = paramsFor(vehicle);
   const pos = track.pointAt(s, lateral, params.rideHeight);
@@ -103,7 +109,13 @@ export function driftLevel(charge: number): number {
 }
 
 /** Advance one kart by dt seconds. Pure arcade: no rigid body, glued to the road. */
-export function stepKart(k: KartState, pad: PadState, track: Track, dt: number, frozen = false): void {
+export function stepKart(
+  k: KartState,
+  pad: PadState,
+  track: Track,
+  dt: number,
+  frozen = false,
+): void {
   k.prevPos = clone(k.pos);
   k.prevFwd = clone(k.fwd);
   k.prevUp = clone(k.up);

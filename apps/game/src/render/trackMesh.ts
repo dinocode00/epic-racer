@@ -20,7 +20,14 @@ const neg = (v: Vec3): Vec3 => ({ x: -v.x, y: -v.y, z: -v.z });
  * Sweep a cross-section profile along the track between arc lengths [s0, s1].
  * `vLen` is how many metres one texture repeat covers along the road.
  */
-function sweep(track: Track, s0: number, s1: number, step: number, vLen: number, profile: (f: Frame, s: number) => Vert[]): THREE.BufferGeometry {
+function sweep(
+  track: Track,
+  s0: number,
+  s1: number,
+  step: number,
+  vLen: number,
+  profile: (f: Frame, s: number) => Vert[],
+): THREE.BufferGeometry {
   const pos: number[] = [],
     nor: number[] = [],
     uv: number[] = [],
@@ -90,7 +97,11 @@ export function buildTrackMesh(track: Track): THREE.Group {
   g.add(road);
 
   // --- Underside and embankment skirts ---
-  const concrete = new THREE.MeshStandardMaterial({ color: 0x8d8a82, roughness: 1, map: tex.dirt() });
+  const concrete = new THREE.MeshStandardMaterial({
+    color: 0x8d8a82,
+    roughness: 1,
+    map: tex.dirt(),
+  });
   const under = new THREE.Mesh(
     sweep(track, 0, L, step, 10, (f) => {
       const hw = f.width / 2 + 0.6;
@@ -218,7 +229,11 @@ export function buildTrackMesh(track: Track): THREE.Group {
 
 function gantry(f: Frame): THREE.Group {
   const g = new THREE.Group();
-  const steel = new THREE.MeshStandardMaterial({ color: 0x2c2f36, roughness: 0.45, metalness: 0.7 });
+  const steel = new THREE.MeshStandardMaterial({
+    color: 0x2c2f36,
+    roughness: 0.45,
+    metalness: 0.7,
+  });
   const hw = f.width / 2 + 1.6;
   const H = 8;
   for (const side of [-1, 1]) {
@@ -246,10 +261,14 @@ function gantry(f: Frame): THREE.Group {
     512,
     96,
   );
-  const banner = new THREE.Mesh(
-    new THREE.BoxGeometry(hw * 2 + 0.9, 1.8, 0.6),
-    [steel, steel, steel, steel, new THREE.MeshStandardMaterial({ map: bannerTex, roughness: 0.5 }), new THREE.MeshStandardMaterial({ map: bannerTex, roughness: 0.5 })],
-  );
+  const banner = new THREE.Mesh(new THREE.BoxGeometry(hw * 2 + 0.9, 1.8, 0.6), [
+    steel,
+    steel,
+    steel,
+    steel,
+    new THREE.MeshStandardMaterial({ map: bannerTex, roughness: 0.5 }),
+    new THREE.MeshStandardMaterial({ map: bannerTex, roughness: 0.5 }),
+  ]);
   banner.position.copy(tv(off(f, 0, H - 0.6)));
   // Face down the track.
   const m = new THREE.Matrix4().makeBasis(tv(f.right), tv(f.up), tv(neg(f.tan)));

@@ -22,7 +22,13 @@ function rand(b: AiBrain): number {
 }
 
 /** Simple racing-line follower: aim at a point ahead, drift in long corners. */
-export function aiDrive(b: AiBrain, k: KartState, track: Track, leaderProgress: number, dt: number): PadState {
+export function aiDrive(
+  b: AiBrain,
+  k: KartState,
+  track: Track,
+  leaderProgress: number,
+  dt: number,
+): PadState {
   const pad = neutralPad();
   b.laneTimer -= dt;
   if (b.laneTimer <= 0) {

@@ -122,7 +122,16 @@ export interface ServerInfo {
   lanAddresses: string[];
 }
 
-export const PLAYER_COLORS = ['#e8433a', '#2f7de1', '#3fbf5f', '#f5c518', '#b05de0', '#ff8c2e', '#28c4c4', '#f070b0'];
+export const PLAYER_COLORS = [
+  '#e8433a',
+  '#2f7de1',
+  '#3fbf5f',
+  '#f5c518',
+  '#b05de0',
+  '#ff8c2e',
+  '#28c4c4',
+  '#f070b0',
+];
 
 function clamp(x: number, lo: number, hi: number): number {
   return x < lo ? lo : x > hi ? hi : x;

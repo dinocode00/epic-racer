@@ -44,7 +44,13 @@ export interface Projection {
 const catmull = (p0: number, p1: number, p2: number, p3: number, t: number): number => {
   const t2 = t * t,
     t3 = t2 * t;
-  return 0.5 * (2 * p1 + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 + (-p0 + 3 * p1 - 3 * p2 + p3) * t3);
+  return (
+    0.5 *
+    (2 * p1 +
+      (-p0 + p2) * t +
+      (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 +
+      (-p0 + 3 * p1 - 3 * p2 + p3) * t3)
+  );
 };
 const catmullV = (a: Vec3, b: Vec3, c: Vec3, d: Vec3, t: number): Vec3 => ({
   x: catmull(a.x, b.x, c.x, d.x, t),
@@ -102,7 +108,11 @@ export class Track {
       const t = seg > 0 ? (s - cum[j]!) / seg : 0;
       const a = dense[j]!,
         b = dense[(j + 1) % dense.length]!;
-      raw.push({ pos: lerp(a.pos, b.pos, t), up: norm(lerp(a.up, b.up, t)), width: a.width + (b.width - a.width) * t });
+      raw.push({
+        pos: lerp(a.pos, b.pos, t),
+        up: norm(lerp(a.up, b.up, t)),
+        width: a.width + (b.width - a.width) * t,
+      });
     }
     this.frames = raw.map((r, i) => {
       const next = raw[(i + 1) % count]!.pos;
@@ -136,7 +146,13 @@ export class Track {
       b = this.frame(i + 1);
     const tan = norm(lerp(a.tan, b.tan, t));
     const up = norm(reject(lerp(a.up, b.up, t), tan));
-    return { pos: lerp(a.pos, b.pos, t), tan, up, right: cross(tan, up), width: a.width + (b.width - a.width) * t };
+    return {
+      pos: lerp(a.pos, b.pos, t),
+      tan,
+      up,
+      right: cross(tan, up),
+      width: a.width + (b.width - a.width) * t,
+    };
   }
 
   /** Global nearest-sample search. Use once to seed `hint`. */

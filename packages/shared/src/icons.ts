@@ -1,0 +1,7 @@
+/** Small side-view SVG silhouettes for menus (TV lobby and phone). */
+export const VEHICLE_ICONS: Record<string, string> = {
+  pod: `<svg viewBox="0 0 120 50"><rect x="6" y="10" width="62" height="10" rx="5" fill="#e39a2c"/><rect x="6" y="30" width="62" height="10" rx="5" fill="#e39a2c"/><path d="M68 15 L92 24 M68 35 L92 26" stroke="#888" stroke-width="2"/><ellipse cx="102" cy="25" rx="14" ry="8" fill="#d9a441"/><path d="M8 15 Q0 25 8 35" stroke="#9fe6ff" stroke-width="2" fill="none"/></svg>`,
+  bat: `<svg viewBox="0 0 120 50"><path d="M6 36 L20 26 L60 22 L84 20 L112 30 L114 38 L6 40 Z" fill="#202024"/><path d="M14 28 L4 10 L26 26 Z" fill="#202024"/><circle cx="28" cy="40" r="7" fill="#333"/><circle cx="96" cy="40" r="7" fill="#333"/><circle cx="28" cy="40" r="3" fill="#d9b43a"/><circle cx="96" cy="40" r="3" fill="#d9b43a"/></svg>`,
+  nazgul: `<svg viewBox="0 0 120 50"><path d="M30 28 Q40 18 70 20 Q84 12 92 6 L98 10 L90 22 L84 30 Q60 34 34 32 Z" fill="#222"/><path d="M36 32 L32 48 M44 32 L46 48 M72 30 L70 48 M80 30 L84 48" stroke="#222" stroke-width="4"/><path d="M58 20 Q54 8 60 2 Q66 6 64 20 Z" fill="#111"/><path d="M58 8 Q30 6 18 26 L40 18 Z" fill="#111"/><circle cx="93" cy="10" r="1.5" fill="#f33"/></svg>`,
+  mach5: `<svg viewBox="0 0 120 50"><path d="M6 34 Q8 26 30 24 L48 22 Q60 14 70 22 L110 30 L114 36 L6 38 Z" fill="#f3f3f0"/><text x="44" y="34" font-size="10" fill="#d5222a" font-weight="bold">5</text><circle cx="26" cy="38" r="7" fill="#222"/><circle cx="94" cy="38" r="7" fill="#222"/></svg>`,
+};

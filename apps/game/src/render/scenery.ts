@@ -169,11 +169,15 @@ function colored(g: THREE.BufferGeometry, hex: number): THREE.BufferGeometry {
 }
 
 function pineGeo(): THREE.BufferGeometry {
-  const parts = [colored(new THREE.CylinderGeometry(0.25, 0.35, 2, 6).translate(0, 1, 0), 0x6b4a2e)];
+  const parts = [
+    colored(new THREE.CylinderGeometry(0.25, 0.35, 2, 6).translate(0, 1, 0), 0x6b4a2e),
+  ];
   const greens = [0x2f6b35, 0x37783c, 0x418844];
   for (let k = 0; k < 3; k++) {
     const r = 2.6 - k * 0.65;
-    parts.push(colored(new THREE.ConeGeometry(r, 3.2, 8).translate(0, 2.6 + k * 1.6, 0), greens[k]!));
+    parts.push(
+      colored(new THREE.ConeGeometry(r, 3.2, 8).translate(0, 2.6 + k * 1.6, 0), greens[k]!),
+    );
   }
   return mergeGeometries(parts.map((p) => (p.index ? p.toNonIndexed() : p)))!;
 }
@@ -191,7 +195,11 @@ function broadleafGeo(): THREE.BufferGeometry {
 /** Forests and rocks, instanced. */
 export function buildFoliage(terrain: Terrain): THREE.Group {
   const g = new THREE.Group();
-  const leafMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, flatShading: true });
+  const leafMat = new THREE.MeshStandardMaterial({
+    vertexColors: true,
+    roughness: 0.9,
+    flatShading: true,
+  });
   const kinds = [pineGeo(), broadleafGeo()];
   const placed: THREE.Matrix4[][] = [[], []];
   const rocks: THREE.Matrix4[] = [];
@@ -233,7 +241,11 @@ export function buildFoliage(terrain: Terrain): THREE.Group {
     im.receiveShadow = true;
     g.add(im);
   });
-  const rockMat = new THREE.MeshStandardMaterial({ color: 0x8b8781, roughness: 0.95, flatShading: true });
+  const rockMat = new THREE.MeshStandardMaterial({
+    color: 0x8b8781,
+    roughness: 0.95,
+    flatShading: true,
+  });
   const rim = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1, 0), rockMat, rocks.length);
   rocks.forEach((m, i) => rim.setMatrixAt(i, m));
   rim.castShadow = true;
@@ -247,11 +259,22 @@ export function buildGrandstand(track: Track): THREE.Group {
   const f = track.frameAtS(track.length - 70);
   const crowdMat = new THREE.MeshStandardMaterial({ map: tex.crowd(), roughness: 0.9 });
   const steel = new THREE.MeshStandardMaterial({ color: 0xb8bcc4, roughness: 0.5, metalness: 0.4 });
-  const roofMat = new THREE.MeshStandardMaterial({ color: 0xd8292b, roughness: 0.6, side: THREE.DoubleSide });
+  const roofMat = new THREE.MeshStandardMaterial({
+    color: 0xd8292b,
+    roughness: 0.6,
+    side: THREE.DoubleSide,
+  });
   const LEN = 90,
     TIERS = 9;
   for (let t = 0; t < TIERS; t++) {
-    const box = new THREE.Mesh(new THREE.BoxGeometry(LEN, 0.9, 1.4), [steel, steel, steel, steel, crowdMat, steel]);
+    const box = new THREE.Mesh(new THREE.BoxGeometry(LEN, 0.9, 1.4), [
+      steel,
+      steel,
+      steel,
+      steel,
+      crowdMat,
+      steel,
+    ]);
     box.position.set(0, 0.45 + t * 0.9, -t * 1.4);
     box.castShadow = box.receiveShadow = true;
     g.add(box);
@@ -270,18 +293,29 @@ export function buildGrandstand(track: Track): THREE.Group {
   }
   // Place on the left (outside) of the straight, facing the road.
   const side = -1;
-  const p = new THREE.Vector3(f.pos.x, f.pos.y, f.pos.z).addScaledVector(new THREE.Vector3(f.right.x, f.right.y, f.right.z), side * (f.width / 2 + 5));
+  const p = new THREE.Vector3(f.pos.x, f.pos.y, f.pos.z).addScaledVector(
+    new THREE.Vector3(f.right.x, f.right.y, f.right.z),
+    side * (f.width / 2 + 5),
+  );
   g.position.copy(p).setY(f.pos.y - 0.4);
   // Local x runs along the road, +z faces the road (= track right, since we're on the left).
   const forward = new THREE.Vector3(f.tan.x, 0, f.tan.z).normalize();
   const facing = new THREE.Vector3(f.right.x, 0, f.right.z).normalize();
-  g.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(forward, new THREE.Vector3(0, 1, 0), facing));
+  g.quaternion.setFromRotationMatrix(
+    new THREE.Matrix4().makeBasis(forward, new THREE.Vector3(0, 1, 0), facing),
+  );
   return g;
 }
 
 export function buildClouds(terrain: Terrain): THREE.Group {
   const g = new THREE.Group();
-  const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, emissive: 0xc9d6e6, emissiveIntensity: 0.55, fog: false });
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    roughness: 1,
+    emissive: 0xc9d6e6,
+    emissiveIntensity: 0.55,
+    fog: false,
+  });
   const parts: THREE.BufferGeometry[] = [];
   for (let c = 0; c < 26; c++) {
     const ang = tex.rnd() * Math.PI * 2,
@@ -291,10 +325,21 @@ export function buildClouds(terrain: Terrain): THREE.Group {
       cy = 220 + tex.rnd() * 160;
     for (let k = 0; k < 6; k++) {
       const r = 20 + tex.rnd() * 26;
-      parts.push(new THREE.IcosahedronGeometry(r, 3).scale(1.6, 0.6, 1).translate(cx + (tex.rnd() - 0.5) * 90, cy + (tex.rnd() - 0.5) * 12, cz + (tex.rnd() - 0.5) * 50));
+      parts.push(
+        new THREE.IcosahedronGeometry(r, 3)
+          .scale(1.6, 0.6, 1)
+          .translate(
+            cx + (tex.rnd() - 0.5) * 90,
+            cy + (tex.rnd() - 0.5) * 12,
+            cz + (tex.rnd() - 0.5) * 50,
+          ),
+      );
     }
   }
-  const mesh = new THREE.Mesh(mergeGeometries(parts.map((p) => (p.index ? p.toNonIndexed() : p)))!, mat);
+  const mesh = new THREE.Mesh(
+    mergeGeometries(parts.map((p) => (p.index ? p.toNonIndexed() : p)))!,
+    mat,
+  );
   g.add(mesh);
   return g;
 }

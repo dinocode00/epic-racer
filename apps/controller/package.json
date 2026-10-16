@@ -1,0 +1,15 @@
+{
+  "name": "@epic/controller",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite build --watch --mode development",
+    "build": "vite build"
+  },
+  "dependencies": {
+    "@epic/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "vite": "^8.3.4"
+  }
+}

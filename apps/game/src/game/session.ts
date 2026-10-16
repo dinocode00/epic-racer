@@ -13,12 +13,23 @@ export interface PlayerSetup {
   color: string;
   vehicle: string;
   source: InputSource;
-  /** Drive this human slot with the AI (demo / screenshots / disconnected phone). */
+  /** Drive this human slot with the AI (demo / screenshots). */
   autopilot?: boolean;
+  /** Returns true while the player is away (phone dropped); the AI drives meanwhile. */
+  away?: () => boolean;
 }
 
 const AI_NAMES = ['Ripley', 'Marty', 'Ferris', 'Leia', 'Elliott', 'Sarah', 'Indy', 'Neo'];
-const AI_COLORS = ['#9aa0a6', '#c0c4c8', '#a7a29a', '#8f969e', '#b4aaa0', '#9fa7b0', '#aaa', '#999'];
+const AI_COLORS = [
+  '#9aa0a6',
+  '#c0c4c8',
+  '#a7a29a',
+  '#8f969e',
+  '#b4aaa0',
+  '#9fa7b0',
+  '#aaa',
+  '#999',
+];
 
 /** Normalised viewport rectangles for 1-4 players. */
 export function layout(n: number): [number, number, number, number][] {
@@ -51,7 +62,9 @@ export class RaceSession {
   private countdownEl: HTMLDivElement;
   private hudRoot: HTMLElement;
   private dividers: HTMLDivElement[] = [];
-  onFinished?: (order: { name: string; color: string; vehicle: string; human: boolean; time: number }[]) => void;
+  onFinished?: (
+    order: { name: string; color: string; vehicle: string; human: boolean; time: number }[],
+  ) => void;
   private finishedFired = false;
   private names: string[];
   private colors: string[];
@@ -66,7 +79,10 @@ export class RaceSession {
     // AI fills the front of the grid; humans start at the back, like the classics.
     const aiCount = Math.max(0, total - players.length);
     const entrants = [
-      ...Array.from({ length: aiCount }, (_, i) => ({ vehicle: VEHICLES[i % VEHICLES.length]!, human: false })),
+      ...Array.from({ length: aiCount }, (_, i) => ({
+        vehicle: VEHICLES[i % VEHICLES.length]!,
+        human: false,
+      })),
       ...players.map((p) => ({ vehicle: vehicleById(p.vehicle), human: true })),
     ];
     this.race = new Race(track, entrants, laps);
@@ -75,7 +91,21 @@ export class RaceSession {
     this.colors = [...AI_COLORS.slice(0, aiCount), ...players.map((p) => p.color)];
     this.world = new World(this.race.track, view.renderer);
     this.views = this.race.karts.map((k, i) => {
-      const v = new KartView(k.vehicle.id, i >= aiCount ? this.colors[i]! : ['#e8433a', '#2f7de1', '#3fbf5f', '#f5c518', '#b05de0', '#ff8c2e', '#28c4c4', '#f070b0'][i % 8]!);
+      const v = new KartView(
+        k.vehicle.id,
+        i >= aiCount
+          ? this.colors[i]!
+          : [
+              '#e8433a',
+              '#2f7de1',
+              '#3fbf5f',
+              '#f5c518',
+              '#b05de0',
+              '#ff8c2e',
+              '#28c4c4',
+              '#f070b0',
+            ][i % 8]!,
+      );
       this.world.scene.add(v.root);
       return v;
     });
@@ -119,10 +149,14 @@ export class RaceSession {
   private stepSim(): void {
     const pads: (PadState | undefined)[] = [];
     this.humans.forEach((ki, i) => {
+      const away = this.players[i]!.away?.() ?? false;
+      if (away && !this.autoBrains.has(ki)) this.autoBrains.set(ki, createBrain(200 + i, 0.8));
+      if (!away && !this.players[i]!.autopilot && this.autoBrains.has(ki))
+        this.autoBrains.delete(ki);
       const brain = this.autoBrains.get(ki);
       pads[ki] = brain
         ? aiDrive(brain, this.race.karts[ki]!, this.race.track, this.race.leaderProgress, STEP)
-        : this.pads[i] ?? neutralPad();
+        : (this.pads[i] ?? neutralPad());
     });
     this.race.step(pads);
   }
@@ -139,7 +173,7 @@ export class RaceSession {
     const fx = this.world.fx;
     this.race.karts.forEach((k, i) => {
       const hi = this.humans.indexOf(i);
-      const steer = hi >= 0 ? (this.autoBrains.has(i) ? 0 : this.pads[hi]?.steer ?? 0) : 0;
+      const steer = hi >= 0 ? (this.autoBrains.has(i) ? 0 : (this.pads[hi]?.steer ?? 0)) : 0;
       this.views[i]!.update(k, steer, alpha, dt, fx);
     });
     fx.update(dt);
@@ -178,14 +212,24 @@ export class RaceSession {
         camera: c.camera,
         before: () => {
           this.world.focusSun(kv.pos);
-          fx.setViewportHeight(h * window.innerHeight * this.view.renderer.getPixelRatio(), c.camera.fov);
+          fx.setViewportHeight(
+            h * window.innerHeight * this.view.renderer.getPixelRatio(),
+            c.camera.fov,
+          );
         },
       };
     });
     if (this.spectator) {
       const [x, y, w, h] = rects[3]!;
       const sc = this.spectator;
-      vps.push({ x, y, w, h, camera: sc.camera, before: () => this.world.focusSun(sc.camera.position) });
+      vps.push({
+        x,
+        y,
+        w,
+        h,
+        camera: sc.camera,
+        before: () => this.world.focusSun(sc.camera.position),
+      });
     }
     this.view.render(this.world.scene, vps);
 
@@ -202,6 +246,12 @@ export class RaceSession {
         })),
       );
     }
+  }
+
+  /** The kart driven by the i-th human player. */
+  humanKart(i: number) {
+    const ki = this.humans[i];
+    return ki === undefined ? undefined : this.race.karts[ki];
   }
 
   get countdownSeconds(): number {

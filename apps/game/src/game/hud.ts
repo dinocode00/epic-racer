@@ -38,7 +38,12 @@ export class Hud {
   }
 
   setRect(x: number, y: number, w: number, h: number): void {
-    Object.assign(this.el.style, { left: `${x * 100}%`, top: `${y * 100}%`, width: `${w * 100}%`, height: `${h * 100}%` });
+    Object.assign(this.el.style, {
+      left: `${x * 100}%`,
+      top: `${y * 100}%`,
+      width: `${w * 100}%`,
+      height: `${h * 100}%`,
+    });
     // Scale text with the viewport's share of the screen.
     this.el.style.fontSize = `${Math.min(w, h) * 100}%`;
     this.el.style.setProperty('--s', String(Math.min(w, h)));

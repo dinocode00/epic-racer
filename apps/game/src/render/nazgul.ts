@@ -8,9 +8,11 @@ import * as tex from './textures.ts';
  * Faces -Z, hooves on y = 0.
  */
 
-const BLACK_COAT = () => new THREE.MeshStandardMaterial({ color: 0x17171c, roughness: 0.35, metalness: 0.25 });
+const BLACK_COAT = () =>
+  new THREE.MeshStandardMaterial({ color: 0x17171c, roughness: 0.35, metalness: 0.25 });
 const ROBE = () => new THREE.MeshStandardMaterial({ color: 0x1b1b21, roughness: 0.9 });
-const STEEL = () => new THREE.MeshStandardMaterial({ color: 0x3b3e46, roughness: 0.32, metalness: 0.85 });
+const STEEL = () =>
+  new THREE.MeshStandardMaterial({ color: 0x3b3e46, roughness: 0.32, metalness: 0.85 });
 
 let tatterTex: THREE.Texture | null = null;
 /** White cloth with a ragged, torn lower edge and a few holes (used as an alpha map). */
@@ -42,7 +44,15 @@ function tatters(): THREE.Texture {
       }
       for (let i = 0; i < 9; i++) {
         x.beginPath();
-        x.ellipse(tex.rnd() * w, h * (0.5 + tex.rnd() * 0.35), 2 + tex.rnd() * 5, 4 + tex.rnd() * 9, tex.rnd(), 0, Math.PI * 2);
+        x.ellipse(
+          tex.rnd() * w,
+          h * (0.5 + tex.rnd() * 0.35),
+          2 + tex.rnd() * 5,
+          4 + tex.rnd() * 9,
+          tex.rnd(),
+          0,
+          Math.PI * 2,
+        );
         x.fill();
       }
     },
@@ -54,7 +64,13 @@ function tatters(): THREE.Texture {
 
 function rag(w: number, h: number, segX = 4, segY = 8): THREE.Mesh {
   const g = new THREE.PlaneGeometry(w, h, segX, segY).translate(0, -h / 2, 0);
-  const m = new THREE.MeshStandardMaterial({ color: 0x121215, roughness: 0.95, side: THREE.DoubleSide, alphaMap: tatters(), alphaTest: 0.5 });
+  const m = new THREE.MeshStandardMaterial({
+    color: 0x121215,
+    roughness: 0.95,
+    side: THREE.DoubleSide,
+    alphaMap: tatters(),
+    alphaTest: 0.5,
+  });
   return new THREE.Mesh(g, m);
 }
 
@@ -83,7 +99,10 @@ function buildLeg(front: boolean, x: number, z: number, offset: number, coat: TH
   const fetlock = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.14, 10, 1, true), coat);
   fetlock.position.y = -0.46;
   knee.add(fetlock);
-  const hoof = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.075, 0.09, 12), MAT.paint(0x1a1a1c, 0.6, 0.3));
+  const hoof = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.06, 0.075, 0.09, 12),
+    MAT.paint(0x1a1a1c, 0.6, 0.3),
+  );
   hoof.position.y = front ? -0.6 : -0.62;
   knee.add(hoof);
   return { hip, knee, front, offset };
@@ -129,7 +148,10 @@ export function nazgul(accent: number): VehicleModel {
   head.position.set(0, 2.46, -1.3);
   head.rotation.x = -Math.PI / 4;
   rig.add(head);
-  const skull = new THREE.Mesh(new THREE.CapsuleGeometry(0.135, 0.5, 8, 16).rotateX(Math.PI / 2), coat);
+  const skull = new THREE.Mesh(
+    new THREE.CapsuleGeometry(0.135, 0.5, 8, 16).rotateX(Math.PI / 2),
+    coat,
+  );
   skull.position.z = -0.3;
   skull.scale.set(0.82, 1, 1);
   head.add(skull);
@@ -166,7 +188,10 @@ export function nazgul(accent: number): VehicleModel {
   tail.position.set(0, 1.68, 1.0);
   rig.add(tail);
   for (let i = 0; i < 5; i++) {
-    const strand = new THREE.Mesh(new THREE.ConeGeometry(0.085, 1.25, 6).translate(0, -0.62, 0), coat);
+    const strand = new THREE.Mesh(
+      new THREE.ConeGeometry(0.085, 1.25, 6).translate(0, -0.62, 0),
+      coat,
+    );
     strand.rotation.set(0, 0, (i - 2) * 0.08);
     strand.rotation.x = (i % 2) * 0.1;
     tail.add(strand);
@@ -182,7 +207,7 @@ export function nazgul(accent: number): VehicleModel {
   for (const s of [-1, 1]) {
     const drape = rag(0.9, 0.55, 4, 4);
     drape.position.set(s * 0.37, 1.79, -0.05);
-    drape.rotation.y = s * Math.PI / 2;
+    drape.rotation.y = (s * Math.PI) / 2;
     drape.rotation.x = 0;
     rig.add(drape);
   }
@@ -244,14 +269,23 @@ export function nazgul(accent: number): VehicleModel {
   hoodG.position.set(0, 0.92, -0.04);
   hoodG.rotation.x = 0.25;
   rider.add(hoodG);
-  const hood = new THREE.Mesh(new THREE.SphereGeometry(0.21, 24, 16, -Math.PI / 2 + 0.75, Math.PI * 2 - 1.5), new THREE.MeshStandardMaterial({ color: 0x141418, roughness: 0.95, side: THREE.DoubleSide }));
+  const hood = new THREE.Mesh(
+    new THREE.SphereGeometry(0.21, 24, 16, -Math.PI / 2 + 0.75, Math.PI * 2 - 1.5),
+    new THREE.MeshStandardMaterial({ color: 0x141418, roughness: 0.95, side: THREE.DoubleSide }),
+  );
   hood.scale.set(0.95, 1.25, 1.2);
   hoodG.add(hood);
-  const voidFace = new THREE.Mesh(new THREE.SphereGeometry(0.175, 16, 12), new THREE.MeshBasicMaterial({ color: 0x000000 }));
+  const voidFace = new THREE.Mesh(
+    new THREE.SphereGeometry(0.175, 16, 12),
+    new THREE.MeshBasicMaterial({ color: 0x000000 }),
+  );
   voidFace.position.z = 0.01;
   hoodG.add(voidFace);
   // Tall peak that falls back over the shoulders.
-  const peak = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.42, 12).translate(0, 0.21, 0), hood.material);
+  const peak = new THREE.Mesh(
+    new THREE.ConeGeometry(0.15, 0.42, 12).translate(0, 0.21, 0),
+    hood.material,
+  );
   peak.position.set(0, 0.14, 0.08);
   peak.rotation.x = 1.25;
   peak.scale.set(1, 1, 0.7);
@@ -266,7 +300,10 @@ export function nazgul(accent: number): VehicleModel {
     const len = shoulder.distanceTo(hand);
     const arm = new THREE.Mesh(new THREE.CapsuleGeometry(0.075, len, 6, 10), robe);
     arm.position.copy(mid);
-    arm.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), hand.clone().sub(shoulder).normalize());
+    arm.quaternion.setFromUnitVectors(
+      new THREE.Vector3(0, 1, 0),
+      hand.clone().sub(shoulder).normalize(),
+    );
     rider.add(arm);
     const glove = new THREE.Mesh(new THREE.DodecahedronGeometry(0.075, 0), steel);
     glove.position.copy(hand);
@@ -287,14 +324,23 @@ export function nazgul(accent: number): VehicleModel {
     rider.add(toe);
     const skirt = rag(0.6, 0.58, 3, 4);
     skirt.position.set(s * 0.44, 0.1, 0.0);
-    skirt.rotation.y = s * Math.PI / 2;
+    skirt.rotation.y = (s * Math.PI) / 2;
     rider.add(skirt);
   }
   // Sword in the right hand, held forward like a charge.
   const sword = new THREE.Group();
   sword.position.copy(hands[1]!);
   sword.rotation.set(-1.15, -0.15, 0);
-  const blade = new THREE.Mesh(new THREE.BoxGeometry(0.07, 1.1, 0.014), new THREE.MeshStandardMaterial({ color: 0xd7dce6, metalness: 1, roughness: 0.12, emissive: 0x2a3550, emissiveIntensity: 0.6 }));
+  const blade = new THREE.Mesh(
+    new THREE.BoxGeometry(0.07, 1.1, 0.014),
+    new THREE.MeshStandardMaterial({
+      color: 0xd7dce6,
+      metalness: 1,
+      roughness: 0.12,
+      emissive: 0x2a3550,
+      emissiveIntensity: 0.6,
+    }),
+  );
   blade.position.y = 0.63;
   const guard = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.035, 0.05), steel);
   guard.position.y = 0.06;
@@ -304,16 +350,36 @@ export function nazgul(accent: number): VehicleModel {
   rider.add(sword);
   // Reins from the left fist to the bit.
   const bit = new THREE.Vector3(0, 2.06, -1.72);
-  const leftHandWorld = hands[0]!.clone().multiplyScalar(1.12).applyEuler(rider.rotation).add(rider.position);
+  const leftHandWorld = hands[0]!
+    .clone()
+    .multiplyScalar(1.12)
+    .applyEuler(rider.rotation)
+    .add(rider.position);
   for (const s of [-1, 1]) {
-    const c = new THREE.QuadraticBezierCurve3(leftHandWorld, leftHandWorld.clone().lerp(bit, 0.5).add(new THREE.Vector3(s * 0.12, -0.15, 0)), bit.clone().add(new THREE.Vector3(s * 0.1, 0, 0)));
+    const c = new THREE.QuadraticBezierCurve3(
+      leftHandWorld,
+      leftHandWorld
+        .clone()
+        .lerp(bit, 0.5)
+        .add(new THREE.Vector3(s * 0.12, -0.15, 0)),
+      bit.clone().add(new THREE.Vector3(s * 0.1, 0, 0)),
+    );
     rig.add(new THREE.Mesh(new THREE.TubeGeometry(c, 12, 0.012, 4), MAT.paint(0x2a2018, 0.8, 0)));
   }
 
   // Cloak: a tattered sheet from the shoulders that streams back with speed.
   const cloakGeo = new THREE.PlaneGeometry(1.0, 1.9, 8, 16).translate(0, -0.95, 0);
   const base = (cloakGeo.attributes.position as THREE.BufferAttribute).array.slice();
-  const cloak = new THREE.Mesh(cloakGeo, new THREE.MeshStandardMaterial({ color: 0x0f0f12, roughness: 0.95, side: THREE.DoubleSide, alphaMap: tatters(), alphaTest: 0.5 }));
+  const cloak = new THREE.Mesh(
+    cloakGeo,
+    new THREE.MeshStandardMaterial({
+      color: 0x0f0f12,
+      roughness: 0.95,
+      side: THREE.DoubleSide,
+      alphaMap: tatters(),
+      alphaTest: 0.5,
+    }),
+  );
   cloak.position.set(0, 2.55, 0.05);
   rig.add(cloak);
 

@@ -34,7 +34,14 @@ function finish(c: HTMLCanvasElement, repeat = true, srgb = true): THREE.CanvasT
   return t;
 }
 
-function speckle(ctx: CanvasRenderingContext2D, w: number, h: number, n: number, colors: string[], size: [number, number]): void {
+function speckle(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  n: number,
+  colors: string[],
+  size: [number, number],
+): void {
   for (let i = 0; i < n; i++) {
     ctx.fillStyle = colors[Math.floor(rnd() * colors.length)]!;
     const s = size[0] + rnd() * (size[1] - size[0]);
@@ -199,7 +206,9 @@ export function crowd(): THREE.CanvasTexture {
   x.fillRect(0, 0, 256, 128);
   for (let row = 0; row < 8; row++) {
     for (let i = 0; i < 32; i++) {
-      x.fillStyle = ['#e8433a', '#2f7de1', '#f5c518', '#f0f0f0', '#3fbf5f', '#ff8c2e', '#b05de0'][Math.floor(rnd() * 7)]!;
+      x.fillStyle = ['#e8433a', '#2f7de1', '#f5c518', '#f0f0f0', '#3fbf5f', '#ff8c2e', '#b05de0'][
+        Math.floor(rnd() * 7)
+      ]!;
       x.fillRect(i * 8 + 1 + (row % 2) * 4, row * 16 + 8, 6, 7);
       x.fillStyle = ['#f2c9a0', '#c48a5a', '#8d5a3c', '#ffe0c0'][Math.floor(rnd() * 4)]!;
       x.fillRect(i * 8 + 2 + (row % 2) * 4, row * 16 + 3, 4, 5);
@@ -209,7 +218,11 @@ export function crowd(): THREE.CanvasTexture {
 }
 
 /** A text decal with a transparent background. */
-export function decal(draw: (x: CanvasRenderingContext2D, w: number, h: number) => void, w = 128, h = 128): THREE.CanvasTexture {
+export function decal(
+  draw: (x: CanvasRenderingContext2D, w: number, h: number) => void,
+  w = 128,
+  h = 128,
+): THREE.CanvasTexture {
   const [c, x] = canvas(w, h);
   draw(x, w, h);
   return finish(c, false);

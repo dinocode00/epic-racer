@@ -1,0 +1,19 @@
+{
+  "name": "@epic/server",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "dev": "tsx watch src/index.ts"
+  },
+  "dependencies": {
+    "@epic/shared": "workspace:*",
+    "qrcode": "^1.5.4",
+    "tsx": "^4.20.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/qrcode": "^1.5.5",
+    "@types/ws": "^8.18.0"
+  }
+}

@@ -28,7 +28,13 @@ describe('track', () => {
 
 describe('race', () => {
   it('AI karts complete a full race, including the loop', () => {
-    const race = new Race(PROVING, VEHICLES.concat(VEHICLES, VEHICLES).slice(0, 8).map((v) => ({ vehicle: v, human: false })), 2);
+    const race = new Race(
+      PROVING,
+      VEHICLES.concat(VEHICLES, VEHICLES)
+        .slice(0, 8)
+        .map((v) => ({ vehicle: v, human: false })),
+      2,
+    );
     let steps = 0;
     while (race.phase !== 'finished' && steps < 60 * 300) {
       race.step([]);
@@ -67,8 +73,18 @@ describe('protocol', () => {
 
 describe('race stats (diagnostic)', () => {
   it('prints lap pace per vehicle', () => {
-    const race = new Race(PROVING, VEHICLES.concat(VEHICLES, VEHICLES).slice(0, 8).map((v) => ({ vehicle: v, human: false })), 2);
+    const race = new Race(
+      PROVING,
+      VEHICLES.concat(VEHICLES, VEHICLES)
+        .slice(0, 8)
+        .map((v) => ({ vehicle: v, human: false })),
+      2,
+    );
     while (race.phase !== 'finished' && race.time < 300) race.step([]);
-    console.log('length', race.track.length.toFixed(0), race.karts.map((k) => `${k.vehicle.id}:${k.finishTime.toFixed(1)}`).join(' '));
+    console.log(
+      'length',
+      race.track.length.toFixed(0),
+      race.karts.map((k) => `${k.vehicle.id}:${k.finishTime.toFixed(1)}`).join(' '),
+    );
   });
 });

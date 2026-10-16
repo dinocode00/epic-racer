@@ -30,9 +30,18 @@ export class Particles {
     this.maxLife = new Float32Array(n).fill(1);
     this.grow = new Float32Array(n);
     this.base = new Float32Array(n * 4);
-    g.setAttribute('position', new THREE.BufferAttribute(this.pos, 3).setUsage(THREE.DynamicDrawUsage));
-    g.setAttribute('aColor', new THREE.BufferAttribute(this.col, 4).setUsage(THREE.DynamicDrawUsage));
-    g.setAttribute('aSize', new THREE.BufferAttribute(this.size, 1).setUsage(THREE.DynamicDrawUsage));
+    g.setAttribute(
+      'position',
+      new THREE.BufferAttribute(this.pos, 3).setUsage(THREE.DynamicDrawUsage),
+    );
+    g.setAttribute(
+      'aColor',
+      new THREE.BufferAttribute(this.col, 4).setUsage(THREE.DynamicDrawUsage),
+    );
+    g.setAttribute(
+      'aSize',
+      new THREE.BufferAttribute(this.size, 1).setUsage(THREE.DynamicDrawUsage),
+    );
     const mat = new THREE.ShaderMaterial({
       uniforms: this.uniforms,
       transparent: true,
@@ -59,7 +68,15 @@ export class Particles {
     this.points.frustumCulled = false;
   }
 
-  emit(p: THREE.Vector3, v: THREE.Vector3, color: THREE.Color, alpha: number, size: number, life: number, grow = 0): void {
+  emit(
+    p: THREE.Vector3,
+    v: THREE.Vector3,
+    color: THREE.Color,
+    alpha: number,
+    size: number,
+    life: number,
+    grow = 0,
+  ): void {
     const i = this.next;
     this.next = (this.next + 1) % this.n;
     this.pos.set([p.x, p.y, p.z], i * 3);
@@ -118,18 +135,37 @@ export class Effects {
   }
 }
 
-export const DRIFT_COLORS = [new THREE.Color(1, 0.95, 0.75), new THREE.Color(0.3, 0.65, 1.6), new THREE.Color(1.6, 0.7, 0.15), new THREE.Color(1.3, 0.35, 1.6)];
+export const DRIFT_COLORS = [
+  new THREE.Color(1, 0.95, 0.75),
+  new THREE.Color(0.3, 0.65, 1.6),
+  new THREE.Color(1.6, 0.7, 0.15),
+  new THREE.Color(1.3, 0.35, 1.6),
+];
 
 /** Boost flame: layered additive cones. Scale z for length. */
 export function flame(): THREE.Group {
   const g = new THREE.Group();
   const outer = new THREE.Mesh(
     new THREE.ConeGeometry(0.24, 1.6, 12, 1, true).rotateX(Math.PI / 2).translate(0, 0, 0.8),
-    new THREE.MeshBasicMaterial({ color: 0xff6a1a, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }),
+    new THREE.MeshBasicMaterial({
+      color: 0xff6a1a,
+      transparent: true,
+      opacity: 0.85,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    }),
   );
   const inner = new THREE.Mesh(
     new THREE.ConeGeometry(0.13, 1.0, 10, 1, true).rotateX(Math.PI / 2).translate(0, 0, 0.5),
-    new THREE.MeshBasicMaterial({ color: 0xa8e0ff, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }),
+    new THREE.MeshBasicMaterial({
+      color: 0xa8e0ff,
+      transparent: true,
+      opacity: 0.95,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    }),
   );
   g.add(outer, inner);
   return g;

@@ -24,7 +24,10 @@ export class View {
   private height = 1;
 
   constructor(container: HTMLElement) {
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    this.renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      powerPreference: 'high-performance',
+    });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -70,7 +73,8 @@ export class View {
   setLook(look: LookName): void {
     this.look = look;
     psxUniforms.uSnap.value = look === 'retro' ? 1 : 0;
-    this.renderer.toneMapping = look === 'retro' ? THREE.NoToneMapping : THREE.ACESFilmicToneMapping;
+    this.renderer.toneMapping =
+      look === 'retro' ? THREE.NoToneMapping : THREE.ACESFilmicToneMapping;
     applyTextureLook(look);
     this.resize();
   }

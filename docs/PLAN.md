@@ -486,7 +486,8 @@ about **8 weeks**.
 - **M1 Gray-box drive**: done. Proving Grounds test track with banked turns, a hill and a full
   vertical loop; kart physics with drift and mini-turbo, boost pads, start boost; 8-kart AI;
   modern renderer with retro filter; Pod Racer, Batmobile, Nazgûl and Mach 5 models.
-- **M2 Phones + split-screen**: in progress.
+- **M2 Phones + split-screen**: done. Local server with QR code, phone controller (drag-to-steer, multi-touch buttons, wake lock, reconnect), TV lobby (phones, Xbox pads, keyboard), 1-4 player split-screen, phone HUD, results; end-to-end test with two simulated iPhones.
+- **Next**: character detail pass, then M3 racing polish and M4 first real track.
 
 ### Original M0 checklist
 

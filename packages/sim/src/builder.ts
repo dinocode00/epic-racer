@@ -55,7 +55,11 @@ export class TrackBuilder {
     const f = this.fwd();
     for (let i = 0; i < n; i++) {
       const t = i / n;
-      this.emit([this.x + f[0] * length * t, this.y + height * (1 - Math.cos(2 * Math.PI * t)) / 2, this.z + f[2] * length * t]);
+      this.emit([
+        this.x + f[0] * length * t,
+        this.y + (height * (1 - Math.cos(2 * Math.PI * t))) / 2,
+        this.z + f[2] * length * t,
+      ]);
     }
     this.x += f[0] * length;
     this.z += f[2] * length;
@@ -83,7 +87,10 @@ export class TrackBuilder {
         inZ = Math.sin(yaw) * sign;
       // Lift the centre so the inner edge stays at grade, like a real banked turn.
       const lift = this.halfWidth * Math.sin(bank);
-      this.emit([px, this.y + lift, pz], [inX * Math.sin(bank), Math.cos(bank), inZ * Math.sin(bank)]);
+      this.emit(
+        [px, this.y + lift, pz],
+        [inX * Math.sin(bank), Math.cos(bank), inZ * Math.sin(bank)],
+      );
     }
     this.yaw = yaw0 + ang;
     this.x = cx - Math.cos(this.yaw) * r * sign;
@@ -101,9 +108,12 @@ export class TrackBuilder {
       const th = (2 * Math.PI * i) / n;
       const along = r * Math.sin(th);
       const h = r * (1 - Math.cos(th));
-      const side = shift * (th - Math.sin(th)) / (2 * Math.PI);
+      const side = (shift * (th - Math.sin(th))) / (2 * Math.PI);
       const up: V3 = [-f[0] * Math.sin(th), Math.cos(th), -f[2] * Math.sin(th)];
-      this.emit([this.x + f[0] * along + rt[0] * side, this.y + h, this.z + f[2] * along + rt[2] * side], up);
+      this.emit(
+        [this.x + f[0] * along + rt[0] * side, this.y + h, this.z + f[2] * along + rt[2] * side],
+        up,
+      );
     }
     this.x += rt[0] * shift;
     this.z += rt[2] * shift;

@@ -35,7 +35,13 @@ export class Showroom {
       v.root.position.copy(p);
       // Face slightly toward the camera side.
       const dir = fwd.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), 0.25);
-      v.root.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(new THREE.Vector3().crossVectors(dir, new THREE.Vector3(0, 1, 0)), new THREE.Vector3(0, 1, 0), dir.clone().negate()));
+      v.root.quaternion.setFromRotationMatrix(
+        new THREE.Matrix4().makeBasis(
+          new THREE.Vector3().crossVectors(dir, new THREE.Vector3(0, 1, 0)),
+          new THREE.Vector3(0, 1, 0),
+          dir.clone().negate(),
+        ),
+      );
       if (v.model.userData.hover) v.model.position.y = 0.7;
       this.world.scene.add(v.root);
       this.views.push(v);
@@ -57,7 +63,9 @@ export class Showroom {
       .addScaledVector(this.right, Math.sin(a) * dist)
       .add(new THREE.Vector3(0, 3.2, 0));
     this.camera.position.copy(camPos);
-    this.camera.lookAt(this.center.clone().add(new THREE.Vector3(0, this.views.length === 1 ? 1.2 : 0.8, 0)));
+    this.camera.lookAt(
+      this.center.clone().add(new THREE.Vector3(0, this.views.length === 1 ? 1.2 : 0.8, 0)),
+    );
     this.world.focusSun(this.center);
     this.world.fx.update(dt);
     this.view.render(this.world.scene, [{ x: 0, y: 0, w: 1, h: 1, camera: this.camera }]);

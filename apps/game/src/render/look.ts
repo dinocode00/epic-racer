@@ -33,7 +33,10 @@ export function patchMaterial(m: THREE.Material): void {
     shader.uniforms.uSnapRes = psxUniforms.uSnapRes;
     shader.vertexShader =
       'uniform float uSnap;\nuniform vec2 uSnapRes;\n' +
-      shader.vertexShader.replace('#include <project_vertex>', '#include <project_vertex>\n' + SNAP);
+      shader.vertexShader.replace(
+        '#include <project_vertex>',
+        '#include <project_vertex>\n' + SNAP,
+      );
   };
 }
 

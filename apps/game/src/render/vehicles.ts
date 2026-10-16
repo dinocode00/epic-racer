@@ -1,6 +1,15 @@
 import * as THREE from 'three';
 import * as tex from './textures.ts';
-import { MAT, type VehicleModel, curve, driver, loftBody, shadowAll, sideProfile, wheel } from './modelKit.ts';
+import {
+  MAT,
+  type VehicleModel,
+  curve,
+  driver,
+  loftBody,
+  shadowAll,
+  sideProfile,
+  wheel,
+} from './modelKit.ts';
 import { nazgul } from './nazgul.ts';
 
 export type { VehicleModel } from './modelKit.ts';
@@ -47,7 +56,10 @@ function batmobile(accent: number): VehicleModel {
   }
 
   // Canopy.
-  const canopy = new THREE.Mesh(new THREE.SphereGeometry(1, 28, 16, 0, Math.PI * 2, 0, Math.PI / 2), MAT.glass());
+  const canopy = new THREE.Mesh(
+    new THREE.SphereGeometry(1, 28, 16, 0, Math.PI * 2, 0, Math.PI / 2),
+    MAT.glass(),
+  );
   canopy.scale.set(0.62, 0.42, 1.25);
   canopy.position.set(0, 0.96, 0.45);
   body.add(canopy);
@@ -67,8 +79,19 @@ function batmobile(accent: number): VehicleModel {
   }
 
   // Swept bat-wing fins.
-  const finShape = new THREE.Shape([new THREE.Vector2(-0.6, 0), new THREE.Vector2(-2.95, 0.95), new THREE.Vector2(-2.5, 0.25), new THREE.Vector2(-2.7, 0)]);
-  const finGeo = new THREE.ExtrudeGeometry(finShape, { depth: 0.06, bevelEnabled: true, bevelSize: 0.02, bevelThickness: 0.02, bevelSegments: 1 });
+  const finShape = new THREE.Shape([
+    new THREE.Vector2(-0.6, 0),
+    new THREE.Vector2(-2.95, 0.95),
+    new THREE.Vector2(-2.5, 0.25),
+    new THREE.Vector2(-2.7, 0),
+  ]);
+  const finGeo = new THREE.ExtrudeGeometry(finShape, {
+    depth: 0.06,
+    bevelEnabled: true,
+    bevelSize: 0.02,
+    bevelThickness: 0.02,
+    bevelSegments: 1,
+  });
   finGeo.rotateY(Math.PI / 2);
   for (const s of [-1, 1]) {
     const fin = new THREE.Mesh(finGeo, black);
@@ -78,7 +101,10 @@ function batmobile(accent: number): VehicleModel {
   }
 
   // Afterburner + accent tail lights in the player's colour.
-  const nozzle = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.27, 0.3, 20, 1, true), MAT.chrome());
+  const nozzle = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.22, 0.27, 0.3, 20, 1, true),
+    MAT.chrome(),
+  );
   nozzle.rotation.x = Math.PI / 2;
   nozzle.position.set(0, 0.6, 2.8);
   const burner = new THREE.Mesh(new THREE.CircleGeometry(0.2, 20), MAT.glow(0xff7a1a, 2));
@@ -174,7 +200,10 @@ function mach5(accent: number): VehicleModel {
   );
   body.add(hull);
   // Nose intake and red taillights.
-  const intake = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.05, 0.08), MAT.paint(0x111111, 0.6, 0.2));
+  const intake = new THREE.Mesh(
+    new THREE.BoxGeometry(0.5, 0.05, 0.08),
+    MAT.paint(0x111111, 0.6, 0.2),
+  );
   intake.position.set(0, 0.33, -2.52);
   body.add(intake);
   for (const s of [-1, 1]) {
@@ -184,12 +213,25 @@ function mach5(accent: number): VehicleModel {
   }
 
   // Open cockpit, windscreen.
-  const tub = new THREE.Mesh(new THREE.CapsuleGeometry(0.42, 0.5, 6, 16), MAT.paint(0x1d2f5a, 0.7, 0));
+  const tub = new THREE.Mesh(
+    new THREE.CapsuleGeometry(0.42, 0.5, 6, 16),
+    MAT.paint(0x1d2f5a, 0.7, 0),
+  );
   tub.rotation.x = Math.PI / 2;
   tub.scale.set(1, 1, 0.25);
   tub.position.set(0, 0.75, 0.25);
   body.add(tub);
-  const screen = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.34), new THREE.MeshStandardMaterial({ color: 0x9fc4e8, transparent: true, opacity: 0.45, metalness: 0.2, roughness: 0.05, side: THREE.DoubleSide }));
+  const screen = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.1, 0.34),
+    new THREE.MeshStandardMaterial({
+      color: 0x9fc4e8,
+      transparent: true,
+      opacity: 0.45,
+      metalness: 0.2,
+      roughness: 0.05,
+      side: THREE.DoubleSide,
+    }),
+  );
   screen.position.set(0, 0.9, -0.38);
   screen.rotation.x = -0.6;
   body.add(screen);
@@ -202,7 +244,10 @@ function mach5(accent: number): VehicleModel {
     x.textBaseline = 'middle';
     x.fillText('M', w / 2, h / 2 + 8);
   });
-  const mDecal = new THREE.Mesh(new THREE.PlaneGeometry(0.55, 0.55), new THREE.MeshStandardMaterial({ map: mTex, transparent: true, roughness: 0.3 }));
+  const mDecal = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.55, 0.55),
+    new THREE.MeshStandardMaterial({ map: mTex, transparent: true, roughness: 0.3 }),
+  );
   mDecal.rotation.x = -Math.PI / 2 + 0.2;
   mDecal.position.set(0, 0.62, -1.35);
   body.add(mDecal);
@@ -219,9 +264,12 @@ function mach5(accent: number): VehicleModel {
     x.fillText('5', w / 2, h / 2 + 6);
   });
   for (const s of [-1, 1]) {
-    const five = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.5), new THREE.MeshStandardMaterial({ map: fiveTex, transparent: true, roughness: 0.3 }));
+    const five = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.5, 0.5),
+      new THREE.MeshStandardMaterial({ map: fiveTex, transparent: true, roughness: 0.3 }),
+    );
     five.position.set(s * 0.905, 0.5, 0.1);
-    five.rotation.y = s * Math.PI / 2;
+    five.rotation.y = (s * Math.PI) / 2;
     body.add(five);
   }
   // Red nose detail and accent stripe in the player's colour.
@@ -304,7 +352,10 @@ function podEngine(color: number, accent: number): THREE.Group {
   }
   // Split exhaust flaps at the rear.
   for (const s of [-1, 1]) {
-    const flap = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.55, 0.6), MAT.paint(0x8a8f99, 0.4, 0.7));
+    const flap = new THREE.Mesh(
+      new THREE.BoxGeometry(0.05, 0.55, 0.6),
+      MAT.paint(0x8a8f99, 0.4, 0.7),
+    );
     flap.position.set(0, s * 0.3, 2.0);
     flap.rotation.x = s * 0.25;
     g.add(flap);
@@ -330,12 +381,25 @@ function podracer(accent: number): VehicleModel {
   }
   // Energy binder arcing between the engines.
   const binderGeo = new THREE.TubeGeometry(
-    new THREE.QuadraticBezierCurve3(new THREE.Vector3(-0.72, H + 0.25, -2.9), new THREE.Vector3(0, H + 0.7, -3.05), new THREE.Vector3(0.72, H + 0.25, -2.9)),
+    new THREE.QuadraticBezierCurve3(
+      new THREE.Vector3(-0.72, H + 0.25, -2.9),
+      new THREE.Vector3(0, H + 0.7, -3.05),
+      new THREE.Vector3(0.72, H + 0.25, -2.9),
+    ),
     24,
     0.035,
     6,
   );
-  const binder = new THREE.Mesh(binderGeo, new THREE.MeshBasicMaterial({ color: 0x9fe6ff, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false }));
+  const binder = new THREE.Mesh(
+    binderGeo,
+    new THREE.MeshBasicMaterial({
+      color: 0x9fe6ff,
+      transparent: true,
+      opacity: 0.9,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    }),
+  );
   body.add(binder);
 
   // Cockpit pod.
@@ -354,7 +418,10 @@ function podracer(accent: number): VehicleModel {
   const pod = new THREE.Mesh(podGeo, MAT.paint(0xd9a441, 0.35, 0.45));
   pod.position.set(0, H + 0.05, 1.9);
   body.add(pod);
-  const podTrim = new THREE.Mesh(new THREE.TorusGeometry(0.36, 0.045, 8, 28), MAT.paint(0x3f6fb0, 0.35, 0.45));
+  const podTrim = new THREE.Mesh(
+    new THREE.TorusGeometry(0.36, 0.045, 8, 28),
+    MAT.paint(0x3f6fb0, 0.35, 0.45),
+  );
   podTrim.scale.set(1.1, 1, 0.9);
   podTrim.rotation.x = Math.PI / 2;
   podTrim.position.set(0, H + 0.22, 1.95);
@@ -363,8 +430,15 @@ function podracer(accent: number): VehicleModel {
   // Control cables from each engine to the pod.
   for (const s of [-1, 1]) {
     for (const dy of [-0.08, 0.08]) {
-      const c = new THREE.CatmullRomCurve3([new THREE.Vector3(s * 1.0, H + 0.1 + dy, 0.3), new THREE.Vector3(s * 0.62, H + dy - 0.05, 1.0), new THREE.Vector3(s * 0.3, H + dy + 0.05, 1.55)]);
-      const cable = new THREE.Mesh(new THREE.TubeGeometry(c, 16, 0.025, 5), MAT.paint(0x2a2a2a, 0.6, 0.3));
+      const c = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(s * 1.0, H + 0.1 + dy, 0.3),
+        new THREE.Vector3(s * 0.62, H + dy - 0.05, 1.0),
+        new THREE.Vector3(s * 0.3, H + dy + 0.05, 1.55),
+      ]);
+      const cable = new THREE.Mesh(
+        new THREE.TubeGeometry(c, 16, 0.025, 5),
+        MAT.paint(0x2a2a2a, 0.6, 0.3),
+      );
       body.add(cable);
     }
   }

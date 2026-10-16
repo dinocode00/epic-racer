@@ -49,7 +49,9 @@ export class KartView {
     // Body: drift yaw, lean into corners, hover bob, bump shake.
     const targetYaw = k.drift.active ? k.drift.dir * -0.38 : -steer * 0.06;
     this.yawOff += (targetYaw - this.yawOff) * Math.min(1, dt * 8);
-    const targetLean = -steer * Math.min(1, Math.abs(k.speed) / 20) * 0.07 + (k.drift.active ? k.drift.dir * 0.05 : 0);
+    const targetLean =
+      -steer * Math.min(1, Math.abs(k.speed) / 20) * 0.07 +
+      (k.drift.active ? k.drift.dir * 0.05 : 0);
     this.lean += (targetLean - this.lean) * Math.min(1, dt * 6);
     const body = ud.body;
     body.rotation.set(0, this.yawOff, this.lean);
@@ -71,7 +73,10 @@ export class KartView {
     // Boost flames; pod engines always idle with a short blue glow.
     const boost = k.boostTime > 0 ? 1 : 0;
     const idle = ud.hover ? 0.35 : 0.0;
-    const len = Math.max(boost * (1.1 + Math.sin(this.t * 40) * 0.15), idle * (0.8 + Math.sin(this.t * 25) * 0.1));
+    const len = Math.max(
+      boost * (1.1 + Math.sin(this.t * 40) * 0.15),
+      idle * (0.8 + Math.sin(this.t * 25) * 0.1),
+    );
     for (const f of this.flames) {
       const s = len > 0.01 ? len : 0.001;
       f.scale.set(Math.max(0.6, s), Math.max(0.6, s), s);
@@ -82,37 +87,90 @@ export class KartView {
     const toWorld = (local: THREE.Vector3) => local.clone().applyMatrix4(body.matrixWorld);
     this.root.updateMatrixWorld();
     if (lvl >= 0 && Math.abs(k.speed) > 5) {
-      const rearL = ud.rear?.[0] ?? (ud.hover ? ud.exhausts[0]! : new THREE.Vector3(-0.9, 0.05, 1.6));
-      const rearR = ud.rear?.[1] ?? (ud.hover ? ud.exhausts[1]! : new THREE.Vector3(0.9, 0.05, 1.6));
+      const rearL =
+        ud.rear?.[0] ?? (ud.hover ? ud.exhausts[0]! : new THREE.Vector3(-0.9, 0.05, 1.6));
+      const rearR =
+        ud.rear?.[1] ?? (ud.hover ? ud.exhausts[1]! : new THREE.Vector3(0.9, 0.05, 1.6));
       for (const p of [rearL, rearR]) {
         const wp = toWorld(p);
         const n = lvl > 0 ? 3 : 1;
         for (let i = 0; i < n; i++) {
-          tmp.set((Math.random() - 0.5) * 4, 1.5 + Math.random() * 3, (Math.random() - 0.5) * 4).add(right.clone().multiplyScalar(-k.drift.dir * 3));
-          fx.sparks.emit(wp, tmp, DRIFT_COLORS[lvl]!, 1, lvl > 0 ? 0.22 : 0.12, 0.25 + Math.random() * 0.2);
+          tmp
+            .set((Math.random() - 0.5) * 4, 1.5 + Math.random() * 3, (Math.random() - 0.5) * 4)
+            .add(right.clone().multiplyScalar(-k.drift.dir * 3));
+          fx.sparks.emit(
+            wp,
+            tmp,
+            DRIFT_COLORS[lvl]!,
+            1,
+            lvl > 0 ? 0.22 : 0.12,
+            0.25 + Math.random() * 0.2,
+          );
         }
         if (!ud.hover && Math.random() < 0.6) {
-          fx.smoke.emit(wp, tmp.set(0, 0.6, 0).addScaledVector(this.fwd, -2), new THREE.Color(0.85, 0.85, 0.85), 0.35, 0.8, 0.9, 2.2);
+          fx.smoke.emit(
+            wp,
+            tmp.set(0, 0.6, 0).addScaledVector(this.fwd, -2),
+            new THREE.Color(0.85, 0.85, 0.85),
+            0.35,
+            0.8,
+            0.9,
+            2.2,
+          );
         }
       }
     }
     if (boost && ud.ghost) {
       // Wraith boost: a trail of shadowy smoke instead of jet flames.
       for (let i = 0; i < 3; i++) {
-        const wp = toWorld(new THREE.Vector3((Math.random() - 0.5) * 0.8, 0.6 + Math.random() * 1.6, 0.6 + Math.random() * 0.6));
-        fx.smoke.emit(wp, back.clone().multiplyScalar(3).add(new THREE.Vector3(0, 0.8, 0)), new THREE.Color(0.06, 0.06, 0.09), 0.7, 0.9, 0.8, 2.5);
+        const wp = toWorld(
+          new THREE.Vector3(
+            (Math.random() - 0.5) * 0.8,
+            0.6 + Math.random() * 1.6,
+            0.6 + Math.random() * 0.6,
+          ),
+        );
+        fx.smoke.emit(
+          wp,
+          back
+            .clone()
+            .multiplyScalar(3)
+            .add(new THREE.Vector3(0, 0.8, 0)),
+          new THREE.Color(0.06, 0.06, 0.09),
+          0.7,
+          0.9,
+          0.8,
+          2.5,
+        );
       }
     }
     if (boost) {
       for (const ex of ud.exhausts) {
         const wp = toWorld(ex.clone().add(new THREE.Vector3(0, 0, 0.6)));
-        fx.sparks.emit(wp, back.clone().multiplyScalar(6).add(new THREE.Vector3((Math.random() - 0.5) * 2, Math.random() * 2, 0)), DRIFT_COLORS[2]!, 1, 0.18, 0.2);
+        fx.sparks.emit(
+          wp,
+          back
+            .clone()
+            .multiplyScalar(6)
+            .add(new THREE.Vector3((Math.random() - 0.5) * 2, Math.random() * 2, 0)),
+          DRIFT_COLORS[2]!,
+          1,
+          0.18,
+          0.2,
+        );
       }
     }
     if (k.bump > this.lastBump + 0.25) {
       for (let i = 0; i < 24; i++) {
         tmp.set((Math.random() - 0.5) * 10, Math.random() * 7, (Math.random() - 0.5) * 10);
-        fx.sparks.emit(this.pos.clone().addScaledVector(this.up, 0.6), tmp, new THREE.Color(1.6, 1.2, 0.4), 1, 0.14, 0.4);
+        fx.sparks.emit(
+          this.pos.clone().addScaledVector(this.up, 0.6),
+          tmp,
+          new THREE.Color(1.6, 1.2, 0.4),
+          1,
+          0.14,
+          0.4,
+        );
       }
     }
     this.lastBump = k.bump;

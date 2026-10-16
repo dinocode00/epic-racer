@@ -2,7 +2,14 @@ import * as THREE from 'three';
 import type { Track } from '@epic/sim';
 import { Effects } from './effects.ts';
 import { patchScene } from './look.ts';
-import { Terrain, buildClouds, buildFoliage, buildGrandstand, buildSky, buildTerrain } from './scenery.ts';
+import {
+  Terrain,
+  buildClouds,
+  buildFoliage,
+  buildGrandstand,
+  buildSky,
+  buildTerrain,
+} from './scenery.ts';
 import { buildTrackMesh } from './trackMesh.ts';
 
 export const SUN_DIR = new THREE.Vector3(0.35, 0.82, -0.3).normalize();
@@ -24,7 +31,10 @@ export class World {
     const pmrem = new THREE.PMREMGenerator(renderer);
     const envScene = new THREE.Scene();
     envScene.add(buildSky());
-    const ground = new THREE.Mesh(new THREE.CircleGeometry(3000, 16).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x4a6b32 }));
+    const ground = new THREE.Mesh(
+      new THREE.CircleGeometry(3000, 16).rotateX(-Math.PI / 2),
+      new THREE.MeshBasicMaterial({ color: 0x4a6b32 }),
+    );
     ground.position.y = -20;
     envScene.add(ground);
     s.environment = pmrem.fromScene(envScene, 0.02).texture;

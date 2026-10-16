@@ -57,7 +57,13 @@ export interface Section {
  * Loft a smooth car body through cross-sections. Each section is a rounded
  * superellipse whose top can bulge into twin fender pontoons at |x| = fx.
  */
-export function loftBody(sections: Section[], fx = 0.62, fw = 0.22, around = 36, ex = 0.55): THREE.BufferGeometry {
+export function loftBody(
+  sections: Section[],
+  fx = 0.62,
+  fw = 0.22,
+  around = 36,
+  ex = 0.55,
+): THREE.BufferGeometry {
   const ring = (sec: Section): THREE.Vector3[] => {
     const pts: THREE.Vector3[] = [];
     for (let j = 0; j < around; j++) {
@@ -91,7 +97,9 @@ export function loftBody(sections: Section[], fx = 0.62, fw = 0.22, around = 36,
     [0, false],
     [rings.length - 1, true],
   ] as const) {
-    const centre = rings[ri]!.reduce((acc, p) => acc.add(p), new THREE.Vector3()).multiplyScalar(1 / around);
+    const centre = rings[ri]!.reduce((acc, p) => acc.add(p), new THREE.Vector3()).multiplyScalar(
+      1 / around,
+    );
     const ci = pos.length / 3;
     pos.push(centre.x, centre.y, centre.z);
     for (let j = 0; j < around; j++) {
@@ -108,17 +116,31 @@ export function loftBody(sections: Section[], fx = 0.62, fw = 0.22, around = 36,
   return g;
 }
 
-export function wheel(radius: number, width: number, hubMat: THREE.Material, capMap?: THREE.Texture): THREE.Group {
+export function wheel(
+  radius: number,
+  width: number,
+  hubMat: THREE.Material,
+  capMap?: THREE.Texture,
+): THREE.Group {
   const g = new THREE.Group();
   const tyre = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, width, 24), MAT.rubber());
   tyre.rotation.z = Math.PI / 2;
-  const tread = new THREE.Mesh(new THREE.TorusGeometry(radius * 0.97, width * 0.12, 6, 24), MAT.rubber());
+  const tread = new THREE.Mesh(
+    new THREE.TorusGeometry(radius * 0.97, width * 0.12, 6, 24),
+    MAT.rubber(),
+  );
   tread.rotation.y = Math.PI / 2;
-  const hub = new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.62, radius * 0.62, width + 0.02, 20), hubMat);
+  const hub = new THREE.Mesh(
+    new THREE.CylinderGeometry(radius * 0.62, radius * 0.62, width + 0.02, 20),
+    hubMat,
+  );
   hub.rotation.z = Math.PI / 2;
   g.add(tyre, tread, hub);
   if (capMap) {
-    const cap = new THREE.Mesh(new THREE.CircleGeometry(radius * 0.6, 20), new THREE.MeshStandardMaterial({ map: capMap, metalness: 0.6, roughness: 0.3 }));
+    const cap = new THREE.Mesh(
+      new THREE.CircleGeometry(radius * 0.6, 20),
+      new THREE.MeshStandardMaterial({ map: capMap, metalness: 0.6, roughness: 0.3 }),
+    );
     cap.position.x = width / 2 + 0.015;
     cap.rotation.y = Math.PI / 2;
     const cap2 = cap.clone();
@@ -133,9 +155,17 @@ export function wheel(radius: number, width: number, hubMat: THREE.Material, cap
 export const MAT = {
   rubber: () => new THREE.MeshStandardMaterial({ color: 0x1b1b1d, roughness: 0.85 }),
   chrome: () => new THREE.MeshStandardMaterial({ color: 0xdedfe3, metalness: 1, roughness: 0.18 }),
-  glass: () => new THREE.MeshStandardMaterial({ color: 0x0d1626, metalness: 0.9, roughness: 0.08, envMapIntensity: 1.5 }),
-  paint: (c: number, rough = 0.28, metal = 0.35) => new THREE.MeshStandardMaterial({ color: c, roughness: rough, metalness: metal }),
-  glow: (c: number, i = 3) => new THREE.MeshStandardMaterial({ color: 0x000000, emissive: c, emissiveIntensity: i }),
+  glass: () =>
+    new THREE.MeshStandardMaterial({
+      color: 0x0d1626,
+      metalness: 0.9,
+      roughness: 0.08,
+      envMapIntensity: 1.5,
+    }),
+  paint: (c: number, rough = 0.28, metal = 0.35) =>
+    new THREE.MeshStandardMaterial({ color: c, roughness: rough, metalness: metal }),
+  glow: (c: number, i = 3) =>
+    new THREE.MeshStandardMaterial({ color: 0x000000, emissive: c, emissiveIntensity: i }),
   skin: () => new THREE.MeshStandardMaterial({ color: 0xe8b98f, roughness: 0.7 }),
 };
 
@@ -143,9 +173,15 @@ export function driver(helmet: number, visor = 0x222a3a): THREE.Group {
   const g = new THREE.Group();
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.24, 20, 14), MAT.paint(helmet, 0.3, 0.2));
   // Visor band centred on -z (phi = -PI/2 points down -z in SphereGeometry).
-  const vis = new THREE.Mesh(new THREE.SphereGeometry(0.25, 20, 14, -Math.PI / 2 - 0.9, 1.8, 1.15, 0.75), MAT.glass());
+  const vis = new THREE.Mesh(
+    new THREE.SphereGeometry(0.25, 20, 14, -Math.PI / 2 - 0.9, 1.8, 1.15, 0.75),
+    MAT.glass(),
+  );
   vis.material.color.setHex(visor);
-  const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.22, 0.25, 6, 12), MAT.paint(0x2b3a5a, 0.8, 0));
+  const torso = new THREE.Mesh(
+    new THREE.CapsuleGeometry(0.22, 0.25, 6, 12),
+    MAT.paint(0x2b3a5a, 0.8, 0),
+  );
   torso.position.y = -0.38;
   g.add(head, vis, torso);
   g.traverse((o) => (o.castShadow = true));
@@ -160,4 +196,3 @@ export function shadowAll(g: THREE.Object3D): void {
     }
   });
 }
-

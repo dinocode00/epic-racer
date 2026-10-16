@@ -36,7 +36,9 @@ export class Race {
       const s = this.track.length - 8 - row * 8 - (col > 0 ? 4 : 0);
       return createKart(i, e.vehicle, this.track, s, col * 3.6);
     });
-    this.brains = entrants.map((e, i) => (e.human ? null : createBrain(i + 1, 0.55 + 0.45 * ((i * 37) % 10) / 10)));
+    this.brains = entrants.map((e, i) =>
+      e.human ? null : createBrain(i + 1, 0.55 + (0.45 * ((i * 37) % 10)) / 10),
+    );
     this.firstThrottle = entrants.map(() => NaN);
     this.padCooldown = entrants.map(() => 0);
   }
@@ -63,7 +65,8 @@ export class Race {
 
       if (frozen) {
         // Start boost: first press of gas in the last second before green = boost.
-        if (pad.throttle > 0.5 && Number.isNaN(this.firstThrottle[i]!)) this.firstThrottle[i] = this.time;
+        if (pad.throttle > 0.5 && Number.isNaN(this.firstThrottle[i]!))
+          this.firstThrottle[i] = this.time;
         if (pad.throttle < 0.1) this.firstThrottle[i] = NaN;
       }
       stepKart(k, pad, this.track, dt, frozen);

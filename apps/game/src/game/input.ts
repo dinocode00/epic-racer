@@ -38,7 +38,10 @@ export class KeyboardSource implements InputSource {
 /** Xbox (standard mapping): stick steers, RT gas, LT brake, A/RB drift, X/LB item, Y look back. */
 export class GamepadSource implements InputSource {
   readonly kind = 'gamepad';
-  constructor(readonly index: number, readonly label: string) {}
+  constructor(
+    readonly index: number,
+    readonly label: string,
+  ) {}
   poll(): PadState {
     const gp = navigator.getGamepads()[this.index];
     const p = neutralPad();
@@ -60,7 +63,11 @@ export class GamepadSource implements InputSource {
   }
   rumble(strength: number, ms: number): void {
     const gp = navigator.getGamepads()[this.index];
-    void gp?.vibrationActuator?.playEffect('dual-rumble', { duration: ms, strongMagnitude: strength, weakMagnitude: strength });
+    void gp?.vibrationActuator?.playEffect('dual-rumble', {
+      duration: ms,
+      strongMagnitude: strength,
+      weakMagnitude: strength,
+    });
   }
 }
 
@@ -77,5 +84,7 @@ export class PhoneSource implements InputSource {
 
 /** Lists connected gamepads, keyed by index. */
 export function connectedGamepads(): { index: number; id: string }[] {
-  return [...navigator.getGamepads()].filter((g): g is Gamepad => !!g && g.connected).map((g) => ({ index: g.index, id: g.id }));
+  return [...navigator.getGamepads()]
+    .filter((g): g is Gamepad => !!g && g.connected)
+    .map((g) => ({ index: g.index, id: g.id }));
 }

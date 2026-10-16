@@ -13,8 +13,14 @@ export class ChaseCam {
   update(v: KartView, speed: number, boosting: boolean, lookBack: boolean, dt: number): void {
     const dir = lookBack ? -1 : 1;
     const dist = 5.6 + Math.min(1.4, Math.max(0, speed) / 25);
-    const want = v.pos.clone().addScaledVector(v.fwd, -dist * dir).addScaledVector(v.up, 2.1);
-    const lookAt = v.pos.clone().addScaledVector(v.fwd, 3.5 * dir).addScaledVector(v.up, 1.25);
+    const want = v.pos
+      .clone()
+      .addScaledVector(v.fwd, -dist * dir)
+      .addScaledVector(v.up, 2.1);
+    const lookAt = v.pos
+      .clone()
+      .addScaledVector(v.fwd, 3.5 * dir)
+      .addScaledVector(v.up, 1.25);
     if (!this.init) {
       this.pos.copy(want);
       this.look.copy(lookAt);
