@@ -226,7 +226,7 @@ export function dressHobbiton(ctx: DressContext): (t: number, dt: number) => voi
     place(gate, s + 8, 11);
     const oak = partyTree();
     oak.scale.setScalar(0.4);
-    place(oak, s + 20, 36, false);
+    place(oak, s + 24, 37, false); // the oak on top of the Hill
   }
 
   // ---------------- Hobbit holes along Gandalf's lane, with gardens.

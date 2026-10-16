@@ -178,8 +178,8 @@ export const LOOKS: Record<string, RegionLook> = {
       skyTop: 0x2a0c08,
       skyHorizon: 0x8a3a1a,
       fog: 0x4a1c10,
-      fogNear: 60,
-      fogFar: 800,
+      fogNear: 40,
+      fogFar: 480,
       sun: 0xff7a3a,
       sunIntensity: 2.0,
       hemiSky: 0x8a3a20,
@@ -349,7 +349,7 @@ export function features(track: Track): Features {
     minasMountain: at('greatGate', 230, 40),
     edorasHill: at('edoras', -95, 40),
     weathertopKnoll: at('weathertopSummit', 20, 10),
-    bagEndHill: at('bagEnd', 34, 18),
+    bagEndHill: at('bagEnd', 33, 18),
   };
   featureCache.set(track, f);
   return f;
@@ -480,7 +480,7 @@ function terrainOpts(track: Track): TerrainOpts {
     mounds: [
       { x: F.edorasHill.x, z: F.edorasHill.z, r: 60, h: 24 },
       { x: F.weathertopKnoll.x, z: F.weathertopKnoll.z, r: 11, h: 9 },
-      { x: F.bagEndHill.x, z: F.bagEndHill.z, r: 20, h: 9 },
+      { x: F.bagEndHill.x, z: F.bagEndHill.z, r: 19, h: 14 },
     ],
     carves: [
       { pts: F.rivendellGorge, width: 28, depth: 48 },

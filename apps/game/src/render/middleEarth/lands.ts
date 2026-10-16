@@ -334,8 +334,13 @@ function rohan(ctx: DressContext): Hook {
   const wood = new THREE.MeshStandardMaterial({ map: tex.planks(), roughness: 0.85 });
   // Meduseld, the golden hall.
   const hall = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.BoxGeometry(12, 6, 26), wood);
-  body.position.y = 3;
+  // Walls run well below the hilltop so the long hall never floats where the hill falls away.
+  const body = new THREE.Mesh(new THREE.BoxGeometry(12, 14, 26), wood);
+  body.position.y = -1;
+  const stone = new THREE.MeshStandardMaterial({ map: tex.rock('#9a958a'), roughness: 1 });
+  const terrace = new THREE.Mesh(new THREE.BoxGeometry(20, 8, 34), stone);
+  terrace.position.y = -4.6;
+  hall.add(terrace);
   // Steep gabled roof running the length of the hall.
   const gable = new THREE.Shape();
   gable.moveTo(-8, 0);
