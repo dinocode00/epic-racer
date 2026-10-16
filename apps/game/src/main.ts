@@ -472,3 +472,17 @@ requestAnimationFrame(loop);
 window.addEventListener('keydown', (e) => {
   if (e.code === 'F2') view.setLook(view.look === 'modern' ? 'retro' : 'modern');
 });
+
+// Keys only reach the page once it has focus (e.g. when embedded): say so until it does.
+const focusHint = document.createElement('div');
+focusHint.className = 'focus-hint';
+focusHint.textContent = 'Click the game to use the keyboard';
+document.body.appendChild(focusHint);
+const syncFocus = () => (focusHint.hidden = document.hasFocus());
+window.addEventListener('focus', syncFocus);
+window.addEventListener('blur', syncFocus);
+window.addEventListener('pointerdown', () => {
+  window.focus();
+  setTimeout(syncFocus, 0);
+});
+syncFocus();
