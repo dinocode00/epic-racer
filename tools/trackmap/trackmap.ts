@@ -20,6 +20,7 @@ const REGION_STYLE: Record<string, [string, string]> = {
   argonath: ['#5a7fa8', 'The Argonath'],
   rohan: ['#c9a24a', 'Rohan'],
   pelennor: ['#b8b2a0', 'Pelennor & Minas Tirith'],
+  osgiliath: ['#7a6a5a', 'Osgiliath'],
   mordor: ['#8a2a1a', 'Mordor'],
   deadMarshes: ['#5a6a4a', 'Dead Marshes'],
 };

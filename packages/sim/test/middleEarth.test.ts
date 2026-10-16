@@ -33,6 +33,7 @@ describe('Middle-earth', () => {
       'argonath',
       'rohan',
       'pelennor',
+      'osgiliath',
       'mordor',
       'deadMarshes',
       'hobbiton', // back on the party field for the grid

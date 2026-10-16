@@ -584,6 +584,56 @@ export function paving(base = '#d9d4c6'): THREE.CanvasTexture {
   return finish(c);
 }
 
+/** Osgiliath: grey flagstones broken by war, missing slabs, soot and scattered rubble. */
+export function ruinedPaving(): THREE.CanvasTexture {
+  const S = 512;
+  const [c, x] = canvas(S);
+  x.fillStyle = '#4a4640';
+  x.fillRect(0, 0, S, S);
+  const rows = 8;
+  for (let r = 0; r < rows; r++) {
+    let px = r % 2 ? -32 : 0;
+    while (px < S) {
+      const w = 48 + rnd() * 40;
+      if (rnd() > 0.1) {
+        const v = 120 + Math.floor(rnd() * 40);
+        x.fillStyle = `rgb(${v},${v - 4},${v - 12})`;
+        x.fillRect(px + 2, r * (S / rows) + 2, w - 4, S / rows - 4);
+      }
+      px += w;
+    }
+  }
+  // Soot scorch marks.
+  for (let i = 0; i < 14; i++) {
+    const rr = 20 + rnd() * 50;
+    const g = x.createRadialGradient(0, 0, 0, 0, 0, rr);
+    g.addColorStop(0, 'rgba(20,16,12,0.55)');
+    g.addColorStop(1, 'rgba(20,16,12,0)');
+    x.save();
+    x.translate(rnd() * S, rnd() * S);
+    x.fillStyle = g;
+    x.fillRect(-rr, -rr, rr * 2, rr * 2);
+    x.restore();
+  }
+  // Cracks across the slabs.
+  x.strokeStyle = 'rgba(25,22,18,0.8)';
+  for (let i = 0; i < 18; i++) {
+    x.lineWidth = 1 + rnd() * 2;
+    x.beginPath();
+    let px = rnd() * S,
+      py = rnd() * S;
+    x.moveTo(px, py);
+    for (let k = 0; k < 4; k++) {
+      px += (rnd() - 0.5) * 60;
+      py += (rnd() - 0.5) * 60;
+      x.lineTo(px, py);
+    }
+    x.stroke();
+  }
+  speckle(x, S, S, 9000, ['rgba(0,0,0,0.12)', 'rgba(255,255,255,0.06)'], [1, 3]);
+  return finish(c);
+}
+
 /** Dwarven floor: big square slabs with carved border lines. */
 export function dwarvenTiles(): THREE.CanvasTexture {
   const S = 512;

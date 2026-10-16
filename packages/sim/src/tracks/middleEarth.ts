@@ -216,6 +216,17 @@ export const MIDDLE_EARTH = (() => {
   b.turn(-170, 15, 0);
   b.straight(45, 10);
   b.mark('prow').ramp(24, 15).flight({ speed: 32, drop: 30, pop: 4, landing: 50 });
+  // ------------------------------------------------------------ Osgiliath
+  // Catapult stones and falling masonry among the ruins.
+  b.region('osgiliath').mark('osgiliath');
+  for (let i = 0; i < 4; i++)
+    b.hazard(25 + i * 38, {
+      kind: 'boulder',
+      lat: [-3.5, 3, 0, -2][i]!,
+      r: 3,
+      effect: 'spin',
+      strike: { period: 5, warn: 1.4, active: 0.5, phase: i * 1.3 },
+    });
   b.turn(55, 70, 8);
   b.straight(130, 27); // up onto the plateau of Mordor
 

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { DETAIL, MAT, foldedLathe, tube } from '../modelKit.ts';
-import { ruins } from '../props/shire.ts';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import * as tex from '../textures.ts';
 import type { DressContext } from '../themes.ts';
 import { off, tv } from '../trackMesh.ts';
@@ -39,10 +39,83 @@ function weathertop(ctx: DressContext): Hook {
   const F = features(ctx.track);
   const { x, z } = F.weathertopKnoll;
   const y0 = ctx.terrain.height(x, z);
-  const r = ruins(8, (dx, dz) => ctx.terrain.height(x + dx, z + dz) - y0);
-  r.position.set(x, y0 - 0.2, z);
+  const r = amonSul((dx, dz) => ctx.terrain.height(x + dx, z + dz) - y0);
+  r.position.set(x, y0, z);
   ctx.scene.add(r);
   return () => {};
+}
+
+/**
+ * The watchtower of Amon Sûl: a ring of broken pillars and arches around a cracked floor,
+ * one tall shard of the old tower wall still standing.
+ */
+function amonSul(rise: (x: number, z: number) => number): THREE.Group {
+  const g = new THREE.Group();
+  const stone = new THREE.MeshStandardMaterial({ map: tex.rock('#8e8a80'), roughness: 1 });
+  const parts: THREE.BufferGeometry[] = [];
+  const R = 7,
+    N = 14;
+  const height = (i: number) =>
+    [7.5, 6.8, 7.5, 4.2, 7.5, 7.5, 2.4, 7.5, 6.1, 7.5, 7.5, 3.3, 7.5, 5][i]!;
+  const pillarAt = (i: number) => {
+    const a = (i / N) * Math.PI * 2;
+    return { a, x: Math.cos(a) * R, z: Math.sin(a) * R };
+  };
+  for (let i = 0; i < N; i++) {
+    const { a, x, z } = pillarAt(i);
+    // Footings run deep so no pillar floats on the slope of the crown.
+    const y = rise(x, z) - 4;
+    const h = height(i) + 2.5;
+    parts.push(new THREE.BoxGeometry(0.9, h + 4, 1.1).rotateY(-a).translate(x, y + (h + 4) / 2, z));
+    parts.push(new THREE.BoxGeometry(1.5, 0.5, 1.7).rotateY(-a).translate(x, y + 4.2, z)); // plinth
+    // Arch to the next pillar when both still stand tall.
+    const j = (i + 1) % N;
+    if (height(i) > 7 && height(j) > 7) {
+      const q = pillarAt(j);
+      const chord = Math.hypot(q.x - x, q.z - z);
+      const arch = new THREE.TorusGeometry(chord / 2, 0.55, 6, 14, Math.PI)
+        .scale(1, 0.8, 1.6)
+        .rotateY(-Math.atan2(q.z - z, q.x - x))
+        .translate((x + q.x) / 2, y + 4 + h, (z + q.z) / 2);
+      parts.push(arch);
+    }
+  }
+  // Cracked floor slabs and the last shard of the tower wall.
+  for (let k = 0; k < 9; k++) {
+    const a = (k / 9) * Math.PI * 2 + 0.3,
+      rr = 2 + (k % 3) * 1.8;
+    const x = Math.cos(a) * rr,
+      z = Math.sin(a) * rr;
+    parts.push(
+      new THREE.BoxGeometry(2.6, 1.2, 2.2)
+        .rotateY(a)
+        .rotateZ((k % 2 ? 1 : -1) * 0.06)
+        .translate(x, rise(x, z) - 0.35, z),
+    );
+  }
+  parts.push(
+    new THREE.BoxGeometry(3.5, 13, 1.4).rotateY(0.6).translate(-2, rise(-2, -2.5) + 4, -2.5),
+  );
+  // Fallen blocks down the slope.
+  for (let k = 0; k < 16; k++) {
+    const a = tex.rnd() * Math.PI * 2,
+      rr = R + 1 + tex.rnd() * 3.5;
+    const x = Math.cos(a) * rr,
+      z = Math.sin(a) * rr;
+    parts.push(
+      new THREE.BoxGeometry(1 + tex.rnd() * 1.4, 0.7 + tex.rnd() * 0.6, 0.9 + tex.rnd())
+        .rotateY(tex.rnd() * 3)
+        .rotateZ((tex.rnd() - 0.5) * 0.7)
+        .translate(x, rise(x, z) + 0.2, z),
+    );
+  }
+  const mesh = new THREE.Mesh(
+    mergeGeometries(parts.map((p) => (p.index ? p.toNonIndexed() : p)))!,
+    stone,
+  );
+  mesh.castShadow = mesh.receiveShadow = true;
+  g.add(mesh);
+  return g;
 }
 
 // ---------------------------------------------------------------- Rivendell

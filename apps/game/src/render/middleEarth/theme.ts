@@ -173,6 +173,22 @@ export const LOOKS: Record<string, RegionLook> = {
     }),
     road: road({ road: () => tex.paving('#e8e4da'), barrier: BALUSTRADE, roadTile: 8 }),
   },
+  osgiliath: {
+    atmosphere: atmos({
+      skyTop: 0x4a4048,
+      skyHorizon: 0xb08a70,
+      fog: 0x8a7464,
+      fogNear: 90,
+      fogFar: 900,
+      sun: 0xffb880,
+      sunIntensity: 2.2,
+      hemiSky: 0xa89888,
+      hemiGround: 0x3a2a20,
+      hemiIntensity: 0.85,
+      env: 0.3,
+    }),
+    road: road({ road: tex.ruinedPaving, barrier: ROCK_WALL, roadTile: 8 }),
+  },
   mordor: {
     atmosphere: atmos({
       skyTop: 0x2a0c08,
@@ -296,6 +312,7 @@ export interface Features {
   edorasHill: { x: number; z: number };
   weathertopKnoll: { x: number; z: number };
   bagEndHill: { x: number; z: number };
+  baradDur: { x: number; z: number };
 }
 
 const featureCache = new WeakMap<Track, Features>();
@@ -342,6 +359,7 @@ export function features(track: Track): Features {
       }),
     ]),
     doom: at('mountDoom', -260, 40),
+    baradDur: at('baradDur', -230, 30),
     durinLake: [0, 25, 50, 70].map((a) => {
       const p = at('doorsOfDurin', -38, a - 15);
       return [p.x, p.z] as [number, number];
@@ -435,6 +453,8 @@ function regionWild(id: string, x: number, z: number, d: number): number {
       return roll(8, 260) + far * 80 * ridged(x, z);
     case 'pelennor':
       return roll(3, 200) + far * 100 * ridged(x, z);
+    case 'osgiliath':
+      return roll(5, 160) + far * 120 * ridged(x, z);
     case 'mordor':
       return roll(10, 90) + far * 220 * ridged(x * 1.6, z * 1.6);
     case 'deadMarshes':
@@ -465,6 +485,35 @@ function terrainOpts(track: Track): TerrainOpts {
           (regionAt(track, s) === 'moria' ? 1 : smooth(d, 120, 420));
         h = Math.max(h, mountain);
       }
+      // The Anduin runs in a sheer canyon; the road crosses through a notch at the Argonath.
+      const dr = distInside(x, z, F.anduin);
+      if (dr < 300) {
+        const wall = 75 + 25 * ridged(x * 2, z * 2);
+        h = Math.max(h, wall * smooth(dr, 24, 38) * (1 - smooth(dr, 110, 280)) * smooth(d, 26, 70));
+      }
+      // Amon Sûl: the road climbs the flank of a broad, steep-shouldered hill to the summit.
+      const rw = Math.hypot(x - F.weathertopKnoll.x, z - F.weathertopKnoll.z);
+      if (rw < 170) {
+        const k = Math.min(1, Math.max(0, (rw - 28) / 142));
+        h = Math.max(h, 21 * (0.5 + 0.5 * Math.cos(Math.PI * Math.pow(k, 0.8))));
+      }
+      // The Mountains of Shadow: spurs either side of the Black Gate and a jagged wall
+      // around the plateau, kept clear of Mount Doom and Barad-dûr so both stay in view.
+      const mk = track.def.marks ?? {};
+      const gate = mk.blackGate ?? 3882,
+        marsh = mk.deadMarshes ?? 4243;
+      if (s >= gate - 30 && s <= gate + 15 && d > 20)
+        h = Math.max(h, (130 + 50 * ridged(x * 2, z * 2)) * smooth(d, 20, 50));
+      if (s >= gate && s <= marsh - 50) {
+        const rd0 = Math.hypot(x - F.doom.x, z - F.doom.z);
+        const rb = Math.hypot(x - F.baradDur.x, z - F.baradDur.z);
+        const wall =
+          (110 + 90 * ridged(x * 1.7, z * 1.7)) *
+          smooth(d, 130, 260) *
+          smooth(rd0, 260, 360) *
+          smooth(rb, 110, 190);
+        h = Math.max(h, wall);
+      }
       // Mount Doom: a lone cone with a crater.
       const rd = Math.hypot(x - F.doom.x, z - F.doom.z);
       if (rd < 230)
@@ -479,7 +528,7 @@ function terrainOpts(track: Track): TerrainOpts {
       F.hallLine.length && distInside(x, z, F.hallLine) < 50 ? Math.max(h, 55) : h,
     mounds: [
       { x: F.edorasHill.x, z: F.edorasHill.z, r: 60, h: 24 },
-      { x: F.weathertopKnoll.x, z: F.weathertopKnoll.z, r: 11, h: 9 },
+      { x: F.weathertopKnoll.x, z: F.weathertopKnoll.z, r: 13, h: 10 },
       { x: F.bagEndHill.x, z: F.bagEndHill.z, r: 19, h: 14 },
     ],
     carves: [
@@ -501,6 +550,7 @@ const PAINT: Record<string, Paint> = {
   argonath: { tint: [0.9, 0.95, 0.85], splat: [0.6, 0.4, 0, 0] },
   rohan: { tint: [1.5, 1.18, 0.55], splat: [0.92, 0, 0, 0.08] },
   pelennor: { tint: [1.25, 1.05, 0.7], splat: [0.6, 0.05, 0.05, 0.3] },
+  osgiliath: { tint: [0.9, 0.82, 0.72], splat: [0.2, 0.15, 0.4, 0.25] },
   mordor: { tint: [1, 0.9, 0.88], splat: [0, 0.25, 0.75, 0] },
   deadMarshes: { tint: [0.62, 0.68, 0.52], splat: [0.35, 0, 0, 0.65] },
 };
@@ -515,6 +565,16 @@ function terrainPaint(track: Track): TerrainLook {
         const p = PAINT[id] ?? PAINT.hobbiton!;
         for (let i = 0; i < 3; i++) tint[i]! += p.tint[i]! * w;
         for (let i = 0; i < 4; i++) splat[i]! += p.splat[i]! * w;
+      }
+      // Scorched fields from the prow down through Osgiliath to the Black Gate.
+      const m = track.def.marks ?? {};
+      const burn =
+        smooth(s, (m.prow ?? 3511) + 20, (m.prow ?? 3511) + 90) *
+        (1 - smooth(s, (m.blackGate ?? 3882) - 30, (m.blackGate ?? 3882) + 10));
+      if (burn > 0) {
+        const to = [0.18, 0.12, 0.45, 0.25];
+        for (let i = 0; i < 4; i++) splat[i] = splat[i]! * (1 - burn) + to[i]! * burn;
+        for (let i = 0; i < 3; i++) tint[i] = tint[i]! * (1 - burn * 0.3);
       }
       // Steep slopes and high ground turn to rock; snow on the highest peaks.
       const rockT = Math.max(smooth(slope, 0.25, 0.5), smooth(y, 90, 140));
@@ -533,11 +593,12 @@ function terrainPaint(track: Track): TerrainLook {
 }
 
 function foliageAt(track: Track) {
+  const F = features(track);
   return (x: number, z: number, s: number): FoliageKind | null => {
-    void x;
-    void z;
-    const id = regionAt(track, s);
     const r = tex.rnd();
+    // Bare summit on Amon Sûl so nothing grows through the ruins.
+    if (Math.hypot(x - F.weathertopKnoll.x, z - F.weathertopKnoll.z) < 24) return null;
+    const id = regionAt(track, s);
     switch (id) {
       case 'hobbiton':
         return 'broad';
@@ -555,6 +616,8 @@ function foliageAt(track: Track) {
         return r < 0.06 ? 'broad' : null;
       case 'pelennor':
         return r < 0.04 ? 'broad' : null;
+      case 'osgiliath':
+        return r < 0.08 ? 'dead' : null;
       case 'mordor':
         return r < 0.12 ? 'dead' : null;
       case 'deadMarshes':

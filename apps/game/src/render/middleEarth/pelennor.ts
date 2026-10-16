@@ -260,7 +260,131 @@ export function dressPelennor(ctx: DressContext): (t: number, dt: number) => voi
     });
   }
 
+  // ---------------- Osgiliath: the ruined city where the prow jump lands, on the way to Mordor.
+  scene.add(osgiliath(ctx, prow + 90, (marks.blackGate ?? 3882) - 35));
+
   return (t, dt) => animated.forEach((a) => a(t, dt));
+}
+
+/** Ruined halls, colonnades and broken arches either side of the road, all ash-stained. */
+function osgiliath(ctx: DressContext, s0: number, s1: number): THREE.Mesh {
+  const { track, terrain } = ctx;
+  const parts: THREE.BufferGeometry[] = [];
+  let seed = 7;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const ground = (x: number, z: number) => terrain.height(x, z);
+  const put = (geo: THREE.BufferGeometry, x: number, y: number, z: number, yaw: number) =>
+    parts.push(geo.rotateY(yaw).translate(x, y, z));
+  for (let s = s0; s < s1; s += 26) {
+    const f = track.frameAtS(s);
+    const yaw = Math.atan2(f.tan.x, f.tan.z);
+    for (const side of [-1, 1]) {
+      const lat = side * (17 + rnd() * 16);
+      const p = off(f, lat, 0);
+      const y = ground(p.x, p.z) - 0.5;
+      const kind = Math.floor(rnd() * 3);
+      if (kind === 0) {
+        // A roofless hall: four walls of broken, gap-toothed masonry.
+        const w = 10 + rnd() * 8,
+          d = 8 + rnd() * 6;
+        for (const [wx, wz, len, along] of [
+          [0, -d / 2, w, true],
+          [0, d / 2, w, true],
+          [-w / 2, 0, d, false],
+          [w / 2, 0, d, false],
+        ] as [number, number, number, boolean][]) {
+          const n = 4;
+          for (let k = 0; k < n; k++) {
+            if (rnd() < 0.22) continue; // collapsed
+            const h = 2 + rnd() * 9;
+            const t = (k + 0.5) / n - 0.5;
+            const lx = wx + (along ? t * len : 0),
+              lz = wz + (along ? 0 : t * len);
+            const seg = new THREE.BoxGeometry(along ? len / n : 1, h, along ? 1 : len / n);
+            const c = Math.cos(yaw),
+              sn = Math.sin(yaw);
+            put(seg.translate(0, h / 2, 0), p.x + lx * c + lz * sn, y, p.z - lx * sn + lz * c, yaw);
+          }
+        }
+      } else if (kind === 1) {
+        // A colonnade: a row of columns, a few still carrying their beam.
+        const n = 5;
+        const hs = Array.from({ length: n }, () => (rnd() < 0.55 ? 8 : 2 + rnd() * 5));
+        for (let k = 0; k < n; k++) {
+          const q = off(track.frameAtS(s + (k - 2) * 4), lat, 0);
+          put(
+            new THREE.CylinderGeometry(0.55, 0.65, hs[k]!, 10).translate(0, hs[k]! / 2, 0),
+            q.x,
+            y,
+            q.z,
+            0,
+          );
+          if (k > 0 && hs[k] === 8 && hs[k - 1] === 8) {
+            const m = off(track.frameAtS(s + (k - 2.5) * 4), lat, 0);
+            put(new THREE.BoxGeometry(1.2, 0.8, 4.6).translate(0, 8.4, 0), m.x, y, m.z, yaw);
+          }
+        }
+      } else {
+        // A broken arch on two piers, and a shattered dome beside it.
+        put(
+          new THREE.BoxGeometry(1.8, 9, 1.8).translate(-4, 4.5, 0),
+          p.x,
+          y,
+          p.z,
+          yaw + Math.PI / 2,
+        );
+        put(new THREE.BoxGeometry(1.8, 6, 1.8).translate(4, 3, 0), p.x, y, p.z, yaw + Math.PI / 2);
+        put(
+          new THREE.TorusGeometry(4, 0.8, 6, 12, Math.PI * 0.62)
+            .scale(1, 1, 1.8)
+            .translate(0, 9, 0),
+          p.x,
+          y,
+          p.z,
+          yaw + Math.PI / 2,
+        );
+        const q = off(f, lat + side * 10, 0);
+        put(
+          new THREE.SphereGeometry(6, 14, 8, 0, Math.PI * 1.3, 0, Math.PI / 2).translate(0, 3, 0),
+          q.x,
+          ground(q.x, q.z) - 0.5,
+          q.z,
+          rnd() * 6,
+        );
+        put(
+          new THREE.CylinderGeometry(6.2, 6.2, 3.2, 16, 1, true).translate(0, 1.6, 0),
+          q.x,
+          ground(q.x, q.z) - 0.5,
+          q.z,
+          0,
+        );
+      }
+      // Rubble.
+      for (let k = 0; k < 5; k++) {
+        const q = off(track.frameAtS(s + (rnd() - 0.5) * 20), lat + (rnd() - 0.5) * 14, 0);
+        put(
+          new THREE.BoxGeometry(0.8 + rnd() * 1.6, 0.5 + rnd(), 0.8 + rnd() * 1.4).rotateZ(
+            (rnd() - 0.5) * 0.8,
+          ),
+          q.x,
+          ground(q.x, q.z),
+          q.z,
+          rnd() * 3,
+        );
+      }
+    }
+  }
+  const stone = new THREE.MeshStandardMaterial({
+    map: tex.rock('#a49c8c'),
+    roughness: 1,
+    side: THREE.DoubleSide,
+  });
+  const mesh = new THREE.Mesh(
+    mergeGeometries(parts.map((g) => (g.index ? g.toNonIndexed() : g)))!,
+    stone,
+  );
+  mesh.castShadow = mesh.receiveShadow = true;
+  return mesh;
 }
 
 /** An orc siege tower: tapering timber frame, hide-hung sides, wheels and a raised drawbridge. */
