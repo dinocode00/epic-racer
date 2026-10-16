@@ -1,8 +1,8 @@
 # Epic Racer — Master Plan
 
 A free, home-built, couch-multiplayer kart racer. Mario Kart's items and drift-boost feel,
-the speed and anti-gravity swagger of the new Star Wars racing game, and the chunky,
-jittery look of a PlayStation 1 racing game. Tracks are iconic movie scenes. Vehicles are
+the speed and anti-gravity swagger of the new Star Wars racing game, and clean, readable
+modern 3D (with an optional PlayStation 1 retro filter). Tracks are iconic movie scenes. Vehicles are
 iconic movie machines. Players race on a TV using iPhones or Xbox controllers as pads.
 
 This document is the single source of truth for the project. It covers the pitch, the
@@ -208,7 +208,8 @@ vehicle has three stats on a 1–5 scale: **Speed**, **Handling**, **Weight**. S
 |---|---|---|---|---|---|---|
 | **Pod Racer** | Star Wars Ep. I | 5 | 2 | 2 | Hover | Two engines + cable + pod; longest vehicle; rear engines flare on boost |
 | **Batmobile** | Batman (1989) | 3 | 3 | 3 | Wheels | Default recommendation is the 1989 Burton car for its unmistakable silhouette; the Tumbler is the alternative (see Open Decisions) |
-| **Mach 5** | Speed Racer (cartoon) | 4 | 4 | 1 | Wheels | White with the red M; the clearest "popular cartoon racing car". Alternatives: Mystery Machine, Flintstones car, Wacky Races' Mean Machine |
+| **Nazgûl** | The Lord of the Rings | 4 | 3 | 2 | Hooves | Requested in build 1. Black horse with a galloping leg rig and red eyes; hooded wraith with an empty face, tattered cloak that streams at speed, sword and reins. Boost trails shadow smoke instead of flames |
+| Mach 5 | Speed Racer (cartoon) | 4 | 4 | 1 | Wheels | Bonus pick. Built, but no further polish planned |
 | DeLorean | Back to the Future | 4 | 3 | 2 | Wheels | Stretch. Trails fire at 88 (top speed) |
 | Ecto-1 | Ghostbusters | 2 | 3 | 4 | Wheels | Stretch |
 | Light Cycle | Tron | 5 | 3 | 1 | Hover | Stretch |
@@ -434,6 +435,13 @@ chunked into ~30 merged meshes and karts share materials.
 
 ## 6. Art direction: "recognisable, not exquisite"
 
+> **Decision (build 1):** the default look is **Modern**: full TV resolution, real-time soft
+> shadows, sky reflections, filtered textures, tone mapping, roughly Mario Kart Double Dash
+> to modern-indie fidelity. The PS1 treatment below survives as an optional **Retro filter**
+> (F2 / `?look=retro`): same scene, 240-line buffer, vertex wobble, nearest textures and
+> 15-bit dithering. Poly budgets below are raised accordingly: vehicles 3k-15k tris.
+
+
 - **Poly budgets**: vehicles 400–800 tris; track chunk ≤2,000 tris; whole track ≤60k tris;
   props 20–150 tris. Spectators are 2-tri billboards.
 - **Textures**: ≤128×128, palette-limited, hand-painted or heavily posterised photos. No
@@ -472,7 +480,15 @@ person working evenings and weekends; two people roughly halves calendar time.
 Total to a complete game: roughly **23 weeks** of hobby time. A playable party night (M4) is at
 about **8 weeks**.
 
-### Immediate next steps (M0)
+### Status
+
+- **M0 Skeleton**: done.
+- **M1 Gray-box drive**: done. Proving Grounds test track with banked turns, a hill and a full
+  vertical loop; kart physics with drift and mini-turbo, boost pads, start boost; 8-kart AI;
+  modern renderer with retro filter; Pod Racer, Batmobile, Nazgûl and Mach 5 models.
+- **M2 Phones + split-screen**: in progress.
+
+### Original M0 checklist
 
 1. Initialise the pnpm monorepo with `apps/game`, `apps/controller`, `apps/server`,
    `packages/shared`, `packages/sim`.
@@ -507,8 +523,8 @@ Defaults are chosen so work can start immediately; override any of them.
 1. **Track 2**: default is the Raiders temple opening. Alternative: Temple of Doom mine cart
    (would make tracks 2 and 3 two different films).
 2. **Batmobile version**: default 1989 Burton car (best silhouette). Alternative: the Tumbler.
-3. **Cartoon vehicle**: default Mach 5 (Speed Racer). Alternatives: Mystery Machine, Flintstones
-   car, Wacky Races.
+3. **Cartoon vehicle**: resolved. The Nazgûl rider replaced it as the third featured vehicle;
+   the Mach 5 stays as a bonus pick.
 4. **Max humans on screen**: default 4. Stretch to 6 only if playtests want it.
 5. **TV connection**: default assumes a laptop with HDMI out. If the laptop is a Mac without
    HDMI, a USB-C to HDMI adapter is the one small purchase worth making; otherwise AirPlay.

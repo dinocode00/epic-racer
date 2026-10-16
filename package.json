@@ -1,0 +1,21 @@
+{
+  "name": "epic-racer",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.28.0",
+  "scripts": {
+    "build": "pnpm --filter @epic/game --filter @epic/controller run build",
+    "start": "pnpm build && pnpm --filter @epic/server run start",
+    "dev": "pnpm -r --parallel run dev",
+    "test": "vitest run",
+    "typecheck": "tsc -p apps/game && tsc -p apps/controller && tsc -p apps/server && tsc -p packages/sim && tsc -p packages/shared",
+    "lint": "prettier --check \"apps/*/src/**/*.ts\" \"packages/*/src/**/*.ts\" \"packages/*/test/**/*.ts\"",
+    "format": "prettier --write \"apps/*/src/**/*.ts\" \"packages/*/src/**/*.ts\" \"packages/*/test/**/*.ts\""
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "prettier": "^3.8.1",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.5"
+  }
+}

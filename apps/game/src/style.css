@@ -1,0 +1,41 @@
+@import url('https://fonts.googleapis.com/css2?family=Russo+One&display=swap');
+:root {
+  --ink: #fff;
+  --shadow: rgba(0, 0, 0, 0.55);
+  --gold: #ffd23f;
+}
+html, body { margin: 0; height: 100%; overflow: hidden; background: #000; }
+body { font-family: 'Russo One', 'Arial Black', system-ui, sans-serif; color: var(--ink); user-select: none; }
+#stage canvas { display: block; }
+#hud, #ui { position: fixed; inset: 0; pointer-events: none; }
+#ui > * { pointer-events: auto; }
+
+.vp { position: absolute; overflow: hidden; }
+.vp .place { position: absolute; left: 3%; top: 3%; font-size: min(11vh, 10vw); line-height: 1; text-shadow: 0 0.06em 0 var(--shadow), 0 0 0.3em var(--shadow); }
+.vp .place sup { font-size: 0.45em; vertical-align: 0.9em; margin-left: 0.04em; }
+.vp .lap { position: absolute; right: 3%; top: 4%; font-size: min(4.6vh, 3.6vw); text-shadow: 0 3px 0 var(--shadow); }
+.vp .lap b { color: var(--gold); }
+.vp .name { position: absolute; left: 3%; bottom: 4%; font-size: min(3vh, 2.4vw); padding: 0.2em 0.6em; border-radius: 0.4em; }
+.vp .speedo { position: absolute; right: 3%; bottom: 4%; text-align: right; text-shadow: 0 3px 0 var(--shadow); }
+.vp .speedo .kmh { font-size: min(7vh, 5.5vw); line-height: 1; }
+.vp .speedo .unit { font-size: min(2.4vh, 2vw); opacity: 0.85; }
+.vp .speedo .bar { width: min(26vh, 20vw); height: min(1.4vh, 1.1vw); margin-top: 0.5em; background: rgba(0,0,0,0.45); border-radius: 99px; overflow: hidden; margin-left: auto; }
+.vp .speedo .bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #ffd23f, #ff6a1a); border-radius: 99px; }
+.vp .drift { position: absolute; left: 50%; bottom: 7%; transform: translateX(-50%); display: flex; gap: 0.5em; opacity: 0; transition: opacity 0.15s; }
+.vp .drift.on { opacity: 1; }
+.vp .drift i { width: min(2.6vh, 2vw); height: min(2.6vh, 2vw); border-radius: 50%; background: rgba(255,255,255,0.25); box-shadow: 0 0 0 2px rgba(0,0,0,0.35); }
+.vp .drift i.l1 { background: #4aa3ff; box-shadow: 0 0 12px #4aa3ff; }
+.vp .drift i.l2 { background: #ff9a1f; box-shadow: 0 0 12px #ff9a1f; }
+.vp .drift i.l3 { background: #c95cff; box-shadow: 0 0 12px #c95cff; }
+.vp .done { position: absolute; inset: 0; display: grid; place-items: center; font-size: min(10vh, 8vw); color: var(--gold); text-shadow: 0 6px 0 var(--shadow); }
+
+.countdown { position: fixed; inset: 0; display: grid; place-items: center; font-size: 22vh; color: var(--gold); text-shadow: 0 1.2vh 0 #b5581c, 0 0 6vh rgba(0,0,0,0.5); pointer-events: none; }
+.countdown.go { color: #5bff7a; text-shadow: 0 1.2vh 0 #1e7a34, 0 0 6vh rgba(0,0,0,0.5); }
+.divider { position: absolute; background: #000; }
+
+.results { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); background: rgba(18, 16, 34, 0.92); border: 3px solid var(--gold); border-radius: 18px; padding: 3vh 4vh; min-width: 50vh; box-shadow: 0 2vh 6vh rgba(0,0,0,0.6); }
+.results h2 { margin: 0 0 2vh; color: var(--gold); font-size: 5vh; text-align: center; }
+.results .row { display: grid; grid-template-columns: 6vh 1fr 14vh; align-items: center; font-size: 3.2vh; padding: 0.6vh 1vh; border-radius: 8px; }
+.results .row.human { background: rgba(255,255,255,0.1); }
+.results .row .sw { display: inline-block; width: 1.6vh; height: 1.6vh; border-radius: 50%; margin-right: 1vh; }
+.results .hint { text-align: center; margin-top: 2vh; opacity: 0.8; font-size: 2.4vh; }
