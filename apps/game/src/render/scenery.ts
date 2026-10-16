@@ -43,12 +43,41 @@ const smooth = (x: number, a: number, b: number): number => {
  * Height field for the land around a track. Flat-ish and matching the road near the
  * track, rolling hills further out, mountains on the horizon.
  */
+export interface TerrainOpts {
+  /** Hill height far from the road. */
+  hillAmp?: number;
+  /** Horizontal size of hills (m). */
+  hillScale?: number;
+  /** Distance from the track centre where mountains begin. */
+  mountainStart?: number;
+  mountainAmp?: number;
+  /** Channels cut into the ground (brooks, ravines), as polylines in x/z. */
+  carves?: { pts: [number, number][]; width: number; depth: number }[];
+  /** Rounded mounds (hobbit hills, the watchtower hill). */
+  mounds?: { x: number; z: number; r: number; h: number }[];
+}
+
+function distToPolyline(x: number, z: number, pts: [number, number][]): number {
+  let best = Infinity;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const [ax, az] = pts[i]!,
+      [bx, bz] = pts[i + 1]!;
+    const dx = bx - ax,
+      dz = bz - az;
+    const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz || 1)));
+    best = Math.min(best, Math.hypot(x - ax - dx * t, z - az - dz * t));
+  }
+  return best;
+}
+
 export class Terrain {
   private pts: { x: number; z: number; h: number; hw: number }[];
   readonly cx: number;
   readonly cz: number;
+  readonly opts: TerrainOpts;
 
-  constructor(track: Track) {
+  constructor(track: Track, opts: TerrainOpts = {}) {
+    this.opts = opts;
     this.pts = [];
     let sx = 0,
       sz = 0;
@@ -67,15 +96,17 @@ export class Terrain {
   /** Distance from (x,z) to the road edge, and the road's height there. */
   nearest(x: number, z: number): { d: number; h: number } {
     let bd = Infinity,
-      bh = 0;
+      bh = 0,
+      hw = 9;
     for (const p of this.pts) {
       const d = (p.x - x) ** 2 + (p.z - z) ** 2;
       if (d < bd) {
         bd = d;
         bh = p.h;
+        hw = p.hw;
       }
     }
-    return { d: Math.sqrt(bd) - 9, h: bh };
+    return { d: Math.sqrt(bd) - hw, h: bh };
   }
 
   height(x: number, z: number): number {
@@ -84,24 +115,42 @@ export class Terrain {
   }
 
   heightFrom(x: number, z: number, d: number, roadH: number): number {
+    const o = this.opts;
     const rc = Math.hypot(x - this.cx, z - this.cz);
-    const hills = (fbm(x / 140, z / 140) - 0.35) * (6 + smooth(d, 20, 220) * 26);
-    const mountains = smooth(rc, 420, 900) * (fbm(x / 260 + 7, z / 260) * 220 + 30);
+    const hs = o.hillScale ?? 140;
+    const hills = (fbm(x / hs, z / hs) - 0.35) * (6 + smooth(d, 20, 220) * (o.hillAmp ?? 26));
+    const ms = o.mountainStart ?? 420;
+    const mountains =
+      smooth(rc, ms, ms + 480) * (fbm(x / 260 + 7, z / 260) * (o.mountainAmp ?? 220) + 30);
     const wild = hills + mountains;
     const near = 1 - smooth(d, 3, 45);
-    return roadH * near + Math.max(wild, roadH - 6) * (1 - near);
+    let h = roadH * near + Math.max(wild, roadH - 6) * (1 - near);
+    // Mounds sit on top of the blended land so they keep their full height by the road.
+    for (const m of o.mounds ?? []) {
+      const r = Math.hypot(x - m.x, z - m.z) / m.r;
+      if (r < 1) h += m.h * (0.5 + 0.5 * Math.cos(Math.PI * r));
+    }
+    for (const c of o.carves ?? []) {
+      const dc = distToPolyline(x, z, c.pts);
+      h -= c.depth * (1 - smooth(dc, c.width * 0.5, c.width * 1.8));
+    }
+    return h;
   }
 }
 
-export function buildSky(): THREE.Mesh {
+export function buildSky(
+  top = 0x3d7fd6,
+  horizon = 0xcfe6f7,
+  sun = new THREE.Vector3(0.35, 0.82, -0.3),
+): THREE.Mesh {
   const mat = new THREE.ShaderMaterial({
     side: THREE.BackSide,
     depthWrite: false,
     fog: false,
     uniforms: {
-      top: { value: new THREE.Color(0x3d7fd6) },
-      horizon: { value: new THREE.Color(0xcfe6f7) },
-      sunDir: { value: new THREE.Vector3(0.35, 0.82, -0.3).normalize() },
+      top: { value: new THREE.Color(top) },
+      horizon: { value: new THREE.Color(horizon) },
+      sunDir: { value: sun.clone().normalize() },
     },
     vertexShader: /* glsl */ `varying vec3 vDir; void main(){ vDir = normalize(position); vec4 p = projectionMatrix * modelViewMatrix * vec4(position,1.0); gl_Position = p.xyww; }`,
     fragmentShader: /* glsl */ `
@@ -122,13 +171,22 @@ export function buildSky(): THREE.Mesh {
   return sky;
 }
 
-export function buildTerrain(terrain: Terrain): THREE.Mesh {
+export interface TerrainLook {
+  grass?: () => THREE.Texture;
+  /** Tint of the worn shoulder beside the road. */
+  shoulder?: THREE.Color;
+}
+
+export function buildTerrain(terrain: Terrain, look: TerrainLook = {}): THREE.Mesh {
   const SIZE = 2400,
-    N = 300;
-  const geo = new THREE.PlaneGeometry(SIZE, SIZE, N, N);
+    N = 420;
+  const geo = new THREE.PlaneGeometry(2, 2, N, N);
   geo.rotateX(-Math.PI / 2);
-  geo.translate(terrain.cx, 0, terrain.cz);
   const pos = geo.attributes.position as THREE.BufferAttribute;
+  // Warp the grid: ~1.4 m cells around the track, ~16 m cells at the horizon.
+  const warp = (u: number) => (SIZE / 2) * (0.25 * u + 0.75 * u * u * u);
+  for (let i = 0; i < pos.count; i++)
+    pos.setXYZ(i, terrain.cx + warp(pos.getX(i)), 0, terrain.cz + warp(pos.getZ(i)));
   const uv = geo.attributes.uv as THREE.BufferAttribute;
   const colors: number[] = [];
   for (let i = 0; i < pos.count; i++) {
@@ -145,14 +203,14 @@ export function buildTerrain(terrain: Terrain): THREE.Mesh {
     const snowT = smooth(y, 150, 190);
     const tint = 0.85 + fbm(x / 30, z / 30) * 0.3;
     c.setRGB(tint, tint, tint);
-    c.lerp(new THREE.Color(1.35, 1.05, 0.7), shoulder * 0.6);
+    c.lerp(look.shoulder ?? new THREE.Color(1.35, 1.05, 0.7), shoulder * 0.6);
     c.lerp(new THREE.Color(1.05, 1.0, 0.95), rockT);
     c.lerp(new THREE.Color(2.4, 2.4, 2.5), snowT);
     colors.push(c.r, c.g, c.b);
   }
   geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
   geo.computeVertexNormals();
-  const grass = tex.grass();
+  const grass = (look.grass ?? tex.grass)();
   const mat = new THREE.MeshStandardMaterial({ map: grass, vertexColors: true, roughness: 1 });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.receiveShadow = true;
@@ -193,7 +251,10 @@ function broadleafGeo(): THREE.BufferGeometry {
 }
 
 /** Forests and rocks, instanced. */
-export function buildFoliage(terrain: Terrain): THREE.Group {
+export function buildFoliage(
+  terrain: Terrain,
+  opts: { count?: number; pineShare?: number; keepOut?: (x: number, z: number) => boolean } = {},
+): THREE.Group {
   const g = new THREE.Group();
   const leafMat = new THREE.MeshStandardMaterial({
     vertexColors: true,
@@ -204,13 +265,14 @@ export function buildFoliage(terrain: Terrain): THREE.Group {
   const placed: THREE.Matrix4[][] = [[], []];
   const rocks: THREE.Matrix4[] = [];
   let tries = 0;
-  while (placed[0]!.length + placed[1]!.length < 1400 && tries++ < 20000) {
+  const target = opts.count ?? 1400;
+  while (placed[0]!.length + placed[1]!.length < target && tries++ < 20000) {
     const ang = tex.rnd() * Math.PI * 2;
     const rad = Math.sqrt(tex.rnd()) * 700;
     const x = terrain.cx + Math.cos(ang) * rad,
       z = terrain.cz + Math.sin(ang) * rad;
     const { d, h } = terrain.nearest(x, z);
-    if (d < 7) continue;
+    if (d < 7 || opts.keepOut?.(x, z)) continue;
     // Clumps: forests where low-frequency noise is high.
     const forest = fbm(x / 90 + 3, z / 90 - 5);
     if (forest < 0.48 && tex.rnd() > 0.15) continue;
@@ -222,7 +284,8 @@ export function buildFoliage(terrain: Terrain): THREE.Group {
       new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), tex.rnd() * 6.28),
       new THREE.Vector3(s, s * (0.9 + tex.rnd() * 0.3), s),
     );
-    placed[forest > 0.55 ? 0 : 1]!.push(m);
+    const pine = forest > 0.55 && tex.rnd() < (opts.pineShare ?? 1);
+    placed[pine ? 0 : 1]!.push(m);
     if (tex.rnd() < 0.12 && d > 4) {
       const rs = 0.6 + tex.rnd() * 1.8;
       rocks.push(

@@ -654,6 +654,7 @@ export function nazgul(accent: number): VehicleModel {
     exhausts: [],
     hover: false,
     ghost: true,
+    camHeight: 3.7,
     rear: [V(-0.19, 0.05, 0.75), V(0.19, 0.05, 0.75)],
     animate,
   };

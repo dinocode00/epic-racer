@@ -369,3 +369,192 @@ export function concrete(): THREE.CanvasTexture {
   }
   return finish(c);
 }
+
+// ---------------------------------------------------------------- Shire materials
+
+/** Country lane: packed earth, gravel, two wheel ruts and a grassy crown. u = across. */
+export function dirtLane(): THREE.CanvasTexture {
+  const W = 512;
+  const [c, x] = canvas(W);
+  x.fillStyle = '#8f744d';
+  x.fillRect(0, 0, W, W);
+  speckle(x, W, W, 22000, ['#836843', '#9b7f56', '#77603f', '#a48a62', '#6d5839'], [1, 3]);
+  // Pebbles.
+  for (let i = 0; i < 700; i++) {
+    x.fillStyle = ['#a08f72', '#8f8068', '#ad9c7f', '#7e7466'][Math.floor(rnd() * 4)]!;
+    x.beginPath();
+    x.ellipse(
+      rnd() * W,
+      rnd() * W,
+      0.8 + rnd() * 1.6,
+      0.8 + rnd() * 1.3,
+      rnd() * 3,
+      0,
+      Math.PI * 2,
+    );
+    x.fill();
+  }
+  // Wheel ruts: darker, smoother.
+  for (const u of [0.3, 0.7]) {
+    const g = x.createLinearGradient((u - 0.09) * W, 0, (u + 0.09) * W, 0);
+    g.addColorStop(0, 'rgba(70,52,32,0)');
+    g.addColorStop(0.5, 'rgba(70,52,32,0.45)');
+    g.addColorStop(1, 'rgba(70,52,32,0)');
+    x.fillStyle = g;
+    x.fillRect((u - 0.09) * W, 0, 0.18 * W, W);
+  }
+  // Grass tufts on the crown and the verges.
+  const tuft = (cx: number, cy: number, n: number) => {
+    for (let k = 0; k < n; k++) {
+      x.strokeStyle = ['#5e8a34', '#6f9e3c', '#4f7a2b'][Math.floor(rnd() * 3)]!;
+      x.beginPath();
+      const px = cx + (rnd() - 0.5) * 10;
+      x.moveTo(px, cy);
+      x.lineTo(px + (rnd() - 0.5) * 6, cy - 4 - rnd() * 8);
+      x.stroke();
+    }
+  };
+  for (let i = 0; i < 60; i++) tuft(W * (0.47 + rnd() * 0.06), rnd() * W, 6);
+  for (const [a, b] of [
+    [0, 0.07],
+    [0.93, 1],
+  ]) {
+    x.fillStyle = 'rgba(88,128,52,0.75)';
+    x.fillRect(a! * W, 0, (b! - a!) * W, W);
+    for (let i = 0; i < 160; i++) tuft(W * (a! + rnd() * (b! - a!)), rnd() * W, 4);
+  }
+  return finish(c);
+}
+
+/** Dry-stone wall: irregular stacked stones, mossy top. 4:1 aspect. */
+export function stoneWall(): THREE.CanvasTexture {
+  const [c, x] = canvas(256, 64);
+  x.fillStyle = '#3d3a33';
+  x.fillRect(0, 0, 256, 64);
+  let y = 62;
+  while (y > 0) {
+    const h = 9 + rnd() * 7;
+    let px = -rnd() * 20;
+    while (px < 256) {
+      const w = 14 + rnd() * 22;
+      const v = 120 + Math.floor(rnd() * 50);
+      x.fillStyle = `rgb(${v},${v - 6},${v - 18})`;
+      x.beginPath();
+      x.ellipse(px + w / 2, y - h / 2, w / 2 - 1, h / 2 - 1, (rnd() - 0.5) * 0.2, 0, Math.PI * 2);
+      x.fill();
+      x.fillStyle = 'rgba(255,255,255,0.12)';
+      x.fillRect(px + 3, y - h + 2, w - 8, 2);
+      px += w;
+    }
+    y -= h;
+  }
+  // Moss and lichen.
+  speckle(x, 256, 14, 500, ['rgba(92,130,50,0.8)', 'rgba(120,150,60,0.7)'], [1, 4]);
+  speckle(x, 256, 64, 120, ['rgba(200,200,120,0.5)', 'rgba(120,150,70,0.5)'], [1, 3]);
+  return finish(c);
+}
+
+/** Cut stone blocks for bridges, mills and ruins. */
+export function stoneBlocks(): THREE.CanvasTexture {
+  const S = 256;
+  const [c, x] = canvas(S);
+  x.fillStyle = '#5b574f';
+  x.fillRect(0, 0, S, S);
+  for (let row = 0; row < 8; row++) {
+    const off = row % 2 ? 24 : 0;
+    for (let col = -1; col < 6; col++) {
+      const v = 130 + Math.floor(rnd() * 40);
+      x.fillStyle = `rgb(${v},${v - 4},${v - 14})`;
+      x.fillRect(col * 48 + off + 2, row * 32 + 2, 44, 28);
+    }
+  }
+  speckle(x, S, S, 5000, ['rgba(0,0,0,0.12)', 'rgba(255,255,255,0.08)'], [1, 3]);
+  speckle(x, S, S, 200, ['rgba(90,120,50,0.5)'], [2, 5]);
+  return finish(c);
+}
+
+export function thatch(): THREE.CanvasTexture {
+  const [c, x] = canvas(256);
+  x.fillStyle = '#9c7b3f';
+  x.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 4000; i++) {
+    x.strokeStyle = ['#b8954e', '#8a6a33', '#c9a65d', '#7a5c2c'][Math.floor(rnd() * 4)]!;
+    const px = rnd() * 256,
+      py = rnd() * 256;
+    x.beginPath();
+    x.moveTo(px, py);
+    x.lineTo(px + (rnd() - 0.5) * 3, py + 10 + rnd() * 14);
+    x.stroke();
+  }
+  for (let y = 0; y < 256; y += 32) {
+    x.fillStyle = 'rgba(60,40,20,0.35)';
+    x.fillRect(0, y, 256, 3);
+  }
+  return finish(c);
+}
+
+export function planks(): THREE.CanvasTexture {
+  const [c, x] = canvas(256);
+  for (let i = 0; i < 8; i++) {
+    const v = 110 + Math.floor(rnd() * 30);
+    x.fillStyle = `rgb(${v},${Math.floor(v * 0.72)},${Math.floor(v * 0.45)})`;
+    x.fillRect(i * 32, 0, 31, 256);
+    for (let k = 0; k < 30; k++) {
+      x.strokeStyle = 'rgba(40,25,10,0.25)';
+      x.beginPath();
+      const px = i * 32 + rnd() * 30;
+      x.moveTo(px, 0);
+      x.lineTo(px + (rnd() - 0.5) * 4, 256);
+      x.stroke();
+    }
+  }
+  return finish(c);
+}
+
+/** Lush meadow with wildflowers. */
+export function meadow(): THREE.CanvasTexture {
+  const S = 512;
+  const [c, x] = canvas(S);
+  x.fillStyle = '#5f9a38';
+  x.fillRect(0, 0, S, S);
+  for (let i = 0; i < 70; i++) {
+    const r = 20 + rnd() * 80;
+    const g = x.createRadialGradient(0, 0, 0, 0, 0, r);
+    const col = rnd() > 0.5 ? '120,175,70' : '80,130,45';
+    g.addColorStop(0, `rgba(${col},0.4)`);
+    g.addColorStop(1, `rgba(${col},0)`);
+    x.save();
+    x.translate(rnd() * S, rnd() * S);
+    x.fillStyle = g;
+    x.fillRect(-r, -r, 2 * r, 2 * r);
+    x.restore();
+  }
+  for (let i = 0; i < 10000; i++) {
+    x.strokeStyle = ['#4f8a2f', '#78b048', '#8cc256', '#5c9235'][Math.floor(rnd() * 4)]!;
+    const px = rnd() * S,
+      py = rnd() * S;
+    x.beginPath();
+    x.moveTo(px, py);
+    x.lineTo(px + (rnd() - 0.5) * 3, py - 2 - rnd() * 4);
+    x.stroke();
+  }
+  speckle(x, S, S, 700, ['#f7f0c8', '#ffe35a', '#e8a8e8', '#ffffff', '#ff9a6a'], [2, 3]);
+  return finish(c);
+}
+
+export function water(): THREE.CanvasTexture {
+  const [c, x] = canvas(256);
+  x.fillStyle = '#3a6f86';
+  x.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 400; i++) {
+    x.strokeStyle = rnd() > 0.5 ? 'rgba(200,235,255,0.35)' : 'rgba(20,50,70,0.3)';
+    x.lineWidth = 1 + rnd() * 2;
+    const px = rnd() * 256,
+      py = rnd() * 256;
+    x.beginPath();
+    x.moveTo(px, py);
+    x.quadraticCurveTo(px + 8, py - 3, px + 16 + rnd() * 10, py);
+    x.stroke();
+  }
+  return finish(c);
+}

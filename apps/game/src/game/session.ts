@@ -3,6 +3,7 @@ import { type PadState, type TrackDef, VEHICLES, neutralPad, vehicleById } from 
 import { type AiBrain, COUNTDOWN, Race, STEP, aiDrive, createBrain } from '@epic/sim';
 import { KartView } from '../render/kartView.ts';
 import type { View, Viewport } from '../render/view.ts';
+import type { Theme } from '../render/themes.ts';
 import { World } from '../render/world.ts';
 import { ChaseCam } from './camera.ts';
 import { Hud } from './hud.ts';
@@ -75,6 +76,7 @@ export class RaceSession {
     private players: PlayerSetup[],
     laps = track.laps,
     total = 8,
+    theme?: Theme,
   ) {
     // AI fills the front of the grid; humans start at the back, like the classics.
     const aiCount = Math.max(0, total - players.length);
@@ -89,7 +91,7 @@ export class RaceSession {
     this.humans = players.map((_, i) => aiCount + i);
     this.names = [...AI_NAMES.slice(0, aiCount), ...players.map((p) => p.name)];
     this.colors = [...AI_COLORS.slice(0, aiCount), ...players.map((p) => p.color)];
-    this.world = new World(this.race.track, view.renderer);
+    this.world = new World(this.race.track, view.renderer, theme);
     this.views = this.race.karts.map((k, i) => {
       const v = new KartView(
         k.vehicle.id,
@@ -177,6 +179,7 @@ export class RaceSession {
       this.views[i]!.update(k, steer, alpha, dt, fx);
     });
     fx.update(dt);
+    this.world.update(dt);
 
     // Cameras and HUD.
     this.humans.forEach((ki, i) => {

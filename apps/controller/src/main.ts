@@ -42,6 +42,8 @@ let name = store.get('epic.name') ?? '';
 let color = '#e8433a';
 let vehicle: string | null = null;
 let ready = false;
+let trackName = '';
+let canChangeTrack = false;
 let connected = false;
 let mode: 'join' | 'lobby' | 'race' | 'results' = 'join';
 const pad: PadState = neutralPad();
@@ -102,6 +104,8 @@ function onHost(m: HostToPad): void {
     case 'lobby':
       vehicle = m.vehicle;
       ready = m.ready;
+      trackName = m.track ?? '';
+      canChangeTrack = !!m.canChangeTrack;
       if (mode !== 'lobby') showLobby();
       else renderLobby();
       break;
@@ -153,6 +157,7 @@ function renderLobby(): void {
     <div class="badge">${name}</div>
     <div class="sub">Choose your ride</div>
     <div class="cars">${cars}</div>
+    ${trackName ? `<div class="trackpick">${canChangeTrack ? '<button id="tprev">◀</button>' : ''}<span>Track: <b>${trackName}</b></span>${canChangeTrack ? '<button id="tnext">▶</button>' : ''}</div>` : ''}
     <button class="big ${ready ? 'ready' : ''}" id="ready">${ready ? 'READY!' : 'READY?'}</button>
     <div class="sub">Watch the TV. The race starts when everyone is ready.</div>
   </div>`;
@@ -163,6 +168,10 @@ function renderLobby(): void {
       renderLobby();
     };
   });
+  const tp = document.getElementById('tprev'),
+    tn = document.getElementById('tnext');
+  if (tp) tp.onclick = () => send({ t: 'menu', action: 'prev' });
+  if (tn) tn.onclick = () => send({ t: 'menu', action: 'next' });
   document.getElementById('ready')!.onclick = () => {
     ready = !ready;
     send({ t: 'ready', ready });

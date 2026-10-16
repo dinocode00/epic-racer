@@ -42,3 +42,6 @@ button.big.ready { background: #3fbf5f; color: #fff; box-shadow: 0 4px 0 #1e7a34
 .rotate { display: none; position: absolute; inset: 0; background: var(--bg); z-index: 10; align-items: center; justify-content: center; flex-direction: column; gap: 12px; font-size: 20px; text-align: center; padding: 30px; }
 @media (orientation: portrait) { .pad .rotate { display: flex; } }
 .big-place { font-size: 80px; font-weight: 900; color: var(--gold); }
+.trackpick { display: flex; align-items: center; gap: 12px; font-size: 17px; }
+.trackpick button { font-size: 20px; width: 44px; height: 44px; border-radius: 12px; border: 0; background: var(--panel); color: var(--ink); }
+.trackpick b { color: var(--gold); }

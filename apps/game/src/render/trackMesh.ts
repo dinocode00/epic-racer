@@ -2,19 +2,19 @@ import * as THREE from 'three';
 import type { Frame, Track, Vec3 } from '@epic/sim';
 import * as tex from './textures.ts';
 
-interface Vert {
+export interface Vert {
   p: Vec3;
   n: Vec3;
   u: number;
 }
 
-const tv = (v: Vec3): THREE.Vector3 => new THREE.Vector3(v.x, v.y, v.z);
-const off = (f: Frame, lat: number, h: number): Vec3 => ({
+export const tv = (v: Vec3): THREE.Vector3 => new THREE.Vector3(v.x, v.y, v.z);
+export const off = (f: Frame, lat: number, h: number): Vec3 => ({
   x: f.pos.x + f.right.x * lat + f.up.x * h,
   y: f.pos.y + f.right.y * lat + f.up.y * h,
   z: f.pos.z + f.right.z * lat + f.up.z * h,
 });
-const neg = (v: Vec3): Vec3 => ({ x: -v.x, y: -v.y, z: -v.z });
+export const neg = (v: Vec3): Vec3 => ({ x: -v.x, y: -v.y, z: -v.z });
 
 /**
  * Sweep a cross-section profile along the track between arc lengths [s0, s1].
@@ -73,16 +73,52 @@ function curvature(track: Track, i: number): number {
   return Math.acos(d) / (8 * track.spacing);
 }
 
-export function buildTrackMesh(track: Track): THREE.Group {
+/** Per-track look of the road and its furniture. */
+export interface RoadStyle {
+  road: () => THREE.Texture;
+  /** Metres of road per texture repeat. */
+  roadTile: number;
+  roadRoughness: number;
+  underside: () => THREE.Texture;
+  barrier: {
+    map: () => THREE.Texture;
+    height: number;
+    thickness: number;
+    tile: number;
+    mirrorRight: boolean;
+    bump?: () => THREE.Texture;
+  };
+  kerbs: boolean;
+  gantry: (f: Frame) => THREE.Object3D;
+  /** Arc-length ranges that are bridges: no solid embankment underneath. */
+  bridges?: [number, number][];
+  padColor?: number;
+}
+
+export const DEFAULT_ROAD: RoadStyle = {
+  road: tex.asphalt,
+  roadTile: 14,
+  roadRoughness: 0.92,
+  underside: tex.concrete,
+  barrier: { map: tex.barrier, height: 1.1, thickness: 0.6, tile: 4.4, mirrorRight: true },
+  kerbs: true,
+  gantry: (f) => gantry(f),
+};
+
+export function buildTrackMesh(track: Track, style: RoadStyle = DEFAULT_ROAD): THREE.Group {
   const g = new THREE.Group();
   const L = track.length;
   const step = 1.5;
+  const onBridge = (s: number) => (style.bridges ?? []).some(([a, b]) => s >= a && s <= b);
 
   // --- Road surface (top) ---
-  const asphalt = tex.asphalt();
-  const roadMat = new THREE.MeshStandardMaterial({ map: asphalt, roughness: 0.92, metalness: 0 });
+  const roadMat = new THREE.MeshStandardMaterial({
+    map: style.road(),
+    roughness: style.roadRoughness,
+    metalness: 0,
+  });
   const road = new THREE.Mesh(
-    sweep(track, 0, L, step, 14, (f) => {
+    sweep(track, 0, L, step, style.roadTile, (f) => {
       const out: Vert[] = [];
       const SUB = 8;
       for (let k = 0; k <= SUB; k++) {
@@ -100,17 +136,17 @@ export function buildTrackMesh(track: Track): THREE.Group {
   const concrete = new THREE.MeshStandardMaterial({
     color: 0xd8d6d0,
     roughness: 0.95,
-    map: tex.concrete(),
+    map: style.underside(),
   });
   const under = new THREE.Mesh(
-    sweep(track, 0, L, step, 10, (f) => {
-      const hw = f.width / 2 + 0.6;
+    sweep(track, 0, L, step, 10, (f, s) => {
+      const hw = f.width / 2 + style.barrier.thickness;
       // On normal ground-level road, the skirt drops well below grade; elsewhere it's a slab.
-      const ground = f.up.y > 0.75;
+      const ground = f.up.y > 0.75 && !onBridge(s);
       const depth = ground ? 7 : 0.6;
       const down = ground ? { x: 0, y: -1, z: 0 } : neg(f.up);
-      const L0 = off(f, -hw, 1.1),
-        R0 = off(f, hw, 1.1);
+      const L0 = off(f, -hw, style.barrier.height),
+        R0 = off(f, hw, style.barrier.height);
       const Ld = { x: L0.x + down.x * depth, y: L0.y + down.y * depth, z: L0.z + down.z * depth };
       const Rd = { x: R0.x + down.x * depth, y: R0.y + down.y * depth, z: R0.z + down.z * depth };
       return [
@@ -128,18 +164,26 @@ export function buildTrackMesh(track: Track): THREE.Group {
   g.add(under);
 
   // --- Barriers on both edges ---
-  const barrierMat = new THREE.MeshStandardMaterial({ map: tex.barrier(), roughness: 0.8 });
+  const B = style.barrier;
+  const barrierMat = new THREE.MeshStandardMaterial({ map: B.map(), roughness: 0.85 });
+  if (B.bump) {
+    barrierMat.bumpMap = B.bump();
+    barrierMat.bumpScale = 2;
+  }
   for (const side of [-1, 1]) {
     const wall = new THREE.Mesh(
-      sweep(track, 0, L, step, 4.4, (f) => {
+      sweep(track, 0, L, step, B.tile, (f) => {
         const a = (f.width / 2) * side,
-          b = (f.width / 2 + 0.6) * side;
+          b = (f.width / 2 + B.thickness) * side;
         const inward = side > 0 ? neg(f.right) : f.right;
+        const outward = neg(inward);
         return [
           { p: off(f, a, 0), n: inward, u: 0.0 },
-          { p: off(f, a, 1.1), n: inward, u: 1.0 },
-          { p: off(f, a, 1.1), n: f.up, u: 0.99 },
-          { p: off(f, b, 1.1), n: f.up, u: 0.99 },
+          { p: off(f, a, B.height), n: inward, u: 1.0 },
+          { p: off(f, a, B.height), n: f.up, u: 0.99 },
+          { p: off(f, b, B.height), n: f.up, u: 0.99 },
+          { p: off(f, b, B.height), n: outward, u: 1.0 },
+          { p: off(f, b, -0.5), n: outward, u: 0.0 },
         ];
       }),
       barrierMat,
@@ -150,7 +194,7 @@ export function buildTrackMesh(track: Track): THREE.Group {
       const u = uvs.getX(i),
         v = uvs.getY(i);
       // Flip the right-hand wall so its lettering isn't mirrored.
-      uvs.setXY(i, side > 0 ? -v : v, u);
+      uvs.setXY(i, side > 0 && B.mirrorRight ? -v : v, u);
     }
     wall.castShadow = true;
     wall.receiveShadow = true;
@@ -170,7 +214,7 @@ export function buildTrackMesh(track: Track): THREE.Group {
       start = -1;
     }
   }
-  for (const [a, b] of ranges) {
+  for (const [a, b] of style.kerbs ? ranges : []) {
     for (const side of [-1, 1]) {
       const kerb = new THREE.Mesh(
         sweep(track, a, b, 1, 4, (f) => {
@@ -201,12 +245,12 @@ export function buildTrackMesh(track: Track): THREE.Group {
   );
   line.receiveShadow = true;
   g.add(line);
-  g.add(gantry(f0));
+  g.add(style.gantry(f0));
 
   // --- Boost pads ---
   const padMat = new THREE.MeshStandardMaterial({
     color: 0x331100,
-    emissive: 0xffffff,
+    emissive: style.padColor ?? 0xffffff,
     emissiveMap: tex.chevrons(),
     emissiveIntensity: 1.6,
     roughness: 0.4,

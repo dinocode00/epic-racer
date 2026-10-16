@@ -101,7 +101,14 @@ export type PadToHost =
 /** Host -> server -> phone */
 export type HostToPad =
   | { t: 'welcome'; slot: number; color: string; name: string }
-  | { t: 'lobby'; vehicle: string | null; ready: boolean; vehicles: string[] }
+  | {
+      t: 'lobby';
+      vehicle: string | null;
+      ready: boolean;
+      vehicles: string[];
+      track?: string;
+      canChangeTrack?: boolean;
+    }
   | { t: 'race' }
   | { t: 'hud'; place: number; lap: number; laps: number; item: string | null; boost: number }
   | { t: 'results'; place: number };

@@ -11,6 +11,16 @@ export class TrackBuilder {
   private z = 0;
   private yaw = 0; // 0 = heading -Z; positive turns right
   private pts: TrackPoint[] = [];
+  /** Approximate distance driven so far (sum of control-point gaps), for landmark marks. */
+  get length(): number {
+    let d = 0;
+    for (let i = 1; i < this.pts.length; i++) {
+      const a = this.pts[i - 1]!.p,
+        b = this.pts[i]!.p;
+      d += Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
+    }
+    return d;
+  }
   /**
    * @param step spacing between emitted control points (m)
    * @param halfWidth half the road width; banked corners pivot on their inner edge
@@ -117,6 +127,36 @@ export class TrackBuilder {
     }
     this.x += rt[0] * shift;
     this.z += rt[2] * shift;
+    return this;
+  }
+
+  /**
+   * Close the loop with a smooth Hermite curve from the current position and heading
+   * back to the start line (origin, heading -Z, height 0).
+   */
+  closeLoop(): this {
+    const p0 = [this.x, this.y, this.z];
+    const f0 = this.fwd();
+    const dist = Math.hypot(this.x, this.z);
+    const k = dist * 1.1;
+    const t0 = [f0[0] * k, 0, f0[2] * k];
+    const t1 = [0, 0, -k];
+    const n = Math.max(3, Math.round((dist * 1.3) / this.step));
+    for (let i = 0; i < n; i++) {
+      const u = i / n;
+      const h00 = 2 * u ** 3 - 3 * u ** 2 + 1,
+        h10 = u ** 3 - 2 * u ** 2 + u,
+        h01 = -2 * u ** 3 + 3 * u ** 2,
+        h11 = u ** 3 - u ** 2;
+      const x = h00 * p0[0]! + h10 * t0[0]! + h11 * t1[0]!;
+      const z = h00 * p0[2]! + h10 * t0[2]! + h11 * t1[2]!;
+      const y = p0[1]! * (h00 + 0) + 0 * h01;
+      this.emit([x, y, z]);
+    }
+    this.x = 0;
+    this.y = 0;
+    this.z = 0;
+    this.yaw = 0;
     return this;
   }
 

@@ -6,7 +6,6 @@ import {
   neutralPad,
   vehicleById,
 } from '@epic/shared';
-import { PROVING } from '@epic/sim';
 import { type LookName } from './render/look.ts';
 import { View } from './render/view.ts';
 import {
@@ -19,6 +18,7 @@ import {
 import { Net } from './game/net.ts';
 import { type PlayerSetup, RaceSession } from './game/session.ts';
 import { Showroom } from './game/showroom.ts';
+import { TRACKS, trackById } from './game/tracks.ts';
 
 /**
  * TV host. Flow: lobby (join with phone / Xbox pad / keyboard, pick rides, ready up)
@@ -49,6 +49,15 @@ interface Member {
 }
 
 const members: Member[] = [];
+let trackId = trackById(params.get('track') ?? 'shire').def.id;
+const track = () => trackById(trackId);
+function cycleTrack(dir: number): void {
+  const i = TRACKS.findIndex((t) => t.def.id === trackId);
+  trackId = TRACKS[(i + dir + TRACKS.length) % TRACKS.length]!.def.id;
+  members.forEach((m) => (m.ready = false));
+  showroom = null;
+  toLobby();
+}
 let state: 'lobby' | 'race' | 'results' = 'lobby';
 let session: RaceSession | null = null;
 let showroom: Showroom | null = null;
@@ -114,6 +123,13 @@ net.onMsg = (slot, msg) => {
     m.vehicle = msg.vehicle;
   if (msg.t === 'ready' && state === 'lobby') m.ready = msg.ready;
   if (msg.t === 'menu' && msg.action === 'confirm' && state === 'results') toLobby();
+  if (
+    msg.t === 'menu' &&
+    state === 'lobby' &&
+    members[0] === m &&
+    (msg.action === 'next' || msg.action === 'prev')
+  )
+    cycleTrack(msg.action === 'next' ? 1 : -1);
   syncPhone(m);
   renderLobby();
 };
@@ -128,8 +144,9 @@ function syncPhone(m: Member): void {
 }
 
 // ---------------- local pads (keyboard, Xbox) ----------------
-const prevButtons = new Map<string, PadState & { a: boolean; b: boolean; start: boolean }>();
-function edges(key: string, now: PadState & { a: boolean; b: boolean; start: boolean }) {
+type LocalPad = PadState & { a: boolean; b: boolean; start: boolean; lb: boolean; rb: boolean };
+const prevButtons = new Map<string, LocalPad>();
+function edges(key: string, now: LocalPad) {
   const prev = prevButtons.get(key);
   prevButtons.set(key, now);
   const was = (k: keyof typeof now) => !!prev && !!prev[k];
@@ -137,6 +154,8 @@ function edges(key: string, now: PadState & { a: boolean; b: boolean; start: boo
     a: now.a && !was('a'),
     b: now.b && !was('b'),
     start: now.start && !was('start'),
+    lb: now.lb && !was('lb'),
+    rb: now.rb && !was('rb'),
     left: now.steer < -0.6 && !(prev && prev.steer < -0.6),
     right: now.steer > 0.6 && !(prev && prev.steer > 0.6),
   };
@@ -149,6 +168,8 @@ function pollLocal(): void {
     a: keyboard.has('Enter', 'NumpadEnter'),
     b: keyboard.has('Backspace'),
     start: keyboard.has('Enter'),
+    lb: false,
+    rb: keyboard.has('KeyT'),
   };
   handleLocal('keyboard', 'keyboard', kb, () => keyboard);
   for (const gp of connectedGamepads()) {
@@ -160,6 +181,8 @@ function pollLocal(): void {
       a: !!raw.buttons[0]?.pressed,
       b: !!raw.buttons[1]?.pressed,
       start: !!raw.buttons[9]?.pressed,
+      lb: !!raw.buttons[4]?.pressed,
+      rb: !!raw.buttons[5]?.pressed,
     };
     handleLocal(`gamepad:${gp.index}`, 'gamepad', p, () => src);
   }
@@ -168,12 +191,13 @@ function pollLocal(): void {
 function handleLocal(
   key: string,
   kind: 'keyboard' | 'gamepad',
-  p: PadState & { a: boolean; b: boolean; start: boolean },
+  p: LocalPad,
   make: () => InputSource,
 ): void {
   const e = edges(key, p);
   if (state === 'results' && (e.a || e.start)) return toLobby();
   if (state !== 'lobby') return;
+  if (e.lb || e.rb) return cycleTrack(e.rb ? 1 : -1);
   const m = members.find((x) => x.key === key);
   if (!m) {
     if (e.a && members.length < MAX_HUMANS) {
@@ -221,6 +245,7 @@ function toLobby(): void {
     [PLAYER_COLORS[0]!, PLAYER_COLORS[1]!, PLAYER_COLORS[2]!],
     0.6,
     18,
+    trackId,
   );
   document.getElementById('hud')!.innerHTML = '';
   members.forEach(syncPhone);
@@ -254,17 +279,17 @@ function renderLobby(): void {
       <div class="alt">Phones: scan to get a controller<br>Xbox pads: press A · Keyboard: press Enter</div>
     </div>
     <div class="slots">${slots}</div>
-    <div class="foot"><span class="track">Track: <b>${PROVING.name}</b> · ${PROVING.laps} laps</span><span class="go" id="go">${allReady ? 'Starting…' : members.length ? 'Waiting for everyone to be ready' : ''}</span></div>
+    <div class="foot"><span class="track">Track: <b>${track().def.name}</b> · ${track().def.laps} laps · ${track().blurb} <i class="hint">(LB/RB or T to change)</i></span><span class="go" id="go">${allReady ? 'Starting…' : members.length ? 'Waiting for everyone to be ready' : ''}</span></div>
   </div>`;
 }
 net.onInfo = () => renderLobby();
 
 // ---------------- race ----------------
-function startRace(players: PlayerSetup[], laps = PROVING.laps): void {
+function startRace(players: PlayerSetup[], laps = track().def.laps): void {
   showroom = null;
   state = 'race';
   ui.innerHTML = '';
-  session = new RaceSession(view, PROVING, players, laps);
+  session = new RaceSession(view, track().def, players, laps, 8, track().theme);
   session.onFinished = (order) => {
     state = 'results';
     resultsAt = performance.now();
@@ -329,7 +354,16 @@ if (params.get('scene') === 'showroom') {
     ids.map((_, i) => PLAYER_COLORS[i]!),
     Number(params.get('angle') ?? 0.6),
     Number(params.get('speed') ?? 0),
+    trackId,
   );
+  if (params.has('s'))
+    showroom.spot = {
+      s: Number(params.get('s')),
+      lat: Number(params.get('lat') ?? 0),
+      h: Number(params.get('h') ?? 6),
+      look: Number(params.get('ahead') ?? 40),
+      lookLat: Number(params.get('lookLat') ?? 0),
+    };
   state = 'results'; // inert
 } else if (params.has('quick') || params.has('demo')) {
   const pads = connectedGamepads();
@@ -353,7 +387,7 @@ if (params.get('scene') === 'showroom') {
         autopilot: params.has('demo') || source === nobody,
       };
     }),
-    Number(params.get('laps') ?? PROVING.laps),
+    Number(params.get('laps') ?? track().def.laps),
   );
   const t = Number(params.get('t') ?? 0);
   if (t > 0) session!.fastForward(t);

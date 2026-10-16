@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { PROVING, Track } from '@epic/sim';
+import { Track } from '@epic/sim';
+import { trackById } from './tracks.ts';
 import { KartView } from '../render/kartView.ts';
 import type { View } from '../render/view.ts';
 import { World } from '../render/world.ts';
@@ -21,9 +22,12 @@ export class Showroom {
     colors: string[],
     private angle = 0.6,
     private animSpeed = 0,
+    trackId = 'shire',
   ) {
-    const track = new Track(PROVING);
-    this.world = new World(track, view.renderer);
+    const entry = trackById(trackId);
+    const track = new Track(entry.def);
+    this.track = track;
+    this.world = new World(track, view.renderer, entry.theme);
     const f = track.frameAtS(60);
     const fwd = new THREE.Vector3(f.tan.x, f.tan.y, f.tan.z);
     const right = new THREE.Vector3(f.right.x, f.right.y, f.right.z);
@@ -52,7 +56,35 @@ export class Showroom {
   private fwd: THREE.Vector3;
   private right: THREE.Vector3;
 
+  /** Optional fixed camera at a track position: arc length, lateral offset, height, look-ahead. */
+  spot?: { s: number; lat: number; h: number; look: number; lookLat: number };
+  private track?: Track;
+
   frame(dt: number, orbit = true): void {
+    if (this.spot && this.track) {
+      const sp = this.spot;
+      const f = this.track.frameAtS(sp.s);
+      const g = this.track.frameAtS(sp.s + sp.look);
+      this.camera.position.set(
+        f.pos.x + f.right.x * sp.lat,
+        f.pos.y + sp.h,
+        f.pos.z + f.right.z * sp.lat,
+      );
+      this.camera.lookAt(
+        g.pos.x + g.right.x * sp.lookLat,
+        g.pos.y + 1,
+        g.pos.z + g.right.z * sp.lookLat,
+      );
+      this.world.focusSun(
+        this.camera.position
+          .clone()
+          .add(new THREE.Vector3(g.pos.x - f.pos.x, 0, g.pos.z - f.pos.z).multiplyScalar(0.5)),
+      );
+      this.world.fx.update(dt);
+      this.world.update(dt);
+      this.view.render(this.world.scene, [{ x: 0, y: 0, w: 1, h: 1, camera: this.camera }]);
+      return;
+    }
     this.t += dt;
     const a = this.angle + (orbit ? this.t * 0.12 : 0);
     const dist = 5.5 + 3 * this.views.length;
@@ -68,6 +100,7 @@ export class Showroom {
     );
     this.world.focusSun(this.center);
     this.world.fx.update(dt);
+    this.world.update(dt);
     this.view.render(this.world.scene, [{ x: 0, y: 0, w: 1, h: 1, camera: this.camera }]);
   }
 }

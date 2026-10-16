@@ -11,6 +11,8 @@ export interface VehicleModel extends THREE.Group {
     hover: boolean;
     /** Where drift sparks / dust come from (rear wheels, hind hooves...). */
     rear?: THREE.Vector3[];
+    /** Chase-camera height for tall rides (default 2.1 m). */
+    camHeight?: number;
     /** Ghostly vehicles trail smoke instead of jet flames. */
     ghost?: boolean;
     /** Per-frame animation (gallop, cloak flutter). */

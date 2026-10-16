@@ -64,3 +64,4 @@ body { font-family: 'Russo One', 'Arial Black', system-ui, sans-serif; color: va
 .lobby .foot { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; font-size: 2.6vh; }
 .lobby .foot .track b { color: var(--gold); }
 .lobby .foot .go { font-size: 3.4vh; color: #5bff7a; }
+.lobby .foot .hint { opacity: 0.6; font-style: normal; font-size: 0.8em; }
