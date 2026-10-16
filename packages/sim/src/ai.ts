@@ -1,4 +1,5 @@
 import { type PadState, neutralPad } from '@epic/shared';
+import { type HazardState, sDelta } from './hazards.ts';
 import type { KartState } from './kart.ts';
 import type { Track } from './track.ts';
 import { clamp, cross, dot, sub } from './vec.ts';
@@ -28,6 +29,7 @@ export function aiDrive(
   track: Track,
   leaderProgress: number,
   dt: number,
+  hazards: HazardState[] = [],
 ): PadState {
   const pad = neutralPad();
   b.laneTimer -= dt;
@@ -37,7 +39,24 @@ export function aiDrive(
     b.laneTimer = 2 + rand(b) * 3;
   }
   const look = 8 + Math.max(0, k.speed) * 0.55;
-  const target = track.pointAt(k.s + look, b.lane, 0);
+  // Dodge hazards ahead: pick the side of the road with more room around them.
+  let lane = b.lane;
+  const halfW = track.frameAtS(k.s + look).width / 2 - 1.5;
+  for (const h of hazards) {
+    if (!h.present) continue;
+    const ahead = sDelta(k.s, h.s, track.length);
+    if (ahead < 2 || ahead > look * 1.8) continue;
+    const sweep = h.def.move?.axis === 'lat' ? Math.abs(h.def.move.amp) * 0.5 : 0;
+    const clear = h.def.r + 2.2 + sweep;
+    if (Math.abs(lane - h.lat) < clear) {
+      const left = h.lat - clear,
+        right = h.lat + clear;
+      lane =
+        Math.abs(left) < Math.abs(right) && left > -halfW ? left : right < halfW ? right : left;
+      lane = Math.max(-halfW, Math.min(halfW, lane));
+    }
+  }
+  const target = track.pointAt(k.s + look, lane, 0);
   const to = sub(target, k.pos);
   const right = cross(k.fwd, k.up);
   const angle = Math.atan2(dot(to, right), dot(to, k.fwd));

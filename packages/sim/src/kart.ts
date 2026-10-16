@@ -13,6 +13,7 @@ import {
   reject,
   rotateAround,
   scale,
+  v3,
 } from './vec.ts';
 
 export interface KartParams {
@@ -36,6 +37,10 @@ export function paramsFor(v: VehicleDef): KartParams {
 /** Drift charge thresholds in seconds: blue, orange, purple sparks. */
 export const DRIFT_LEVELS = [0.7, 1.5, 2.5];
 const BOOST_FOR_LEVEL = [0, 0.5, 1.0, 1.6];
+/** Gravity in the air. Heavier than real life so jumps feel snappy. */
+export const GRAVITY = 21;
+/** How long the Great Eagle rescue takes after a fall. */
+export const RESCUE_TIME = 1.8;
 
 export interface KartState {
   id: number;
@@ -53,18 +58,48 @@ export interface KartState {
   slide: number;
   hint: number;
   s: number;
+  /** Lateral offset from the centre line. */
+  lat: number;
   /** Unwrapped distance travelled along the track since the start line. */
   progress: number;
   drift: { active: boolean; dir: number; charge: number };
   boostTime: number;
   /** Spin-out timer (hit, bad start). */
   stunTime: number;
-  /** Last wall impact strength 0..1, decays; renderer uses it for shake. */
+  /** Slowed by mud, a searchlight... */
+  slowTime: number;
+  /** Last impact strength 0..1, decays; renderer uses it for shake and sparks. */
   bump: number;
+  /** Airborne state: world velocity is used instead of speed/fwd. */
+  air: boolean;
+  vel: Vec3;
+  airTime: number;
+  /** > 0 while the eagle carries the kart back to the road. */
+  rescueTime: number;
+  /** Last place the kart was safely on the road, for rescues. */
+  safeS: number;
+  hitCooldown: number;
   finished: boolean;
   finishTime: number;
   place: number;
 }
+
+/** What the track says about a given arc length. */
+export interface TrackRules {
+  isGap(s: number): boolean;
+  isOpen(s: number): boolean;
+  /** Kicker ramps crossed between two arc lengths (handles wrap). */
+  kickerBetween(s0: number, s1: number): number | null;
+  /** Where to set a rescued kart down so it has a run-up before any gap. */
+  rescueS(s: number): number;
+}
+
+export const NO_RULES: TrackRules = {
+  isGap: () => false,
+  isOpen: () => false,
+  kickerBetween: () => null,
+  rescueS: (s) => s,
+};
 
 export function createKart(
   id: number,
@@ -91,11 +126,19 @@ export function createKart(
     slide: 0,
     hint,
     s,
+    lat: lateral,
     progress: s > track.length / 2 ? s - track.length : s,
     drift: { active: false, dir: 0, charge: 0 },
     boostTime: 0,
     stunTime: 0,
+    slowTime: 0,
     bump: 0,
+    air: false,
+    vel: v3(),
+    airTime: 0,
+    rescueTime: 0,
+    safeS: s,
+    hitCooldown: 0,
     finished: false,
     finishTime: 0,
     place: id + 1,
@@ -108,19 +151,66 @@ export function driftLevel(charge: number): number {
   return l;
 }
 
-/** Advance one kart by dt seconds. Pure arcade: no rigid body, glued to the road. */
+/** Launch a kart into the air with its current motion plus `pop` m/s upward. */
+export function launch(k: KartState, pop: number): void {
+  const right = cross(k.fwd, k.up);
+  k.vel = add(add(scale(k.fwd, k.speed), scale(right, k.slide)), scale(k.up, pop));
+  k.air = true;
+  k.airTime = 0;
+  k.drift = { active: false, dir: 0, charge: 0 };
+}
+
+function updateProgress(k: KartState, track: Track, s: number): void {
+  let ds = s - k.s;
+  if (ds < -track.length / 2) ds += track.length;
+  if (ds > track.length / 2) ds -= track.length;
+  k.progress += ds;
+  k.s = s;
+}
+
+/** Put a fallen kart back on the road a little behind where it was last safe. */
+export function rescue(k: KartState, track: Track, rules: TrackRules = NO_RULES): void {
+  const s = ((rules.rescueS(k.safeS - 12) % track.length) + track.length) % track.length;
+  const f = track.frameAtS(s);
+  k.pos = track.pointAt(s, 0, k.params.rideHeight);
+  k.prevPos = clone(k.pos);
+  k.fwd = clone(f.tan);
+  k.up = clone(f.up);
+  k.hint = track.nearestIndex(k.pos);
+  updateProgress(k, track, s);
+  k.lat = 0;
+  k.speed = 14; // the eagle sets you down rolling
+  k.slide = 0;
+  k.air = false;
+  k.vel = v3();
+  k.rescueTime = RESCUE_TIME;
+  k.stunTime = 0;
+  k.boostTime = 0;
+}
+
+/** Advance one kart by dt seconds. Arcade physics: glued to the road unless airborne. */
 export function stepKart(
   k: KartState,
   pad: PadState,
   track: Track,
   dt: number,
   frozen = false,
+  rules: TrackRules = NO_RULES,
 ): void {
   k.prevPos = clone(k.pos);
   k.prevFwd = clone(k.fwd);
   k.prevUp = clone(k.up);
-  const P = k.params;
+  k.bump = Math.max(0, k.bump - dt * 3);
+  k.hitCooldown = Math.max(0, k.hitCooldown - dt);
+  k.slowTime = Math.max(0, k.slowTime - dt);
 
+  if (k.rescueTime > 0) {
+    k.rescueTime = Math.max(0, k.rescueTime - dt);
+    return;
+  }
+  if (k.air) return stepAir(k, pad, track, dt, rules);
+
+  const P = k.params;
   const here = track.project(k.pos, k.hint);
   const up = here.frame.up;
   let fwd = norm(reject(k.fwd, up));
@@ -157,12 +247,12 @@ export function stepKart(
 
   // --- Longitudinal ---
   const boosting = k.boostTime > 0;
-  const top = P.topSpeed * (boosting ? 1.3 : 1);
+  const top = P.topSpeed * (boosting ? 1.3 : 1) * (k.slowTime > 0 ? 0.55 : 1);
   if (throttle > 0 && spd >= -0.5) {
     spd += throttle * P.accel * Math.max(0, 1 - spd / top) * dt * 1.6;
   }
   if (boosting) spd = Math.max(spd, Math.min(top, spd + 30 * dt));
-  if (spd > top) spd = approach(spd, top, 12 * dt);
+  if (spd > top) spd = approach(spd, top, (k.slowTime > 0 ? 30 : 12) * dt);
   if (brake > 0) {
     spd = spd > 0.5 ? spd - 34 * brake * dt : Math.max(-9, spd - 12 * brake * dt);
   }
@@ -183,8 +273,9 @@ export function stepKart(
   const p2 = track.project(pos, here.index);
   const half = p2.frame.width / 2 - 1.1;
   let lat = p2.lateral;
-  k.bump = Math.max(0, k.bump - dt * 3);
-  if (Math.abs(lat) > half) {
+  const open = rules.isOpen(p2.s);
+  const gap = rules.isGap(p2.s);
+  if (Math.abs(lat) > half && !open && !gap) {
     const side = Math.sign(lat);
     lat = side * half;
     const n = scale(p2.frame.right, side);
@@ -197,21 +288,84 @@ export function stepKart(
     }
     k.slide = 0;
   }
-  pos = addScaled(addScaled(p2.frame.pos, p2.frame.right, lat), p2.frame.up, P.rideHeight);
-  fwd = norm(reject(fwd, p2.frame.up));
 
-  // --- Progress (unwrapped across the start line) ---
-  let ds = p2.s - k.s;
-  if (ds < -track.length / 2) ds += track.length;
-  if (ds > track.length / 2) ds -= track.length;
-  k.progress += ds;
-  k.s = p2.s;
-  k.hint = p2.index;
-
-  k.pos = pos;
-  k.fwd = fwd;
-  k.up = clone(p2.frame.up);
   k.speed = spd;
   k.boostTime = Math.max(0, k.boostTime - dt);
   k.stunTime = Math.max(0, k.stunTime - dt);
+  k.fwd = norm(reject(fwd, p2.frame.up));
+  k.up = clone(p2.frame.up);
+  k.hint = p2.index;
+  const s0 = k.s;
+
+  // Off the edge or into a gap: now we're flying (or falling).
+  if (gap || (open && Math.abs(lat) > p2.frame.width / 2 + 0.3)) {
+    k.pos = pos;
+    updateProgress(k, track, p2.s);
+    k.lat = lat;
+    launch(k, 0);
+    return;
+  }
+
+  pos = addScaled(addScaled(p2.frame.pos, p2.frame.right, lat), p2.frame.up, P.rideHeight);
+  k.pos = pos;
+  k.lat = lat;
+  updateProgress(k, track, p2.s);
+  if (Math.abs(lat) < half - 1.5) k.safeS = p2.s;
+
+  // Kicker ramps throw you into the air.
+  const pop = rules.kickerBetween(s0, p2.s);
+  if (pop !== null && spd > 8) launch(k, pop);
+}
+
+function stepAir(k: KartState, pad: PadState, track: Track, dt: number, rules: TrackRules): void {
+  k.airTime += dt;
+  // Air control: a little yaw around world up.
+  const worldUp = v3(0, 1, 0);
+  const yaw = -pad.steer * 0.9 * dt;
+  k.vel = rotateAround(k.vel, worldUp, yaw);
+  k.vel.y -= GRAVITY * dt;
+  const pos = add(k.pos, scale(k.vel, dt));
+  const p = track.project(pos, k.hint, 40);
+  k.hint = p.index;
+  updateProgress(k, track, p.s);
+  k.lat = p.lateral;
+  // Face where we're going (horizontally), tilt toward the road's up as we come down.
+  const horiz = reject(k.vel, k.up);
+  if (dot(horiz, horiz) > 1) k.fwd = norm(horiz);
+  k.up = norm(add(scale(k.up, 0.9), scale(p.frame.up, 0.1)));
+  k.boostTime = Math.max(0, k.boostTime - dt);
+  k.stunTime = Math.max(0, k.stunTime - dt);
+
+  const half = p.frame.width / 2 - 1.1;
+  const open = rules.isOpen(p.s);
+  const gap = rules.isGap(p.s);
+  let lat = p.lateral;
+  // Invisible walls keep jumps on course, except where the edges are open.
+  if (!open && Math.abs(lat) > half) {
+    lat = Math.sign(lat) * half;
+    const n = scale(p.frame.right, Math.sign(lat));
+    k.vel = addScaled(k.vel, n, -Math.max(0, dot(k.vel, n)));
+  }
+  const height = p.height;
+  const falling = dot(k.vel, p.frame.up) <= 0;
+  const overRoad = !gap && Math.abs(lat) <= p.frame.width / 2;
+
+  if (overRoad && falling && height <= k.params.rideHeight) {
+    // Touch down.
+    const along = dot(k.vel, p.frame.tan);
+    const impact = -dot(k.vel, p.frame.up);
+    k.air = false;
+    k.speed = Math.max(0, along) * 0.96;
+    k.fwd = norm(reject(along >= 0 ? k.vel : p.frame.tan, p.frame.up));
+    k.up = clone(p.frame.up);
+    k.pos = addScaled(addScaled(p.frame.pos, p.frame.right, lat), p.frame.up, k.params.rideHeight);
+    k.lat = lat;
+    k.bump = Math.max(k.bump, clamp(impact / 25, 0, 1));
+    k.vel = v3();
+    return;
+  }
+  // Apply any invisible-wall correction sideways.
+  k.pos = lat !== p.lateral ? addScaled(pos, p.frame.right, lat - p.lateral) : pos;
+  // Fell into the abyss: the Great Eagles bring you back.
+  if (height < -14 || k.airTime > 7) rescue(k, track, rules);
 }

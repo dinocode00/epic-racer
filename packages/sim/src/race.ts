@@ -1,6 +1,7 @@
 import { type PadState, type TrackDef, type VehicleDef, neutralPad } from '@epic/shared';
 import { type AiBrain, aiDrive, createBrain } from './ai.ts';
-import { type KartState, createKart, stepKart } from './kart.ts';
+import { type HazardState, collideHazards, createHazards, updateHazards } from './hazards.ts';
+import { type KartState, type TrackRules, createKart, stepKart } from './kart.ts';
 import { Track } from './track.ts';
 import { addScaled, dist2, dot, norm, reject, sub } from './vec.ts';
 
@@ -25,6 +26,8 @@ export class Race {
   time = -COUNTDOWN;
   private firstThrottle: number[] = [];
   private padCooldown: number[] = [];
+  readonly hazards: HazardState[];
+  readonly rules: TrackRules;
 
   constructor(def: TrackDef, entrants: Entrant[], laps = def.laps) {
     this.track = new Track(def);
@@ -41,6 +44,35 @@ export class Race {
     );
     this.firstThrottle = entrants.map(() => NaN);
     this.padCooldown = entrants.map(() => 0);
+    this.hazards = createHazards(def.hazards ?? []);
+    const L = this.track.length;
+    const inRanges = (ranges: [number, number][] | undefined) => (s: number) =>
+      (ranges ?? []).some(([a, b]) => s >= a && s <= b);
+    const kickers = def.kickers ?? [];
+    this.rules = {
+      isGap: inRanges(def.gaps),
+      isOpen: inRanges(def.open),
+      kickerBetween: (s0, s1) => {
+        let d = s1 - s0;
+        if (d < -L / 2) d += L;
+        if (d <= 0 || d > 20) return null;
+        for (const k of kickers) {
+          let rel = k.s - s0;
+          if (rel < 0) rel += L;
+          if (rel > 0 && rel <= d) return k.pop;
+        }
+        return null;
+      },
+      rescueS: (s) => {
+        // Never drop a kart just before a gap: back it up for a proper run-up.
+        for (const [g0] of def.gaps ?? []) {
+          let ahead = g0 - s;
+          if (ahead < 0) ahead += L;
+          if (ahead < 80) return g0 - 90;
+        }
+        return s;
+      },
+    };
   }
 
   get leaderProgress(): number {
@@ -57,10 +89,14 @@ export class Race {
     this.time += dt;
     const frozen = this.phase === 'countdown';
     const lead = this.leaderProgress;
+    const leaderLap = Math.max(1, Math.floor(lead / this.track.length) + 1);
+    updateHazards(this.hazards, this.time, leaderLap);
 
     this.karts.forEach((k, i) => {
       const brain = this.brains[i];
-      let pad = brain ? aiDrive(brain, k, this.track, lead, dt) : (pads[i] ?? neutralPad());
+      let pad = brain
+        ? aiDrive(brain, k, this.track, lead, dt, this.hazards)
+        : (pads[i] ?? neutralPad());
       if (k.finished) pad = brain ? pad : { ...neutralPad(), throttle: 0.4 };
 
       if (frozen) {
@@ -69,7 +105,8 @@ export class Race {
           this.firstThrottle[i] = this.time;
         if (pad.throttle < 0.1) this.firstThrottle[i] = NaN;
       }
-      stepKart(k, pad, this.track, dt, frozen);
+      stepKart(k, pad, this.track, dt, frozen, this.rules);
+      if (!frozen) collideHazards(k, this.hazards, this.track);
     });
 
     if (frozen && this.time >= 0) {
@@ -93,6 +130,7 @@ export class Race {
       for (let b = a + 1; b < this.karts.length; b++) {
         const A = this.karts[a]!,
           B = this.karts[b]!;
+        if (A.air || B.air || A.rescueTime > 0 || B.rescueTime > 0) continue;
         const d2 = dist2(A.pos, B.pos);
         if (d2 >= 4 * R * R || d2 < 1e-6) continue;
         const d = Math.sqrt(d2);
@@ -122,9 +160,8 @@ export class Race {
       if (this.padCooldown[i]! > 0) return;
       for (const s of pads) {
         const ds = (((k.s - s) % this.track.length) + this.track.length) % this.track.length;
-        if (ds < 3) {
-          const lat = this.track.project(k.pos, k.hint).lateral;
-          if (Math.abs(lat) < 3) {
+        if (ds < 3 && !k.air) {
+          if (Math.abs(k.lat) < 3) {
             k.boostTime = Math.max(k.boostTime, 1.1);
             this.padCooldown[i] = 1;
           }
