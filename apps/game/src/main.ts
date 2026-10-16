@@ -357,6 +357,7 @@ if (params.get('scene') === 'showroom') {
     trackId,
   );
   showroom.hazardTime = Number(params.get('ht') ?? 0);
+  (window as unknown as { __epic: unknown }).__epic = { showroom, view };
   if (params.has('s'))
     showroom.spot = {
       s: Number(params.get('s')),
