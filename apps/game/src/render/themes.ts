@@ -1,7 +1,29 @@
 import * as THREE from 'three';
 import type { Track } from '@epic/sim';
-import type { Terrain, TerrainLook, TerrainOpts } from './scenery.ts';
+import type { FoliageKind, Terrain, TerrainLook, TerrainOpts } from './scenery.ts';
 import { DEFAULT_ROAD, type RoadStyle } from './trackMesh.ts';
+
+/** Sky, fog and light for one land. Blended as racers travel between lands. */
+export interface Atmosphere {
+  skyTop: number;
+  skyHorizon: number;
+  fog: number;
+  fogNear: number;
+  fogFar: number;
+  sun: number;
+  sunIntensity: number;
+  hemiSky: number;
+  hemiGround: number;
+  hemiIntensity: number;
+  /** Strength of sky reflections on paint and chrome. */
+  env: number;
+}
+
+/** One land of a multi-land track. */
+export interface RegionLook {
+  atmosphere: Atmosphere;
+  road: RoadStyle;
+}
 
 /** Everything that makes one track look like itself. */
 export interface Theme {
@@ -19,6 +41,13 @@ export interface Theme {
   keepOut?: (track: Track) => (x: number, z: number) => boolean;
   grandstand: boolean;
   clouds: boolean;
+  /** Multi-land tracks: a look per region id, plus the underground atmosphere. */
+  regions?: { looks: Record<string, RegionLook>; underground: Atmosphere };
+  terrainPaint?: (track: Track) => TerrainLook;
+  foliageAt?: (
+    track: Track,
+    terrain: Terrain,
+  ) => (x: number, z: number, s: number) => FoliageKind | null;
   /** Add track-specific props. Returns a per-frame animation hook, if any. */
   dress?: (ctx: DressContext) => ((t: number, dt: number) => void) | void;
 }

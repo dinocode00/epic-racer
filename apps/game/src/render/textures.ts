@@ -558,3 +558,260 @@ export function water(): THREE.CanvasTexture {
   }
   return finish(c);
 }
+
+// ---------------------------------------------------------------- Middle-earth materials
+
+/** Pale cut-stone paving (Rivendell, Minas Tirith). u = across. */
+export function paving(base = '#d9d4c6'): THREE.CanvasTexture {
+  const S = 512;
+  const [c, x] = canvas(S);
+  x.fillStyle = '#8f897c';
+  x.fillRect(0, 0, S, S);
+  const rows = 8;
+  for (let r = 0; r < rows; r++) {
+    let px = r % 2 ? -32 : 0;
+    while (px < S) {
+      const w = 48 + rnd() * 40;
+      const shade = 0.85 + rnd() * 0.2;
+      const col = new THREE.Color(base).multiplyScalar(shade);
+      x.fillStyle = `#${col.getHexString()}`;
+      x.fillRect(px + 2, r * (S / rows) + 2, w - 4, S / rows - 4);
+      px += w;
+    }
+  }
+  speckle(x, S, S, 9000, ['rgba(0,0,0,0.08)', 'rgba(255,255,255,0.08)'], [1, 3]);
+  speckle(x, S, S, 120, ['rgba(110,140,70,0.4)'], [2, 6]);
+  return finish(c);
+}
+
+/** Dwarven floor: big square slabs with carved border lines. */
+export function dwarvenTiles(): THREE.CanvasTexture {
+  const S = 512;
+  const [c, x] = canvas(S);
+  x.fillStyle = '#3c3a3c';
+  x.fillRect(0, 0, S, S);
+  for (let i = 0; i < 4; i++)
+    for (let j = 0; j < 4; j++) {
+      const v = 82 + Math.floor(rnd() * 22);
+      x.fillStyle = `rgb(${v},${v - 2},${v + 4})`;
+      x.fillRect(i * 128 + 3, j * 128 + 3, 122, 122);
+      x.strokeStyle = 'rgba(0,0,0,0.35)';
+      x.lineWidth = 3;
+      x.strokeRect(i * 128 + 16, j * 128 + 16, 96, 96);
+      x.beginPath();
+      x.moveTo(i * 128 + 64, j * 128 + 30);
+      x.lineTo(i * 128 + 98, j * 128 + 64);
+      x.lineTo(i * 128 + 64, j * 128 + 98);
+      x.lineTo(i * 128 + 30, j * 128 + 64);
+      x.closePath();
+      x.stroke();
+    }
+  speckle(x, S, S, 7000, ['rgba(0,0,0,0.15)', 'rgba(255,255,255,0.06)'], [1, 3]);
+  return finish(c);
+}
+
+/** Lothlórien path: soft earth strewn with golden mallorn leaves. */
+export function leafPath(): THREE.CanvasTexture {
+  const S = 512;
+  const [c, x] = canvas(S);
+  x.fillStyle = '#7a6a4a';
+  x.fillRect(0, 0, S, S);
+  speckle(x, S, S, 9000, ['#6e5f41', '#857553', '#64563a'], [1, 3]);
+  for (let i = 0; i < 1400; i++) {
+    x.save();
+    x.translate(rnd() * S, rnd() * S);
+    x.rotate(rnd() * 6.28);
+    x.fillStyle = ['#e2b84a', '#d9a33a', '#f0d070', '#c98f2a', '#b8c06a'][Math.floor(rnd() * 5)]!;
+    x.beginPath();
+    x.ellipse(0, 0, 5 + rnd() * 4, 2 + rnd() * 2, 0, 0, Math.PI * 2);
+    x.fill();
+    x.restore();
+  }
+  return finish(c);
+}
+
+/** Bare rock (cliffs, mountains, ledges). */
+export function rock(base = '#7d7a74'): THREE.CanvasTexture {
+  const S = 512;
+  const [c, x] = canvas(S);
+  x.fillStyle = base;
+  x.fillRect(0, 0, S, S);
+  for (let i = 0; i < 90; i++) {
+    const r = 20 + rnd() * 70;
+    const g = x.createRadialGradient(0, 0, 0, 0, 0, r);
+    const dark = rnd() > 0.5;
+    g.addColorStop(0, dark ? 'rgba(40,38,35,0.35)' : 'rgba(200,196,188,0.25)');
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    x.save();
+    x.translate(rnd() * S, rnd() * S);
+    x.fillStyle = g;
+    x.fillRect(-r, -r, 2 * r, 2 * r);
+    x.restore();
+  }
+  // Strata and cracks.
+  for (let i = 0; i < 40; i++) {
+    x.strokeStyle = `rgba(30,28,25,${0.2 + rnd() * 0.3})`;
+    x.lineWidth = 1 + rnd() * 2;
+    x.beginPath();
+    let px = rnd() * S,
+      py = rnd() * S;
+    x.moveTo(px, py);
+    for (let k = 0; k < 5; k++) {
+      px += 10 + rnd() * 30;
+      py += (rnd() - 0.5) * 16;
+      x.lineTo(px, py);
+    }
+    x.stroke();
+  }
+  speckle(x, S, S, 9000, ['rgba(0,0,0,0.12)', 'rgba(255,255,255,0.08)'], [1, 3]);
+  return finish(c);
+}
+
+/** Volcanic ash and cinders. */
+export function ash(): THREE.CanvasTexture {
+  const S = 512;
+  const [c, x] = canvas(S);
+  x.fillStyle = '#2b2624';
+  x.fillRect(0, 0, S, S);
+  speckle(x, S, S, 16000, ['#3a3330', '#221e1c', '#4a3e38', '#1a1716'], [1, 4]);
+  speckle(x, S, S, 300, ['#6a2a14', '#8a3a18'], [1, 3]);
+  return finish(c);
+}
+
+export function mud(): THREE.CanvasTexture {
+  const S = 512;
+  const [c, x] = canvas(S);
+  x.fillStyle = '#4a4430';
+  x.fillRect(0, 0, S, S);
+  speckle(x, S, S, 9000, ['#3e3828', '#565038', '#38341f'], [2, 5]);
+  for (let i = 0; i < 40; i++) {
+    x.fillStyle = 'rgba(60,70,60,0.5)';
+    x.beginPath();
+    x.ellipse(rnd() * S, rnd() * S, 10 + rnd() * 30, 6 + rnd() * 16, rnd() * 3, 0, Math.PI * 2);
+    x.fill();
+  }
+  return finish(c);
+}
+
+/** Mordor road: black basalt with cracks (pair with volcanicGlow as emissive map). */
+export function volcanic(): THREE.CanvasTexture {
+  const S = 512;
+  const [c, x] = canvas(S);
+  x.fillStyle = '#1e1a19';
+  x.fillRect(0, 0, S, S);
+  speckle(x, S, S, 14000, ['#2a2422', '#141110', '#332b28'], [1, 4]);
+  drawCracks(x, S, 'rgba(10,6,5,0.9)', 3);
+  return finish(c);
+}
+let crackSeed = 0;
+function drawCracks(x: CanvasRenderingContext2D, S: number, style: string, width: number): void {
+  const saved = seed;
+  seed = 9001 + crackSeed;
+  x.strokeStyle = style;
+  x.lineWidth = width;
+  for (let i = 0; i < 26; i++) {
+    x.beginPath();
+    let px = rnd() * S,
+      py = rnd() * S;
+    x.moveTo(px, py);
+    for (let k = 0; k < 6; k++) {
+      px += (rnd() - 0.5) * 70;
+      py += (rnd() - 0.5) * 70;
+      x.lineTo(px, py);
+    }
+    x.stroke();
+  }
+  seed = saved;
+}
+/** Glowing lava in the cracks of the volcanic road. */
+export function volcanicGlow(): THREE.CanvasTexture {
+  const S = 512;
+  const [c, x] = canvas(S);
+  x.fillStyle = '#000';
+  x.fillRect(0, 0, S, S);
+  drawCracks(x, S, '#ff5a14', 3);
+  x.filter = 'blur(2px)';
+  drawCracks(x, S, 'rgba(255,140,40,0.6)', 6);
+  return finish(c);
+}
+
+/** White carved stone balustrade (Rivendell, Minas Tirith). 4:1. */
+export function balustrade(): THREE.CanvasTexture {
+  const [c, x] = canvas(256, 64);
+  x.fillStyle = '#e7e2d6';
+  x.fillRect(0, 0, 256, 64);
+  x.fillStyle = '#c9c2b2';
+  x.fillRect(0, 0, 256, 8);
+  x.fillRect(0, 54, 256, 10);
+  for (let i = 0; i < 8; i++) {
+    x.fillStyle = '#b8b0a0';
+    x.beginPath();
+    x.ellipse(16 + i * 32, 31, 7, 18, 0, 0, Math.PI * 2);
+    x.fill();
+    x.fillStyle = '#efeadf';
+    x.beginPath();
+    x.ellipse(14 + i * 32, 29, 4, 14, 0, 0, Math.PI * 2);
+    x.fill();
+  }
+  speckle(x, 256, 64, 800, ['rgba(0,0,0,0.06)'], [1, 2]);
+  return finish(c);
+}
+
+/** Timber post-and-rail fence (Rohan). 4:1. */
+export function fence(): THREE.CanvasTexture {
+  const [c, x] = canvas(256, 64);
+  x.fillStyle = '#5a7a3a';
+  x.fillRect(0, 0, 256, 64);
+  const wood = (px: number, py: number, w: number, h: number) => {
+    x.fillStyle = '#7a5a36';
+    x.fillRect(px, py, w, h);
+    x.fillStyle = 'rgba(0,0,0,0.25)';
+    x.fillRect(px, py + h - 2, w, 2);
+  };
+  wood(0, 14, 256, 8);
+  wood(0, 36, 256, 8);
+  for (const px of [10, 138]) wood(px, 4, 12, 60);
+  return finish(c);
+}
+
+/** Jagged black rock wall (Mordor). 4:1. */
+export function darkRock(): THREE.CanvasTexture {
+  const [c, x] = canvas(256, 64);
+  x.fillStyle = '#1a1614';
+  x.fillRect(0, 0, 256, 64);
+  for (let i = 0; i < 40; i++) {
+    const v = 30 + Math.floor(rnd() * 30);
+    x.fillStyle = `rgb(${v},${v - 6},${v - 8})`;
+    x.beginPath();
+    const px = rnd() * 256;
+    x.moveTo(px, 64);
+    x.lineTo(px + 6 + rnd() * 10, 4 + rnd() * 30);
+    x.lineTo(px + 20 + rnd() * 10, 64);
+    x.fill();
+  }
+  speckle(x, 256, 64, 300, ['rgba(255,90,30,0.35)'], [1, 2]);
+  return finish(c);
+}
+
+/** Cave rock for Moria's halls. */
+export function caveRock(): THREE.CanvasTexture {
+  return rock('#4a4848');
+}
+
+/** Golden grass of Rohan. */
+export function goldGrass(): THREE.CanvasTexture {
+  const S = 512;
+  const [c, x] = canvas(S);
+  x.fillStyle = '#b39a52';
+  x.fillRect(0, 0, S, S);
+  for (let i = 0; i < 12000; i++) {
+    x.strokeStyle = ['#c9ad5e', '#9c8642', '#d8be72', '#8a9a48'][Math.floor(rnd() * 4)]!;
+    const px = rnd() * S,
+      py = rnd() * S;
+    x.beginPath();
+    x.moveTo(px, py);
+    x.lineTo(px + (rnd() - 0.5) * 3, py - 3 - rnd() * 6);
+    x.stroke();
+  }
+  return finish(c);
+}

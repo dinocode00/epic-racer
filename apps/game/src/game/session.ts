@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { type PadState, type TrackDef, VEHICLES, neutralPad, vehicleById } from '@epic/shared';
 import { type AiBrain, COUNTDOWN, Race, STEP, aiDrive, createBrain } from '@epic/sim';
+import { HazardViews } from '../render/hazardViews.ts';
 import { KartView } from '../render/kartView.ts';
 import type { View, Viewport } from '../render/view.ts';
 import type { Theme } from '../render/themes.ts';
@@ -53,6 +54,7 @@ export class RaceSession {
   readonly race: Race;
   readonly world: World;
   private views: KartView[];
+  private hazardViews: HazardViews;
   private cams: ChaseCam[];
   private huds: Hud[];
   private spectator?: ChaseCam;
@@ -111,6 +113,8 @@ export class RaceSession {
       this.world.scene.add(v.root);
       return v;
     });
+    this.hazardViews = new HazardViews(this.race.track, this.race.hazards);
+    this.world.scene.add(this.hazardViews.group);
     this.cams = this.humans.map(() => new ChaseCam());
     if (players.length === 3) this.spectator = new ChaseCam();
 
@@ -178,6 +182,7 @@ export class RaceSession {
       const steer = hi >= 0 ? (this.autoBrains.has(i) ? 0 : (this.pads[hi]?.steer ?? 0)) : 0;
       this.views[i]!.update(k, steer, alpha, dt, fx);
     });
+    this.hazardViews.update(this.race.hazards, fx, dt);
     fx.update(dt);
     this.world.update(dt);
 
@@ -218,6 +223,8 @@ export class RaceSession {
           this.views.forEach(
             (v) => (v.root.visible = v === kv || v.pos.distanceTo(c.camera.position) > 4.5),
           );
+          this.world.applyAtmosphere(this.world.atmosphereAt(this.race.karts[this.humans[i]!]!.s));
+          this.world.applyAtmosphere(this.world.atmosphereAt(this.race.karts[this.humans[i]!]!.s));
           this.world.focusSun(kv.pos);
           fx.setViewportHeight(
             h * window.innerHeight * this.view.renderer.getPixelRatio(),
@@ -237,6 +244,8 @@ export class RaceSession {
         camera: sc.camera,
         before: () => {
           this.views.forEach((v) => (v.root.visible = true));
+          const leader = this.race.karts.find((k) => k.place === 1)!;
+          this.world.applyAtmosphere(this.world.atmosphereAt(leader.s));
           this.world.focusSun(sc.camera.position);
         },
       });

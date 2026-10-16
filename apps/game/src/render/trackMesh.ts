@@ -20,7 +20,7 @@ export const neg = (v: Vec3): Vec3 => ({ x: -v.x, y: -v.y, z: -v.z });
  * Sweep a cross-section profile along the track between arc lengths [s0, s1].
  * `vLen` is how many metres one texture repeat covers along the road.
  */
-function sweep(
+export function sweep(
   track: Track,
   s0: number,
   s1: number,
@@ -93,6 +93,8 @@ export interface RoadStyle {
   /** Arc-length ranges that are bridges: no solid embankment underneath. */
   bridges?: [number, number][];
   padColor?: number;
+  /** Glowing map for the road surface (lava cracks). */
+  roadEmissive?: () => THREE.Texture;
 }
 
 export const DEFAULT_ROAD: RoadStyle = {
@@ -105,133 +107,70 @@ export const DEFAULT_ROAD: RoadStyle = {
   gantry: (f) => gantry(f),
 };
 
-export function buildTrackMesh(track: Track, style: RoadStyle = DEFAULT_ROAD): THREE.Group {
-  const g = new THREE.Group();
-  const L = track.length;
-  const step = 1.5;
-  const onBridge = (s: number) => (style.bridges ?? []).some(([a, b]) => s >= a && s <= b);
+/** A track made of several lands: the road style can change along the lap. */
+export interface RoadPlan {
+  styleAt: (s: number) => RoadStyle;
+  /** Arc lengths where the style may change (region starts). */
+  boundaries: number[];
+  gaps?: [number, number][];
+  open?: [number, number][];
+}
 
-  // --- Road surface (top) ---
-  const roadMat = new THREE.MeshStandardMaterial({
+const matCache = new WeakMap<RoadStyle, Record<string, THREE.Material>>();
+function materialsFor(style: RoadStyle): Record<string, THREE.Material> {
+  let m = matCache.get(style);
+  if (m) return m;
+  const road = new THREE.MeshStandardMaterial({
     map: style.road(),
     roughness: style.roadRoughness,
     metalness: 0,
   });
-  const road = new THREE.Mesh(
-    sweep(track, 0, L, step, style.roadTile, (f) => {
-      const out: Vert[] = [];
-      const SUB = 8;
-      for (let k = 0; k <= SUB; k++) {
-        const t = k / SUB;
-        out.push({ p: off(f, (t - 0.5) * f.width, 0), n: f.up, u: t });
-      }
-      return out;
-    }),
-    roadMat,
-  );
-  road.receiveShadow = true;
-  g.add(road);
-
-  // --- Underside and embankment skirts ---
-  const concrete = new THREE.MeshStandardMaterial({
+  if (style.roadEmissive) {
+    road.emissive = new THREE.Color(0xffffff);
+    road.emissiveMap = style.roadEmissive();
+    road.emissiveIntensity = 1.4;
+  }
+  const under = new THREE.MeshStandardMaterial({
     color: 0xd8d6d0,
     roughness: 0.95,
     map: style.underside(),
   });
-  const under = new THREE.Mesh(
-    sweep(track, 0, L, step, 10, (f, s) => {
-      const hw = f.width / 2 + style.barrier.thickness;
-      // On normal ground-level road, the skirt drops well below grade; elsewhere it's a slab.
-      const ground = f.up.y > 0.75 && !onBridge(s);
-      const depth = ground ? 7 : 0.6;
-      const down = ground ? { x: 0, y: -1, z: 0 } : neg(f.up);
-      const L0 = off(f, -hw, style.barrier.height),
-        R0 = off(f, hw, style.barrier.height);
-      const Ld = { x: L0.x + down.x * depth, y: L0.y + down.y * depth, z: L0.z + down.z * depth };
-      const Rd = { x: R0.x + down.x * depth, y: R0.y + down.y * depth, z: R0.z + down.z * depth };
-      return [
-        { p: L0, n: neg(f.right), u: 0 },
-        { p: Ld, n: neg(f.right), u: 0.5 },
-        { p: Ld, n: neg(f.up), u: 0.5 },
-        { p: Rd, n: neg(f.up), u: 1.5 },
-        { p: Rd, n: f.right, u: 1.5 },
-        { p: R0, n: f.right, u: 2 },
-      ];
-    }),
-    concrete,
-  );
-  under.receiveShadow = true;
-  g.add(under);
+  const barrier = new THREE.MeshStandardMaterial({ map: style.barrier.map(), roughness: 0.85 });
+  m = {
+    road,
+    under,
+    barrier,
+    kerb: new THREE.MeshStandardMaterial({ map: tex.kerb(), roughness: 0.7 }),
+  };
+  matCache.set(style, m);
+  return m;
+}
 
-  // --- Barriers on both edges ---
-  const B = style.barrier;
-  const barrierMat = new THREE.MeshStandardMaterial({ map: B.map(), roughness: 0.85 });
-  if (B.bump) {
-    barrierMat.bumpMap = B.bump();
-    barrierMat.bumpScale = 2;
+export function buildTrackMesh(
+  track: Track,
+  plan: RoadStyle | RoadPlan = DEFAULT_ROAD,
+): THREE.Group {
+  const g = new THREE.Group();
+  const L = track.length;
+  const P: RoadPlan = 'styleAt' in plan ? plan : { styleAt: () => plan, boundaries: [] };
+  const inR = (ranges: [number, number][] | undefined, s: number) =>
+    (ranges ?? []).some(([a, b]) => s >= a && s <= b);
+  // Cut the lap wherever the style, a gap or an open edge starts or ends.
+  const cuts = new Set<number>([0, L, ...P.boundaries]);
+  for (const [a, b] of [...(P.gaps ?? []), ...(P.open ?? [])]) {
+    cuts.add(a);
+    cuts.add(b);
   }
-  for (const side of [-1, 1]) {
-    const wall = new THREE.Mesh(
-      sweep(track, 0, L, step, B.tile, (f) => {
-        const a = (f.width / 2) * side,
-          b = (f.width / 2 + B.thickness) * side;
-        const inward = side > 0 ? neg(f.right) : f.right;
-        const outward = neg(inward);
-        return [
-          { p: off(f, a, 0), n: inward, u: 0.0 },
-          { p: off(f, a, B.height), n: inward, u: 1.0 },
-          { p: off(f, a, B.height), n: f.up, u: 0.99 },
-          { p: off(f, b, B.height), n: f.up, u: 0.99 },
-          { p: off(f, b, B.height), n: outward, u: 1.0 },
-          { p: off(f, b, -0.5), n: outward, u: 0.0 },
-        ];
-      }),
-      barrierMat,
-    );
-    // Barrier texture: u is vertical here, v runs along the road, so rotate it.
-    const uvs = wall.geometry.attributes.uv as THREE.BufferAttribute;
-    for (let i = 0; i < uvs.count; i++) {
-      const u = uvs.getX(i),
-        v = uvs.getY(i);
-      // Flip the right-hand wall so its lettering isn't mirrored.
-      uvs.setXY(i, side > 0 && B.mirrorRight ? -v : v, u);
-    }
-    wall.castShadow = true;
-    wall.receiveShadow = true;
-    g.add(wall);
+  const sorted = [...cuts].filter((c) => c >= 0 && c <= L).sort((a, b) => a - b);
+  for (let i = 0; i < sorted.length - 1; i++) {
+    const a = sorted[i]!,
+      b = sorted[i + 1]!;
+    if (b - a < 0.5) continue;
+    const mid = (a + b) / 2;
+    if (inR(P.gaps, mid)) continue; // nothing to drive on: fly!
+    buildSegment(g, track, a, b, P.styleAt(mid), inR(P.open, mid));
   }
-
-  // --- Kerbs on corners ---
-  const kerbMat = new THREE.MeshStandardMaterial({ map: tex.kerb(), roughness: 0.7 });
-  const inCorner = (i: number) => curvature(track, i) > 0.006;
-  let start = -1;
-  const ranges: [number, number][] = [];
-  for (let i = 0; i <= track.count; i++) {
-    const c = i < track.count && inCorner(i);
-    if (c && start < 0) start = i;
-    if (!c && start >= 0) {
-      if (i - start > 6) ranges.push([start * track.spacing, i * track.spacing]);
-      start = -1;
-    }
-  }
-  for (const [a, b] of style.kerbs ? ranges : []) {
-    for (const side of [-1, 1]) {
-      const kerb = new THREE.Mesh(
-        sweep(track, a, b, 1, 4, (f) => {
-          const o = (f.width / 2) * side,
-            i = (f.width / 2 - 1.2) * side;
-          return [
-            { p: off(f, i, 0.02), n: f.up, u: 0 },
-            { p: off(f, (o + i) / 2, 0.09), n: f.up, u: 0.5 },
-            { p: off(f, o, 0.04), n: f.up, u: 1 },
-          ];
-        }),
-        kerbMat,
-      );
-      kerb.receiveShadow = true;
-      g.add(kerb);
-    }
-  }
+  const style = P.styleAt(0);
 
   // --- Start line + gantry ---
   const f0 = track.frameAtS(0);
@@ -269,6 +208,144 @@ export function buildTrackMesh(track: Track, style: RoadStyle = DEFAULT_ROAD): T
     g.add(pad);
   }
   return g;
+}
+
+function buildSegment(
+  g: THREE.Group,
+  track: Track,
+  s0: number,
+  s1: number,
+  style: RoadStyle,
+  open: boolean,
+): void {
+  const step = 1.5;
+  const M = materialsFor(style);
+  const onBridge = (s: number) => open || (style.bridges ?? []).some(([a, b]) => s >= a && s <= b);
+  const B = style.barrier;
+
+  // --- Road surface (top) ---
+  const road = new THREE.Mesh(
+    sweep(track, s0, s1, step, style.roadTile, (f) => {
+      const out: Vert[] = [];
+      const SUB = 8;
+      for (let k = 0; k <= SUB; k++) {
+        const t = k / SUB;
+        out.push({ p: off(f, (t - 0.5) * f.width, 0), n: f.up, u: t });
+      }
+      return out;
+    }),
+    M.road,
+  );
+  road.receiveShadow = true;
+  g.add(road);
+
+  // --- Underside and embankment skirts (a thin deck on bridges and open edges) ---
+  const edge = open ? 0.3 : B.thickness;
+  const top = open ? 0 : B.height;
+  const under = new THREE.Mesh(
+    sweep(track, s0, s1, step, 10, (f, s) => {
+      const hw = f.width / 2 + edge;
+      const ground = f.up.y > 0.75 && !onBridge(s);
+      const depth = ground ? 7 : 0.8;
+      const down = ground ? { x: 0, y: -1, z: 0 } : neg(f.up);
+      const L0 = off(f, -hw, top),
+        R0 = off(f, hw, top);
+      const Ld = { x: L0.x + down.x * depth, y: L0.y + down.y * depth, z: L0.z + down.z * depth };
+      const Rd = { x: R0.x + down.x * depth, y: R0.y + down.y * depth, z: R0.z + down.z * depth };
+      return [
+        { p: L0, n: neg(f.right), u: 0 },
+        { p: Ld, n: neg(f.right), u: 0.5 },
+        { p: Ld, n: neg(f.up), u: 0.5 },
+        { p: Rd, n: neg(f.up), u: 1.5 },
+        { p: Rd, n: f.right, u: 1.5 },
+        { p: R0, n: f.right, u: 2 },
+      ];
+    }),
+    M.under,
+  );
+  under.receiveShadow = true;
+  g.add(under);
+  if (open) {
+    // A narrow lip so the open edge reads, but no wall.
+    for (const side of [-1, 1]) {
+      g.add(
+        new THREE.Mesh(
+          sweep(track, s0, s1, step, B.tile, (f) => [
+            { p: off(f, (f.width / 2) * side, 0), n: f.up, u: 0.1 },
+            { p: off(f, (f.width / 2 + 0.3) * side, 0.12), n: f.up, u: 0.2 },
+          ]),
+          M.barrier,
+        ),
+      );
+    }
+    return;
+  }
+
+  // --- Barriers on both edges ---
+  for (const side of [-1, 1]) {
+    const wall = new THREE.Mesh(
+      sweep(track, s0, s1, step, B.tile, (f) => {
+        const a = (f.width / 2) * side,
+          b = (f.width / 2 + B.thickness) * side;
+        const inward = side > 0 ? neg(f.right) : f.right;
+        const outward = neg(inward);
+        return [
+          { p: off(f, a, 0), n: inward, u: 0.0 },
+          { p: off(f, a, B.height), n: inward, u: 1.0 },
+          { p: off(f, a, B.height), n: f.up, u: 0.99 },
+          { p: off(f, b, B.height), n: f.up, u: 0.99 },
+          { p: off(f, b, B.height), n: outward, u: 1.0 },
+          { p: off(f, b, -0.5), n: outward, u: 0.0 },
+        ];
+      }),
+      M.barrier,
+    );
+    // Barrier texture: u is vertical here, v runs along the road, so rotate it.
+    const uvs = wall.geometry.attributes.uv as THREE.BufferAttribute;
+    for (let i = 0; i < uvs.count; i++) {
+      const u = uvs.getX(i),
+        v = uvs.getY(i);
+      // Flip the right-hand wall so its lettering isn't mirrored.
+      uvs.setXY(i, side > 0 && B.mirrorRight ? -v : v, u);
+    }
+    wall.castShadow = true;
+    wall.receiveShadow = true;
+    g.add(wall);
+  }
+
+  // --- Kerbs on corners ---
+  if (!style.kerbs) return;
+  const inCorner = (i: number) => curvature(track, i) > 0.006;
+  let start = -1;
+  const ranges: [number, number][] = [];
+  const i0 = Math.floor(s0 / track.spacing),
+    i1 = Math.ceil(s1 / track.spacing);
+  for (let i = i0; i <= i1; i++) {
+    const c = i < i1 && inCorner(i);
+    if (c && start < 0) start = i;
+    if (!c && start >= 0) {
+      if (i - start > 6) ranges.push([start * track.spacing, i * track.spacing]);
+      start = -1;
+    }
+  }
+  for (const [a, b] of ranges) {
+    for (const side of [-1, 1]) {
+      const kerb = new THREE.Mesh(
+        sweep(track, a, b, 1, 4, (f) => {
+          const o = (f.width / 2) * side,
+            i = (f.width / 2 - 1.2) * side;
+          return [
+            { p: off(f, i, 0.02), n: f.up, u: 0 },
+            { p: off(f, (o + i) / 2, 0.09), n: f.up, u: 0.5 },
+            { p: off(f, o, 0.04), n: f.up, u: 1 },
+          ];
+        }),
+        M.kerb,
+      );
+      kerb.receiveShadow = true;
+      g.add(kerb);
+    }
+  }
 }
 
 function gantry(f: Frame): THREE.Group {

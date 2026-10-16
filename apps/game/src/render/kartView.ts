@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { type KartState, driftLevel } from '@epic/sim';
+import { type KartState, RESCUE_TIME, driftLevel } from '@epic/sim';
+import { greatEagle } from './eagle.ts';
 import { DRIFT_COLORS, type Effects, flame } from './effects.ts';
 import { type VehicleModel, buildVehicle } from './vehicles.ts';
 
@@ -20,6 +21,8 @@ export class KartView {
   readonly pos = new THREE.Vector3();
   readonly fwd = new THREE.Vector3(0, 0, -1);
   readonly up = new THREE.Vector3(0, 1, 0);
+  private eagle: ReturnType<typeof greatEagle> | null = null;
+  private airPitch = 0;
 
   constructor(vehicleId: string, color: string) {
     this.model = buildVehicle(vehicleId, color);
@@ -38,10 +41,35 @@ export class KartView {
     this.pos.copy(V(k.prevPos)).lerp(V(k.pos), alpha);
     this.fwd.copy(V(k.prevFwd)).lerp(V(k.fwd), alpha).normalize();
     this.up.copy(V(k.prevUp)).lerp(V(k.up), alpha).normalize();
-    const right = new THREE.Vector3().crossVectors(this.fwd, this.up).normalize();
-    const back = this.fwd.clone().negate();
+    let right = new THREE.Vector3().crossVectors(this.fwd, this.up).normalize();
+    let back = this.fwd.clone().negate();
     this.root.position.copy(this.pos);
-    this.root.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(right, this.up, back));
+    // In the air, pitch the nose along the flight path.
+    const targetPitch = k.air ? Math.atan2(k.vel.y, Math.hypot(k.vel.x, k.vel.z)) * 0.8 : 0;
+    this.airPitch += (targetPitch - this.airPitch) * Math.min(1, dt * 6);
+    let up = this.up.clone();
+    if (Math.abs(this.airPitch) > 0.01) {
+      const q = new THREE.Quaternion().setFromAxisAngle(right, this.airPitch);
+      back = back.applyQuaternion(q);
+      up = up.applyQuaternion(q);
+      right = new THREE.Vector3().crossVectors(back.clone().negate(), up).normalize();
+    }
+    this.root.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(right, up, back));
+    // Eagle rescue: carried down from the sky.
+    if (k.rescueTime > 0) {
+      if (!this.eagle) {
+        this.eagle = greatEagle();
+        this.eagle.group.scale.setScalar(1.6);
+        this.root.add(this.eagle.group);
+      }
+      const t = k.rescueTime / RESCUE_TIME;
+      this.root.position.addScaledVector(this.up, t * t * 16);
+      this.eagle.group.visible = true;
+      this.eagle.group.position.set(0, 3.2 + (1 - t) * 3 * (1 - t), 0);
+      this.eagle.flap(this.t);
+    } else if (this.eagle) {
+      this.eagle.group.visible = false;
+    }
 
     const ud = this.model.userData;
     const lvl = k.drift.active ? driftLevel(k.drift.charge) : -1;

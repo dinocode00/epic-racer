@@ -28,7 +28,12 @@ const SNAP = /* glsl */ `
 export function patchMaterial(m: THREE.Material): void {
   if (m.userData.psx) return;
   m.userData.psx = true;
-  m.onBeforeCompile = (shader) => {
+  // Chain onto any existing shader patch (e.g. terrain splatting) and keep cache keys apart.
+  const prev = m.onBeforeCompile.bind(m);
+  const prevKey = m.customProgramCacheKey();
+  m.customProgramCacheKey = () => 'psx|' + prevKey;
+  m.onBeforeCompile = (shader, renderer) => {
+    prev(shader, renderer);
     shader.uniforms.uSnap = psxUniforms.uSnap;
     shader.uniforms.uSnapRes = psxUniforms.uSnapRes;
     shader.vertexShader =

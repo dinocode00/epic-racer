@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { Track } from '@epic/sim';
+import { type HazardState, Track, createHazards, updateHazards } from '@epic/sim';
+import { HazardViews } from '../render/hazardViews.ts';
 import { trackById } from './tracks.ts';
 import { KartView } from '../render/kartView.ts';
 import type { View } from '../render/view.ts';
@@ -28,6 +29,9 @@ export class Showroom {
     const track = new Track(entry.def);
     this.track = track;
     this.world = new World(track, view.renderer, entry.theme);
+    this.hazards = createHazards(entry.def.hazards ?? []);
+    this.hazardViews = new HazardViews(track, this.hazards);
+    this.world.scene.add(this.hazardViews.group);
     const f = track.frameAtS(60);
     const fwd = new THREE.Vector3(f.tan.x, f.tan.y, f.tan.z);
     const right = new THREE.Vector3(f.right.x, f.right.y, f.right.z);
@@ -59,8 +63,15 @@ export class Showroom {
   /** Optional fixed camera at a track position: arc length, lateral offset, height, look-ahead. */
   spot?: { s: number; lat: number; h: number; look: number; lookLat: number };
   private track?: Track;
+  private hazards: HazardState[] = [];
+  private hazardViews!: HazardViews;
+  /** Race clock for hazards (set by ?ht= for screenshots). */
+  hazardTime = 0;
 
   frame(dt: number, orbit = true): void {
+    this.hazardTime += dt;
+    updateHazards(this.hazards, this.hazardTime, 3);
+    this.hazardViews.update(this.hazards, this.world.fx, dt);
     if (this.spot && this.track) {
       const sp = this.spot;
       const f = this.track.frameAtS(sp.s);
@@ -75,6 +86,7 @@ export class Showroom {
         g.pos.y + 1,
         g.pos.z + g.right.z * sp.lookLat,
       );
+      this.world.applyAtmosphere(this.world.atmosphereAt(sp.s));
       this.world.focusSun(
         this.camera.position
           .clone()

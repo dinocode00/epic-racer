@@ -53,7 +53,7 @@ function placeAt(o: THREE.Object3D, f: Frame, lateral: number, y: number, faceRo
 
 const DOOR_COLORS = [0x2f6b3a, 0xd9a83a, 0x2f5f9a, 0xa83a2f, 0x6a3a8a];
 
-function hobbitHole(i: number): THREE.Group {
+export function hobbitHole(i: number): THREE.Group {
   const g = new THREE.Group();
   const m = mats();
   // Curved stone face set into the hill (local +z faces the road).
@@ -149,7 +149,7 @@ function hobbitHole(i: number): THREE.Group {
 
 // ---------------------------------------------------------------- Party Tree, tents, bunting
 
-function partyTree(): THREE.Group {
+export function partyTree(): THREE.Group {
   const g = new THREE.Group();
   const bark = new THREE.MeshStandardMaterial({
     color: 0x5a4330,
@@ -221,7 +221,7 @@ function partyTree(): THREE.Group {
   return g;
 }
 
-function tent(color: number): THREE.Group {
+export function tent(color: number): THREE.Group {
   const g = new THREE.Group();
   const stripe = tex.decal(
     (x, w, h) => {
@@ -256,7 +256,7 @@ function tent(color: number): THREE.Group {
 }
 
 /** A sagging line of triangular flags between two points. */
-function bunting(a: THREE.Vector3, b: THREE.Vector3, sag = 1.2): THREE.Group {
+export function bunting(a: THREE.Vector3, b: THREE.Vector3, sag = 1.2): THREE.Group {
   const g = new THREE.Group();
   const curve = new THREE.QuadraticBezierCurve3(
     a,
@@ -465,7 +465,7 @@ function brookWater(track: Track, ctx: DressContext): THREE.Mesh {
   return m;
 }
 
-function watermill(): { group: THREE.Group; wheel: THREE.Object3D } {
+export function watermill(): { group: THREE.Group; wheel: THREE.Object3D } {
   const g = new THREE.Group();
   const m = mats();
   const base = new THREE.Mesh(new THREE.BoxGeometry(9, 4, 7), m.stone);
@@ -525,7 +525,7 @@ export function towerCentre(track: Track): THREE.Vector3 {
   return tv(off(f, 42, 0));
 }
 
-function ruins(): THREE.Group {
+export function ruins(): THREE.Group {
   const g = new THREE.Group();
   const m = mats();
   const blocks: THREE.BufferGeometry[] = [];
@@ -564,7 +564,7 @@ function ruins(): THREE.Group {
 
 // ---------------------------------------------------------------- farm life
 
-function sheep(): THREE.Group {
+export function sheep(): THREE.Group {
   const g = new THREE.Group();
   const wool = new THREE.MeshStandardMaterial({ color: 0xf1ede2, roughness: 1, flatShading: true });
   const dark = MAT.paint(0x26221f, 0.9, 0);
@@ -589,7 +589,7 @@ function sheep(): THREE.Group {
   return g;
 }
 
-function hayBale(): THREE.Mesh {
+export function hayBale(): THREE.Mesh {
   const m = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 1.3, 20), mats().thatch);
   m.rotation.z = Math.PI / 2;
   m.position.y = 0.8;

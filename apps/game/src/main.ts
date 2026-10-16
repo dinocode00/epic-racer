@@ -49,7 +49,7 @@ interface Member {
 }
 
 const members: Member[] = [];
-let trackId = trackById(params.get('track') ?? 'shire').def.id;
+let trackId = trackById(params.get('track') ?? 'middleEarth').def.id;
 const track = () => trackById(trackId);
 function cycleTrack(dir: number): void {
   const i = TRACKS.findIndex((t) => t.def.id === trackId);
@@ -356,6 +356,7 @@ if (params.get('scene') === 'showroom') {
     Number(params.get('speed') ?? 0),
     trackId,
   );
+  showroom.hazardTime = Number(params.get('ht') ?? 0);
   if (params.has('s'))
     showroom.spot = {
       s: Number(params.get('s')),
