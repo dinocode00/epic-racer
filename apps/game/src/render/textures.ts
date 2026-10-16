@@ -693,45 +693,110 @@ export function mud(): THREE.CanvasTexture {
   return finish(c);
 }
 
-/** Mordor road: black basalt with cracks (pair with volcanicGlow as emissive map). */
+/**
+ * A tileable crack network: Voronoi cell borders, wobbled so they read as split rock.
+ * Returns per-pixel crack strength 0..1 (1 at the heart of a crack).
+ */
+let crackField: Float32Array | undefined;
+function cracks(S: number): Float32Array {
+  if (crackField) return crackField;
+  const saved = seed;
+  seed = 9001;
+  const pts: [number, number][] = [];
+  for (let i = 0; i < 34; i++) pts.push([rnd() * S, rnd() * S]);
+  seed = saved;
+  const f = new Float32Array(S * S);
+  for (let y = 0; y < S; y++)
+    for (let x = 0; x < S; x++) {
+      // Wobble the lookup so borders meander instead of running straight.
+      const wx = x + Math.sin(y * 0.09) * 5 + Math.sin(y * 0.031 + x * 0.02) * 7;
+      const wy = y + Math.sin(x * 0.08) * 5 + Math.sin(x * 0.027 - y * 0.017) * 7;
+      let d1 = Infinity,
+        d2 = Infinity;
+      for (const [px, py] of pts)
+        for (let ox = -S; ox <= S; ox += S)
+          for (let oy = -S; oy <= S; oy += S) {
+            const d = Math.hypot(wx - px - ox, wy - py - oy);
+            if (d < d1) {
+              d2 = d1;
+              d1 = d;
+            } else if (d < d2) d2 = d;
+          }
+      const e = d2 - d1;
+      // Wide main fissures with a thin bright core.
+      f[y * S + x] = Math.max(0, 1 - e / 7) ** 1.5;
+    }
+  crackField = f;
+  return f;
+}
+
+/** Mordor road: black basalt slabs split by cracks (pair with volcanicGlow as emissive map). */
 export function volcanic(): THREE.CanvasTexture {
-  const S = 512;
+  const S = 256;
   const [c, x] = canvas(S);
   x.fillStyle = '#1e1a19';
   x.fillRect(0, 0, S, S);
-  speckle(x, S, S, 14000, ['#2a2422', '#141110', '#332b28'], [1, 4]);
-  drawCracks(x, S, 'rgba(10,6,5,0.9)', 3);
-  return finish(c);
-}
-let crackSeed = 0;
-function drawCracks(x: CanvasRenderingContext2D, S: number, style: string, width: number): void {
-  const saved = seed;
-  seed = 9001 + crackSeed;
-  x.strokeStyle = style;
-  x.lineWidth = width;
-  for (let i = 0; i < 26; i++) {
-    x.beginPath();
-    let px = rnd() * S,
-      py = rnd() * S;
-    x.moveTo(px, py);
-    for (let k = 0; k < 6; k++) {
-      px += (rnd() - 0.5) * 70;
-      py += (rnd() - 0.5) * 70;
-      x.lineTo(px, py);
-    }
-    x.stroke();
+  speckle(x, S, S, 6000, ['#2a2422', '#141110', '#332b28'], [1, 3]);
+  const img = x.getImageData(0, 0, S, S);
+  const f = cracks(S);
+  for (let i = 0; i < S * S; i++) {
+    const k = 1 - Math.min(1, f[i]! * 1.6);
+    img.data[i * 4] = img.data[i * 4]! * k + 60 * (1 - k);
+    img.data[i * 4 + 1] = img.data[i * 4 + 1]! * k + 14 * (1 - k);
+    img.data[i * 4 + 2] = img.data[i * 4 + 2]! * k + 6 * (1 - k);
   }
-  seed = saved;
+  x.putImageData(img, 0, 0);
+  return finish(c);
 }
 /** Glowing lava in the cracks of the volcanic road. */
 export function volcanicGlow(): THREE.CanvasTexture {
-  const S = 512;
+  const S = 256;
   const [c, x] = canvas(S);
-  x.fillStyle = '#000';
+  const img = x.createImageData(S, S);
+  const f = cracks(S);
+  for (let i = 0; i < S * S; i++) {
+    const v = f[i]!;
+    img.data[i * 4] = Math.min(255, 255 * v * 1.4);
+    img.data[i * 4 + 1] = Math.min(255, 255 * v * v * 0.75);
+    img.data[i * 4 + 2] = Math.min(255, 255 * v ** 4 * 0.3);
+    img.data[i * 4 + 3] = 255;
+  }
+  x.putImageData(img, 0, 0);
+  return finish(c);
+}
+
+/** Dead Marshes boardwalk: wet, warped planks laid across the way, with gaps between. */
+export function boardwalk(): THREE.CanvasTexture {
+  const S = 256;
+  const [c, x] = canvas(S);
+  x.fillStyle = '#16140e';
   x.fillRect(0, 0, S, S);
-  drawCracks(x, S, '#ff5a14', 3);
-  x.filter = 'blur(2px)';
-  drawCracks(x, S, 'rgba(255,140,40,0.6)', 6);
+  for (let i = 0; i < 8; i++) {
+    const y0 = i * 32 + 2 + Math.floor(rnd() * 3);
+    const h = 26 + Math.floor(rnd() * 3);
+    const v = 70 + Math.floor(rnd() * 40);
+    x.fillStyle = `rgb(${v},${Math.floor(v * 0.78)},${Math.floor(v * 0.55)})`;
+    x.fillRect(0, y0, S, h);
+    for (let k = 0; k < 14; k++) {
+      x.strokeStyle = `rgba(25,18,10,${0.2 + rnd() * 0.25})`;
+      x.beginPath();
+      const py = y0 + 2 + rnd() * (h - 4);
+      x.moveTo(0, py);
+      x.bezierCurveTo(S * 0.3, py + (rnd() - 0.5) * 4, S * 0.7, py + (rnd() - 0.5) * 4, S, py);
+      x.stroke();
+    }
+    // Rotten, mossy patches and the odd split.
+    for (let k = 0; k < 3; k++) {
+      x.fillStyle = rnd() > 0.5 ? 'rgba(60,80,40,0.35)' : 'rgba(20,16,10,0.4)';
+      x.beginPath();
+      x.ellipse(rnd() * S, y0 + h / 2, 8 + rnd() * 24, h * 0.35, 0, 0, Math.PI * 2);
+      x.fill();
+    }
+    // Nails over the stringers.
+    x.fillStyle = '#2a2622';
+    for (const nx of [26, 30, 226, 230]) x.fillRect(nx, y0 + h / 2 - 1, 2, 2);
+  }
+  speckle(x, S, S, 2500, ['rgba(0,0,0,0.2)', 'rgba(140,150,120,0.1)'], [1, 2]);
   return finish(c);
 }
 

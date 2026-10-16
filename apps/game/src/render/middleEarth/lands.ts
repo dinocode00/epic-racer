@@ -37,13 +37,10 @@ const facingRoad = (ctx: DressContext, s: number, lat: number) => {
 
 function weathertop(ctx: DressContext): Hook {
   const F = features(ctx.track);
-  const r = ruins();
-  r.scale.setScalar(0.85);
-  r.position.set(
-    F.weathertopKnoll.x,
-    ctx.terrain.height(F.weathertopKnoll.x, F.weathertopKnoll.z) - 0.4,
-    F.weathertopKnoll.z,
-  );
+  const { x, z } = F.weathertopKnoll;
+  const y0 = ctx.terrain.height(x, z);
+  const r = ruins(8, (dx, dz) => ctx.terrain.height(x + dx, z + dz) - y0);
+  r.position.set(x, y0 - 0.2, z);
   ctx.scene.add(r);
   return () => {};
 }
@@ -96,18 +93,20 @@ function rivendell(ctx: DressContext): Hook {
   const { track, scene } = ctx;
   const m = track.def.marks ?? {};
   const s0 = m.rivendellBridge ?? 1096;
-  const spots: [number, number, number][] = [
-    [-25, -42, 10],
-    [10, -55, 30],
-    [60, 46, 18],
-    [120, -40, 6],
-    [170, 38, 0],
-    [200, -45, -4],
+  // Pavilions on the gorge rims either side of the bridge, and one at each end.
+  const spots: [number, number][] = [
+    [-30, -26],
+    [-12, 30],
+    [160, -28],
+    [178, 27],
+    [-50, 24],
+    [205, -30],
   ];
-  for (const [ds, lat, up] of spots) {
+  for (const [ds, lat] of spots) {
     const p = at(ctx, s0 + ds, lat);
     const pv = pavilion();
-    pv.position.copy(p).add(V(0, up * 0.2, 0));
+    pv.scale.setScalar(1.35);
+    pv.position.copy(p).add(V(0, -0.5, 0));
     scene.add(pv);
   }
   // Waterfalls pouring into the gorge on both sides of the bridge.
@@ -178,96 +177,117 @@ function lorien(ctx: DressContext): Hook {
 
 // ---------------------------------------------------------------- the Argonath
 
-/** One of the Pillars of the Kings: 45 m, left hand raised in warning, axe in the right. */
+/**
+ * One of the Pillars of the Kings (≈60 m with plinth), facing +z: left hand raised palm-out
+ * in warning, the right gripping a great axe. Both kings are carved alike.
+ */
 function king(): THREE.Group {
   const g = new THREE.Group();
   const stone = new THREE.MeshStandardMaterial({ map: tex.rock('#8a877e'), roughness: 1 });
-  const S = 1;
-  const plinth = new THREE.Mesh(new THREE.BoxGeometry(16, 10, 14), stone);
-  plinth.position.y = 5;
-  g.add(plinth);
-  const robe = new THREE.Mesh(
+  stone.map!.repeat.set(2, 3);
+  const add = (geo: THREE.BufferGeometry, x = 0, y = 0, z = 0) => {
+    const m = new THREE.Mesh(geo, stone);
+    m.position.set(x, y, z);
+    g.add(m);
+    return m;
+  };
+  // Weathered plinth rising out of the river.
+  add(new THREE.BoxGeometry(17, 14, 15), 0, 7);
+  add(new THREE.BoxGeometry(15, 2, 13), 0, 15);
+  // Robed body (folds), belt, chest.
+  add(
     foldedLathe(
       [
-        [6.5, 10],
-        [5.6, 18],
-        [4.6, 28],
-        [5.2, 33],
-        [3, 36],
+        [6.8, 16],
+        [6.0, 24],
+        [5.2, 31],
+        [5.0, 34],
+        [5.8, 40],
+        [5.4, 44],
+        [3.2, 46.5],
       ],
       14,
-      0.07,
+      0.08,
       32,
     ),
-    stone,
   );
-  g.add(robe);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(2.6 * S, 18, 14), stone);
-  head.position.y = 39;
+  add(new THREE.CylinderGeometry(5.3, 5.3, 1.2, 24), 0, 33.2);
+  // Shoulders.
+  for (const sx of [-1, 1]) add(new THREE.SphereGeometry(2.6, 14, 10), sx * 5.2, 44.2);
+  // Head: face, beard, crowned helm with cheek guards.
+  const head = add(new THREE.SphereGeometry(2.7, 18, 14), 0, 49.5, 0.2);
   head.scale.set(0.9, 1.15, 1);
-  g.add(head);
-  // Crowned helm with cheek guards.
-  const helm = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.9, 3.4, 18, 1, true), stone);
-  helm.position.y = 40.8;
-  const crest = new THREE.Mesh(new THREE.ConeGeometry(2.6, 4.5, 18), stone);
-  crest.position.y = 44.6;
-  g.add(helm, crest);
-  for (let k = 0; k < 5; k++) {
-    const spike = new THREE.Mesh(new THREE.ConeGeometry(0.4, 2.4, 6), stone);
-    const a = Math.PI * 0.2 + (k / 4) * Math.PI * 0.6;
-    spike.position.set(Math.cos(a) * 2.4, 43.5, -Math.sin(a) * 2.4);
-    g.add(spike);
+  add(new THREE.ConeGeometry(2.0, 4.2, 12), 0, 46.6, 1.4).rotation.x = Math.PI;
+  add(new THREE.BoxGeometry(1.0, 1.6, 0.9), 0, 49.6, 2.6); // nose
+  add(new THREE.BoxGeometry(3.6, 0.5, 0.8), 0, 50.5, 2.4); // brow
+  add(new THREE.CylinderGeometry(2.8, 3.0, 3.8, 18, 1, true), 0, 51.6);
+  add(new THREE.ConeGeometry(2.8, 5.5, 18), 0, 56.1);
+  for (const sx of [-1, 1]) add(new THREE.BoxGeometry(0.6, 3.4, 2.6), sx * 2.6, 49.4, 0.8);
+  for (let k = 0; k < 7; k++) {
+    const a = Math.PI * 0.15 + (k / 6) * Math.PI * 0.7;
+    const spike = add(
+      new THREE.ConeGeometry(0.45, 3.0, 6),
+      Math.cos(a) * 2.7,
+      54.4,
+      Math.sin(a) * 2.7,
+    );
+    spike.rotation.set(Math.sin(a) * 0.25, 0, -Math.cos(a) * 0.25);
   }
-  // Left arm raised high, palm out.
-  g.add(
-    new THREE.Mesh(
-      tube(
-        new THREE.CatmullRomCurve3([
-          V(-4, 33, 0),
-          V(-6.5, 38, -1.5),
-          V(-7, 46, -2.5),
-          V(-7, 51, -3),
-        ]),
-        [
-          { t: 0, w: 1.7, h: 1.7 },
-          { t: 0.5, w: 1.3, h: 1.3 },
-          { t: 1, w: 1.1, h: 1.1 },
-        ],
-        16,
-        10,
-        V(0, 0, -1),
-      ),
-      stone,
+  // Left arm (+x when facing +z) raised up and forward, palm out toward travellers.
+  add(
+    tube(
+      new THREE.CatmullRomCurve3([
+        V(5.4, 44, 0),
+        V(7.4, 48, 1.8),
+        V(8.2, 54, 3.2),
+        V(8.4, 59, 3.8),
+      ]),
+      [
+        { t: 0, w: 2.3, h: 2.3 },
+        { t: 0.45, w: 1.8, h: 1.8 },
+        { t: 1, w: 1.3, h: 1.3 },
+      ],
+      16,
+      10,
+      V(0, 0, 1),
     ),
   );
-  const palm = new THREE.Mesh(new THREE.BoxGeometry(2.6, 3.4, 0.8), stone);
-  palm.position.set(-7, 53, -3.2);
-  g.add(palm);
-  // Right arm down, holding the great axe.
-  g.add(
-    new THREE.Mesh(
-      tube(
-        new THREE.CatmullRomCurve3([V(4, 33, 0), V(6, 27, -1), V(6.4, 21, -2)]),
-        [
-          { t: 0, w: 1.6, h: 1.6 },
-          { t: 1, w: 1.1, h: 1.1 },
-        ],
-        12,
-        10,
-        V(0, 0, -1),
-      ),
-      stone,
+  add(new THREE.BoxGeometry(3.0, 3.6, 0.9), 8.4, 61.2, 3.9);
+  for (let k = 0; k < 4; k++) add(new THREE.BoxGeometry(0.6, 2.4, 0.7), 7.3 + k * 0.72, 64.2, 3.9);
+  add(new THREE.BoxGeometry(0.7, 2.0, 0.7), 10.3, 60.8, 3.9).rotation.z = -0.7; // thumb
+  // Right arm (-x) at the side, fist forward around the axe haft.
+  add(
+    tube(
+      new THREE.CatmullRomCurve3([V(-5.4, 44, 0), V(-7, 38, 0.8), V(-7.2, 32, 3.2)]),
+      [
+        { t: 0, w: 2.3, h: 2.3 },
+        { t: 1, w: 1.5, h: 1.5 },
+      ],
+      12,
+      10,
+      V(0, 0, 1),
     ),
   );
-  const haft = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 26, 8), stone);
-  haft.position.set(6.4, 21, -2.4);
-  const blade = new THREE.Mesh(
-    new THREE.CylinderGeometry(4, 4, 0.8, 16, 1, false, 0, Math.PI),
-    stone,
+  add(new THREE.SphereGeometry(1.4, 10, 8), -7.2, 31.5, 3.6);
+  add(new THREE.CylinderGeometry(0.55, 0.55, 30, 8), -7.2, 31, 3.8);
+  // Crescent axe head near the top of the haft.
+  const bladeShape = new THREE.Shape();
+  bladeShape.moveTo(0, -1.2);
+  bladeShape.quadraticCurveTo(3.5, -3.5, 4.6, -4.2);
+  bladeShape.quadraticCurveTo(3.4, 0, 4.6, 4.2);
+  bladeShape.quadraticCurveTo(3.5, 3.5, 0, 1.2);
+  bladeShape.closePath();
+  const blade = add(
+    new THREE.ExtrudeGeometry(bladeShape, { depth: 0.6, bevelEnabled: false }).translate(
+      0,
+      0,
+      -0.3,
+    ),
+    -7.2,
+    43,
+    3.8,
   );
-  blade.rotation.z = Math.PI / 2;
-  blade.position.set(6.4, 33, -2.4);
-  g.add(haft, blade);
+  blade.rotation.y = Math.PI / 2;
   g.traverse((o) => {
     o.castShadow = true;
     o.receiveShadow = true;
@@ -283,24 +303,24 @@ function argonath(ctx: DressContext): Hook {
   ];
   const mid = (g0 + g1) / 2;
   const f = track.frameAtS(mid);
-  for (const side of [-1, 1]) {
-    const k = king();
-    const p = tv(off(f, side * 34, 0));
-    k.position.set(p.x, ctx.terrain.height(p.x, p.z) - 22, p.z);
-    // Face upriver (toward the racers' approach), left hand raised.
-    k.rotation.y = Math.atan2(-f.tan.x, -f.tan.z) + Math.PI;
-    if (side > 0) k.scale.x = -1;
-    scene.add(k);
-  }
   // The Anduin in its gorge.
   const pts = F.anduin.map(([x, z]) => V(x, ctx.terrain.height(x, z) + 3, z));
+  const water = pts[Math.floor(pts.length / 2)]!.y;
   const river = new THREE.Mesh(
     new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 40, 18, 8),
     new THREE.MeshStandardMaterial({ color: 0x4a7a8a, roughness: 0.08, metalness: 0.4 }),
   );
   river.scale.y = 0.1;
-  river.position.y = pts[Math.floor(pts.length / 2)]!.y * 0.9;
+  river.position.y = water * 0.9;
   scene.add(river);
+  // The kings stand in the river either side of the jump, facing the racers' approach.
+  for (const side of [-1, 1]) {
+    const k = king();
+    const p = tv(off(f, side * 27, 0));
+    k.position.set(p.x, water - 4, p.z);
+    k.rotation.y = Math.atan2(-f.tan.x, -f.tan.z);
+    scene.add(k);
+  }
   return () => {};
 }
 
@@ -316,9 +336,32 @@ function rohan(ctx: DressContext): Hook {
   const hall = new THREE.Group();
   const body = new THREE.Mesh(new THREE.BoxGeometry(12, 6, 26), wood);
   body.position.y = 3;
-  const roofGeo = new THREE.CylinderGeometry(0.01, 10, 7, 4, 1).rotateY(Math.PI / 4);
-  roofGeo.scale(0.95, 1, 2.0);
-  const roof = new THREE.Mesh(roofGeo, MAT.paint(0xd4a23a, 0.35, 0.8));
+  // Steep gabled roof running the length of the hall.
+  const gable = new THREE.Shape();
+  gable.moveTo(-8, 0);
+  gable.lineTo(0, 7.5);
+  gable.lineTo(8, 0);
+  gable.closePath();
+  const roofGeo = new THREE.ExtrudeGeometry(gable, { depth: 28, bevelEnabled: false }).translate(
+    0,
+    -3.5,
+    -14,
+  );
+  const gold = new THREE.MeshStandardMaterial({
+    color: 0xe0b040,
+    roughness: 0.4,
+    metalness: 0.35,
+    emissive: 0x3a2806,
+  });
+  const roof = new THREE.Mesh(roofGeo, gold);
+  // Gilded crossed gable horns at both ends.
+  for (const e of [-1, 1])
+    for (const sx of [-1, 1]) {
+      const horn = new THREE.Mesh(new THREE.BoxGeometry(0.5, 4, 0.5), gold);
+      horn.position.set(sx * 1.1, 14.3, e * 13.8);
+      horn.rotation.z = sx * 0.6;
+      hall.add(horn);
+    }
   roof.position.y = 9.5;
   hall.add(body, roof);
   hall.position.copy(c).add(V(0, -0.5, 0));
@@ -330,15 +373,19 @@ function rohan(ctx: DressContext): Hook {
     const x = c.x + Math.cos(a) * r,
       z = c.z + Math.sin(a) * r;
     const house = new THREE.Group();
-    const walls = new THREE.Mesh(new THREE.BoxGeometry(6, 3, 8), wood);
-    walls.position.y = 1.5;
+    // Tall walls sunk into the slope so no corner floats.
+    const walls = new THREE.Mesh(new THREE.BoxGeometry(6, 6, 8), wood);
+    walls.position.y = 0;
     const rf = new THREE.Mesh(
       new THREE.CylinderGeometry(0.01, 5.5, 4, 4, 1).rotateY(Math.PI / 4).scale(0.8, 1, 1.1),
       thatch,
     );
     rf.position.y = 5;
     house.add(walls, rf);
-    house.position.set(x, terrain.height(x, z) - 0.3, z);
+    const ground = Math.min(
+      ...[-5, 5].flatMap((dx) => [-5, 5].map((dz) => terrain.height(x + dx, z + dz))),
+    );
+    house.position.set(x, ground, z);
     house.rotation.y = -a;
     scene.add(house);
   }

@@ -29,7 +29,7 @@ const road = (r: Partial<RoadStyle> & Pick<RoadStyle, 'road' | 'barrier'>): Road
   roadRoughness: 0.95,
   underside: tex.rock,
   kerbs: false,
-  gantry: shireGantry,
+  gantry: (f) => shireGantry(f, 'HOBBITON'),
   ...r,
 });
 
@@ -208,7 +208,7 @@ export const LOOKS: Record<string, RegionLook> = {
       hemiIntensity: 0.9,
       env: 0.3,
     }),
-    road: road({ road: tex.planks, barrier: FENCE, underside: tex.mud, roadTile: 6 }),
+    road: road({ road: tex.boardwalk, barrier: FENCE, underside: tex.mud, roadTile: 6 }),
   },
 };
 
@@ -286,11 +286,16 @@ export interface Features {
   anduin: [number, number][];
   lavaRiver: [number, number][];
   moriaLine: [number, number][];
+  /** The halls' centre line, gate to gate. */
+  hallLine: [number, number][];
+  /** Roads leading up to both gates (kept open, no mountain). */
+  gateApproaches: [number, number][][];
   doom: { x: number; z: number };
   durinLake: [number, number][];
   minasMountain: { x: number; z: number };
   edorasHill: { x: number; z: number };
   weathertopKnoll: { x: number; z: number };
+  bagEndHill: { x: number; z: number };
 }
 
 const featureCache = new WeakMap<Track, Features>();
@@ -317,6 +322,25 @@ export function features(track: Track): Features {
     anduin: crossing(track, midGap('anduinJump'), 420),
     lavaRiver: crossing(track, midGap('lavaJump'), 300),
     moriaLine,
+    hallLine: (() => {
+      const out: [number, number][] = [];
+      for (const [a, b] of track.def.tunnels ?? [])
+        for (let s = a; s <= b; s += 6) {
+          const p = track.frameAtS(s).pos;
+          out.push([p.x, p.z]);
+        }
+      return out;
+    })(),
+    gateApproaches: (track.def.tunnels ?? []).flatMap(([a, b]) => [
+      [0, 20, 40, 60, 80, 100].map((d) => {
+        const p = track.frameAtS(a - d).pos;
+        return [p.x, p.z] as [number, number];
+      }),
+      [0, 20, 40, 60, 80, 100].map((d) => {
+        const p = track.frameAtS(b + d).pos;
+        return [p.x, p.z] as [number, number];
+      }),
+    ]),
     doom: at('mountDoom', -260, 40),
     durinLake: [0, 25, 50, 70].map((a) => {
       const p = at('doorsOfDurin', -38, a - 15);
@@ -325,9 +349,33 @@ export function features(track: Track): Features {
     minasMountain: at('greatGate', 230, 40),
     edorasHill: at('edoras', -95, 40),
     weathertopKnoll: at('weathertopSummit', 20, 10),
+    bagEndHill: at('bagEnd', 34, 18),
   };
   featureCache.set(track, f);
   return f;
+}
+
+/** Distance to a polyline, but only where the foot of the perpendicular lies between its ends. */
+/** Distance to a densely sampled polyline, or Infinity beyond either end of it. */
+function distInside(x: number, z: number, pts: [number, number][]): number {
+  let k = 0,
+    bd = Infinity;
+  pts.forEach(([px, pz], i) => {
+    const d = Math.hypot(x - px, z - pz);
+    if (d < bd) {
+      bd = d;
+      k = i;
+    }
+  });
+  const n = pts.length;
+  const beyond = (a: number, b: number) => {
+    const [ax, az] = pts[a]!,
+      [bx, bz] = pts[b]!;
+    return (x - ax) * (bx - ax) + (z - az) * (bz - az) < 0;
+  };
+  if (k === 0 && n > 1 && beyond(0, 1)) return Infinity;
+  if (k === n - 1 && n > 1 && beyond(n - 1, n - 2)) return Infinity;
+  return bd;
 }
 
 function distTo(x: number, z: number, pts: [number, number][]): number {
@@ -405,11 +453,18 @@ function terrainOpts(track: Track): TerrainOpts {
     wild: (x, z, s, d) => {
       let h = 0;
       for (const [id, w] of regionWeights(track, s)) h += w * regionWild(id, x, z, d);
-      // The Misty Mountains over Moria.
+      // The Misty Mountains over Moria, kept back from the roads up to both gates.
       const dm = F.moriaLine.length ? distTo(x, z, F.moriaLine) : 1e9;
-      // Peaks right over the halls, falling away to the foothills ~450 m out.
-      if (dm < 520)
-        h = Math.max(h, (60 + 190 * (0.55 + 0.45 * ridged(x, z))) * (1 - smooth(dm, 90, 500)));
+      if (dm < 520) {
+        const open = Math.min(...F.gateApproaches.map((ap) => distTo(x, z, ap)));
+        const mountain =
+          (60 + 190 * (0.55 + 0.45 * ridged(x, z))) *
+          (1 - smooth(dm, 90, 500)) *
+          smooth(open, 25, 140) *
+          // Outside Moria the range stands back, so Lórien and Rivendell stay open.
+          (regionAt(track, s) === 'moria' ? 1 : smooth(d, 120, 420));
+        h = Math.max(h, mountain);
+      }
       // Mount Doom: a lone cone with a crater.
       const rd = Math.hypot(x - F.doom.x, z - F.doom.z);
       if (rd < 230)
@@ -419,9 +474,13 @@ function terrainOpts(track: Track): TerrainOpts {
       if (rm < 260) h = Math.max(h, 170 * Math.pow(1 - rm / 260, 1.1));
       return h;
     },
+    // Solid rock above Moria's halls, so no hillside pokes into them.
+    post: (x, z, h) =>
+      F.hallLine.length && distInside(x, z, F.hallLine) < 50 ? Math.max(h, 55) : h,
     mounds: [
       { x: F.edorasHill.x, z: F.edorasHill.z, r: 60, h: 24 },
       { x: F.weathertopKnoll.x, z: F.weathertopKnoll.z, r: 11, h: 9 },
+      { x: F.bagEndHill.x, z: F.bagEndHill.z, r: 20, h: 9 },
     ],
     carves: [
       { pts: F.rivendellGorge, width: 28, depth: 48 },

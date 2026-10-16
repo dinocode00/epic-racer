@@ -192,7 +192,7 @@ export const MIDDLE_EARTH = (() => {
   b.turn(35, 100, 6);
   b.mark('oliphaunts');
   for (let i = 0; i < 3; i++)
-    b.hazard(40 + i * 55, {
+    b.hazard(20 + i * 42, {
       kind: 'oliphaunt',
       lat: 0,
       r: 3.6,

@@ -62,6 +62,8 @@ export interface TerrainOpts {
    * road point (-1 if none nearby), distance to the road edge and the default shape.
    */
   wild?: (x: number, z: number, s: number, d: number, base: number) => number;
+  /** Last word on the height (after road blending, mounds and carves). */
+  post?: (x: number, z: number, h: number) => number;
 }
 
 function distToPolyline(x: number, z: number, pts: [number, number][]): number {
@@ -189,7 +191,7 @@ export class Terrain {
       const dc = distToPolyline(x, z, c.pts);
       h -= c.depth * (1 - smooth(dc, c.width * 0.5, c.width * 1.8));
     }
-    return h;
+    return o.post ? o.post(x, z, h) : h;
   }
 }
 

@@ -294,7 +294,7 @@ export function bunting(a: THREE.Vector3, b: THREE.Vector3, sag = 1.2): THREE.Gr
 
 // ---------------------------------------------------------------- start arch
 
-export function shireGantry(f: Frame): THREE.Group {
+export function shireGantry(f: Frame, title = 'SHIRE DOWNS'): THREE.Group {
   const g = new THREE.Group();
   const m = mats();
   const hw = f.width / 2 + 1.4;
@@ -324,7 +324,7 @@ export function shireGantry(f: Frame): THREE.Group {
       x.font = 'bold 58px Georgia, serif';
       x.textAlign = 'center';
       x.textBaseline = 'middle';
-      x.fillText('SHIRE DOWNS', w / 2, h / 2 + 2);
+      x.fillText(title, w / 2, h / 2 + 2);
     },
     512,
     96,
@@ -525,18 +525,25 @@ export function towerCentre(track: Track): THREE.Vector3 {
   return tv(off(f, 42, 0));
 }
 
-export function ruins(): THREE.Group {
+/**
+ * A ruined ring of stones. `rise(x, z)` gives the ground height relative to the ring's
+ * centre at a local offset, so every stone sits on the ground beneath it.
+ */
+export function ruins(R = 11, rise: (x: number, z: number) => number = () => 0): THREE.Group {
   const g = new THREE.Group();
   const m = mats();
   const blocks: THREE.BufferGeometry[] = [];
-  const R = 11;
   for (let i = 0; i < 14; i++) {
     const a = (i / 14) * Math.PI * 2;
     if (i % 5 === 3) continue; // gaps in the ring
     const h = 1.5 + ((i * 7) % 5) * 1.3 + (i % 4 === 0 ? 4 : 0);
     const b = new THREE.BoxGeometry(2.4, h, 1.6);
     b.rotateY(-a);
-    b.translate(Math.cos(a) * R, h / 2 - 0.3, Math.sin(a) * R);
+    b.translate(
+      Math.cos(a) * R,
+      h / 2 - 0.6 + rise(Math.cos(a) * R, Math.sin(a) * R),
+      Math.sin(a) * R,
+    );
     blocks.push(b);
   }
   // Fallen stones.
@@ -546,12 +553,12 @@ export function ruins(): THREE.Group {
     const b = new THREE.BoxGeometry(1 + tex.rnd(), 0.7 + tex.rnd() * 0.5, 0.8 + tex.rnd());
     b.rotateY(tex.rnd() * 3);
     b.rotateZ((tex.rnd() - 0.5) * 0.6);
-    b.translate(Math.cos(a) * r, 0.2, Math.sin(a) * r);
+    b.translate(Math.cos(a) * r, 0.1 + rise(Math.cos(a) * r, Math.sin(a) * r), Math.sin(a) * r);
     blocks.push(b);
   }
   // A broken arch.
   const arch = new THREE.TorusGeometry(2.4, 0.6, 6, 12, Math.PI * 0.75);
-  arch.translate(R - 0.5, 6.6, 0);
+  arch.translate(R - 0.5, 6.6 + rise(R - 0.5, 0), 0);
   blocks.push(arch.toNonIndexed());
   const mesh = new THREE.Mesh(
     mergeGeometries(blocks.map((b) => (b.index ? b.toNonIndexed() : b)))!,

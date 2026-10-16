@@ -220,13 +220,13 @@ export function dressHobbiton(ctx: DressContext): (t: number, dt: number) => voi
   {
     const s = marks.bagEnd ?? 130;
     const bag = hobbitHole(0); // green door
-    bag.scale.setScalar(1.5);
-    place(bag, s + 14, 15);
+    bag.scale.setScalar(2.1);
+    place(bag, s + 18, 15.5);
     const gate = sign(['No admittance', 'except on', 'party business'], 1.8, 1.1);
     place(gate, s + 8, 11);
     const oak = partyTree();
-    oak.scale.setScalar(0.45);
-    place(oak, s + 30, 30, false);
+    oak.scale.setScalar(0.4);
+    place(oak, s + 20, 36, false);
   }
 
   // ---------------- Hobbit holes along Gandalf's lane, with gardens.
