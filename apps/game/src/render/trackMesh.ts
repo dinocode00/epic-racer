@@ -98,9 +98,9 @@ export function buildTrackMesh(track: Track): THREE.Group {
 
   // --- Underside and embankment skirts ---
   const concrete = new THREE.MeshStandardMaterial({
-    color: 0x8d8a82,
-    roughness: 1,
-    map: tex.dirt(),
+    color: 0xd8d6d0,
+    roughness: 0.95,
+    map: tex.concrete(),
   });
   const under = new THREE.Mesh(
     sweep(track, 0, L, step, 10, (f) => {

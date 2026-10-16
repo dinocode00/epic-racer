@@ -211,6 +211,10 @@ export class RaceSession {
         h,
         camera: c.camera,
         before: () => {
+          // Hide other karts that would sit on top of this camera and block the view.
+          this.views.forEach(
+            (v) => (v.root.visible = v === kv || v.pos.distanceTo(c.camera.position) > 4.5),
+          );
           this.world.focusSun(kv.pos);
           fx.setViewportHeight(
             h * window.innerHeight * this.view.renderer.getPixelRatio(),
@@ -228,7 +232,10 @@ export class RaceSession {
         w,
         h,
         camera: sc.camera,
-        before: () => this.world.focusSun(sc.camera.position),
+        before: () => {
+          this.views.forEach((v) => (v.root.visible = true));
+          this.world.focusSun(sc.camera.position);
+        },
       });
     }
     this.view.render(this.world.scene, vps);

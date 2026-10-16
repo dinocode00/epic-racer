@@ -4,7 +4,7 @@ import {
   MAT,
   type VehicleModel,
   curve,
-  driver,
+  pilot,
   loftBody,
   shadowAll,
   sideProfile,
@@ -159,10 +159,9 @@ function batmobile(accent: number): VehicleModel {
       wheels.push(w);
     }
   }
-  const pilot = driver(0x111111, 0x334455);
-  pilot.position.set(0, 1.1, 0.45);
-  pilot.scale.setScalar(0.85);
-  body.add(pilot);
+  const batman = pilot('bat');
+  batman.position.set(0, 1.12, 0.55);
+  body.add(batman);
 
   shadowAll(body);
   root.add(body);
@@ -298,9 +297,9 @@ function mach5(accent: number): VehicleModel {
       wheels.push(w);
     }
   }
-  const pilot = driver(0xf3f3f0, 0x1a2a44);
-  pilot.position.set(0, 1.0, 0.3);
-  body.add(pilot);
+  const racer = pilot('speed');
+  racer.position.set(0, 1.12, 0.4);
+  body.add(racer);
 
   shadowAll(body);
   root.add(body);
@@ -331,7 +330,11 @@ function podEngine(color: number, accent: number): THREE.Group {
   ].map(([r, y]) => new THREE.Vector2(r, y));
   const geo = new THREE.LatheGeometry(pts, 28);
   geo.rotateX(-Math.PI / 2); // +y (intake) -> -z (forward)
-  const shell = new THREE.Mesh(geo, MAT.paint(color, 0.35, 0.45));
+  const shellMat = MAT.paint(color, 0.4, 0.45);
+  shellMat.bumpMap = tex.panelBump();
+  shellMat.bumpMap.repeat.set(4, 2);
+  shellMat.bumpScale = 1.5;
+  const shell = new THREE.Mesh(geo, shellMat);
   g.add(shell);
   // Intake mouth and blades.
   const mouth = new THREE.Mesh(new THREE.CircleGeometry(0.33, 24), MAT.paint(0x0b0b0b, 0.8, 0.2));
@@ -442,10 +445,10 @@ function podracer(accent: number): VehicleModel {
       body.add(cable);
     }
   }
-  const pilot = driver(0x8a6a3a, 0x6b4a2a);
-  pilot.position.set(0, H + 0.5, 2.0);
-  pilot.scale.setScalar(0.7);
-  body.add(pilot);
+  const ani = pilot('pod');
+  ani.position.set(0, H + 0.52, 2.0);
+  ani.scale.setScalar(0.72);
+  body.add(ani);
 
   shadowAll(body);
   binder.castShadow = false;

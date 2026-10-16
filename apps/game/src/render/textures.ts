@@ -239,3 +239,133 @@ export function softDot(): THREE.CanvasTexture {
   x.fillRect(0, 0, 64, 64);
   return finish(c, false);
 }
+
+/** Grey-scale detail maps for bumpMap / roughnessMap (not colour). */
+function detail(
+  w: number,
+  h: number,
+  draw: (x: CanvasRenderingContext2D) => void,
+): THREE.CanvasTexture {
+  const [c, x] = canvas(w, h);
+  x.fillStyle = '#808080';
+  x.fillRect(0, 0, w, h);
+  draw(x);
+  return finish(c, true, false);
+}
+
+/** Woven, worn fabric. */
+export function fabricBump(): THREE.CanvasTexture {
+  return detail(256, 256, (x) => {
+    for (let y = 0; y < 256; y += 2) {
+      x.fillStyle = y % 4 ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.10)';
+      x.fillRect(0, y, 256, 1);
+    }
+    for (let i = 0; i < 256; i += 2) {
+      x.fillStyle = i % 4 ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+      x.fillRect(i, 0, 1, 256);
+    }
+    // Long creases.
+    for (let i = 0; i < 26; i++) {
+      x.strokeStyle = rnd() > 0.5 ? 'rgba(0,0,0,0.35)' : 'rgba(255,255,255,0.25)';
+      x.lineWidth = 1 + rnd() * 3;
+      x.beginPath();
+      const px = rnd() * 256;
+      x.moveTo(px, 0);
+      x.bezierCurveTo(
+        px + (rnd() - 0.5) * 40,
+        90,
+        px + (rnd() - 0.5) * 40,
+        170,
+        px + (rnd() - 0.5) * 30,
+        256,
+      );
+      x.stroke();
+    }
+    speckle(x, 256, 256, 3000, ['rgba(0,0,0,0.2)', 'rgba(255,255,255,0.15)'], [1, 2]);
+  });
+}
+
+/** Short horse hair: fine streaks along v. */
+export function coatBump(): THREE.CanvasTexture {
+  return detail(256, 256, (x) => {
+    for (let i = 0; i < 5000; i++) {
+      x.strokeStyle = rnd() > 0.5 ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.22)';
+      const px = rnd() * 256,
+        py = rnd() * 256;
+      x.beginPath();
+      x.moveTo(px, py);
+      x.lineTo(px + (rnd() - 0.5) * 2, py + 6 + rnd() * 10);
+      x.stroke();
+    }
+  });
+}
+
+/** Brushed, scratched steel. */
+export function steelBump(): THREE.CanvasTexture {
+  return detail(256, 256, (x) => {
+    for (let i = 0; i < 600; i++) {
+      x.strokeStyle = `rgba(${rnd() > 0.5 ? '255,255,255' : '0,0,0'},${0.05 + rnd() * 0.12})`;
+      const py = rnd() * 256;
+      x.beginPath();
+      x.moveTo(0, py);
+      x.lineTo(256, py + (rnd() - 0.5) * 6);
+      x.stroke();
+    }
+    for (let i = 0; i < 60; i++) {
+      x.strokeStyle = 'rgba(0,0,0,0.5)';
+      const px = rnd() * 256,
+        py = rnd() * 256;
+      x.beginPath();
+      x.moveTo(px, py);
+      x.lineTo(px + (rnd() - 0.5) * 30, py + (rnd() - 0.5) * 30);
+      x.stroke();
+    }
+  });
+}
+
+/** Panel lines and rivets for machinery. */
+export function panelBump(): THREE.CanvasTexture {
+  return detail(256, 256, (x) => {
+    x.strokeStyle = 'rgba(0,0,0,0.75)';
+    x.lineWidth = 2;
+    for (const y of [0, 96, 176]) {
+      x.beginPath();
+      x.moveTo(0, y + 1);
+      x.lineTo(256, y + 1);
+      x.stroke();
+    }
+    for (const px of [0, 128]) {
+      x.beginPath();
+      x.moveTo(px + 1, 0);
+      x.lineTo(px + 1, 256);
+      x.stroke();
+    }
+    x.fillStyle = 'rgba(255,255,255,0.85)';
+    for (const y of [8, 104, 184])
+      for (let px = 8; px < 256; px += 16) {
+        x.beginPath();
+        x.arc(px, y, 2, 0, Math.PI * 2);
+        x.fill();
+      }
+    speckle(x, 256, 256, 1500, ['rgba(0,0,0,0.12)', 'rgba(255,255,255,0.1)'], [1, 3]);
+  });
+}
+
+/** Poured concrete with formwork seams, for track undersides and supports. */
+export function concrete(): THREE.CanvasTexture {
+  const [c, x] = canvas(256);
+  x.fillStyle = '#9a9890';
+  x.fillRect(0, 0, 256, 256);
+  speckle(x, 256, 256, 9000, ['#8f8d86', '#a5a39b', '#87857e', '#aeaca4'], [1, 3]);
+  x.fillStyle = 'rgba(0,0,0,0.25)';
+  x.fillRect(0, 126, 256, 3);
+  x.fillRect(126, 0, 3, 256);
+  for (let i = 0; i < 6; i++) {
+    const g = x.createLinearGradient(0, 0, 0, 256);
+    g.addColorStop(0, 'rgba(60,55,50,0)');
+    g.addColorStop(1, 'rgba(60,55,50,0.25)');
+    x.fillStyle = g;
+    x.fillRect(rnd() * 256, 0, 6 + rnd() * 18, 256);
+  }
+  return finish(c);
+}
