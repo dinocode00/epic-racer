@@ -115,13 +115,15 @@ export function dressMoria(ctx: DressContext): (t: number, dt: number) => void {
     scene.add(im);
   }
   // Glowing blue crystals scattered on the walls, for a cold underground light.
-  const crystalMat = MAT.glow(0x6aa8ff, 2.2);
+  const crystalMat = MAT.glow(0x5a98ff, 1.3);
   const crystals: THREE.Matrix4[] = [];
   for (let s = t0 + 10; s < t1 - 10; s += 7) {
     const f = track.frameAtS(s);
     const sec = section(s);
+    if (sec.floor > 1) continue; // no floor to grow from over the chasm
     for (const side of [-1, 1]) {
-      const p = P(f, side * (sec.half + 1.5), 3 + ((s * 7) % 11));
+      // Clusters at the foot of the walls, so none hang in mid-air.
+      const p = P(f, side * (sec.half - 1), 0.4 + ((s * 7) % 3));
       crystals.push(
         new THREE.Matrix4().compose(
           V(p.x, p.y, p.z),

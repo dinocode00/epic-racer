@@ -91,7 +91,14 @@ export class World {
       }),
     );
     if (theme.grandstand) s.add(buildGrandstand(track));
-    if (theme.clouds) s.add(buildClouds(this.terrain));
+    if (theme.clouds) {
+      const clouds = buildClouds(this.terrain);
+      clouds.traverse((o) => {
+        if ((o as THREE.Mesh).isMesh)
+          this.cloudMat = (o as THREE.Mesh).material as THREE.MeshStandardMaterial;
+      });
+      s.add(clouds);
+    }
     if (theme.dress) {
       const props = new THREE.Group();
       this.animate = theme.dress({ scene: props, track, terrain: this.terrain }) ?? undefined;
@@ -135,6 +142,8 @@ export class World {
   }
 
   /** Apply sky, fog and light for the camera about to render. */
+  private cloudMat?: THREE.MeshStandardMaterial;
+
   applyAtmosphere(a: Atmosphere | null): void {
     if (!a || a === this.current) return;
     this.current = a;
@@ -151,6 +160,12 @@ export class World {
     this.hemi.groundColor.setHex(a.hemiGround);
     this.hemi.intensity = a.hemiIntensity;
     this.scene.environmentIntensity = a.env;
+    // Clouds take on the sky's mood: white over the Shire, ash-red over Mordor.
+    if (this.cloudMat) {
+      const h = new THREE.Color(a.skyHorizon);
+      this.cloudMat.color.setHex(0xffffff).lerp(h, 0.45);
+      this.cloudMat.emissive.setHex(0xc9d6e6).lerp(h, 0.7);
+    }
   }
 
   /** Per-frame animation of props (mill wheels, water...). */

@@ -205,10 +205,10 @@ export function dressPelennor(ctx: DressContext): (t: number, dt: number) => voi
     for (let i = 0; i < 4; i++) {
       const f = track.frameAtS(s0 + 20 + i * 45);
       const p = off(f, -50 - (i % 2) * 25, 0);
-      const tower = new THREE.Mesh(new THREE.BoxGeometry(7, 24, 7).translate(0, 12, 0), wood);
+      const tower = siegeTower(wood);
       tower.position.set(p.x, terrain.height(p.x, p.z), p.z);
-      tower.rotation.y = i;
-      tower.castShadow = true;
+      // Rolling toward the city walls, broadly the way the racers are going.
+      tower.rotation.y = Math.atan2(f.tan.x, f.tan.z) + (i - 1.5) * 0.25;
       scene.add(tower);
     }
     // Orc host: a dark mass of instanced figures in blocks.
@@ -261,4 +261,55 @@ export function dressPelennor(ctx: DressContext): (t: number, dt: number) => voi
   }
 
   return (t, dt) => animated.forEach((a) => a(t, dt));
+}
+
+/** An orc siege tower: tapering timber frame, hide-hung sides, wheels and a raised drawbridge. */
+function siegeTower(wood: THREE.Material): THREE.Group {
+  const g = new THREE.Group();
+  const hide = MAT.paint(0x3a2c22, 0.95, 0);
+  const iron = MAT.paint(0x2a2826, 0.6, 0.6);
+  const H = 26;
+  const box = (w: number, h: number, d: number, x: number, y: number, z: number, m = wood) => {
+    const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
+    b.position.set(x, y, z);
+    b.castShadow = true;
+    g.add(b);
+    return b;
+  };
+  // Corner posts leaning in toward the top.
+  for (const sx of [-1, 1])
+    for (const sz of [-1, 1]) {
+      const post = box(0.7, H, 0.7, sx * 3.4, H / 2, sz * 3.4);
+      post.rotation.set(sz * 0.05, 0, -sx * 0.05);
+    }
+  // Floors and cross-bracing every few metres.
+  for (let k = 1; k <= 4; k++) {
+    const y = k * (H / 4.4);
+    const w = 7.4 - k * 0.45;
+    box(w, 0.4, w, 0, y, 0);
+    const brace = box(0.3, 7, 0.3, 0, y - 2.6, -w / 2);
+    brace.rotation.z = 0.9;
+  }
+  // Hide hung on the back and sides; the front stays open behind the bridge.
+  box(6.6, H * 0.85, 0.2, 0, H * 0.48, -3.3, hide);
+  for (const sx of [-1, 1]) box(0.2, H * 0.85, 6.6, sx * 3.3, H * 0.48, 0, hide);
+  // Drawbridge raised at the top, chains to the frame.
+  const bridge = box(4.6, 6.5, 0.4, 0, H - 2.4, 3.6);
+  bridge.rotation.x = -0.25;
+  for (const sx of [-1, 1]) {
+    const chain = box(0.12, 4.5, 0.12, sx * 2, H + 0.4, 2.2, iron);
+    chain.rotation.x = 0.9;
+  }
+  // Iron spikes on top.
+  for (const sx of [-1, 1])
+    for (const sz of [-1, 1]) box(0.25, 2.5, 0.25, sx * 2.6, H + 1.2, sz * 2.6, iron);
+  // Huge solid wheels.
+  for (const sx of [-1, 1])
+    for (const sz of [-1, 1]) {
+      const w = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 0.6, 14), wood);
+      w.rotation.z = Math.PI / 2;
+      w.position.set(sx * 3.9, 1.5, sz * 2.6);
+      g.add(w);
+    }
+  return g;
 }

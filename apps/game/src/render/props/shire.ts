@@ -56,29 +56,26 @@ const DOOR_COLORS = [0x2f6b3a, 0xd9a83a, 0x2f5f9a, 0xa83a2f, 0x6a3a8a];
 export function hobbitHole(i: number): THREE.Group {
   const g = new THREE.Group();
   const m = mats();
-  // Curved stone face set into the hill (local +z faces the road).
+  // Gently curved stone facade set into the hill (local +z faces the road).
   const face = new THREE.Mesh(
-    new THREE.CylinderGeometry(4.2, 4.2, 3.2, 28, 1, true, -0.75, 1.5),
+    new THREE.CylinderGeometry(8, 8, 2.8, 20, 1, true, -0.38, 0.76),
     m.stone,
   );
-  face.position.set(0, 1.6, -3.2);
-  face.material = m.stone;
+  face.position.set(0, 1.4, -7);
+  (face.material as THREE.Material).side = THREE.DoubleSide;
   g.add(face);
-  const faceBack = new THREE.Mesh(
-    new THREE.CylinderGeometry(4.0, 4.0, 3.2, 28, 1, true, -0.75, 1.5),
-    m.stone,
-  );
-  faceBack.position.copy(face.position);
-  (faceBack.material as THREE.Material).side = THREE.DoubleSide;
-  g.add(faceBack);
-  // Turf cap over the face.
+  // The hillside the hole is dug into: its front meets the facade, turf rolls over the top.
   const cap = new THREE.Mesh(
-    new THREE.SphereGeometry(1, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2),
+    new THREE.SphereGeometry(1, 28, 14, 0, Math.PI * 2, 0, Math.PI / 2),
     m.turf,
   );
-  cap.scale.set(5.5, 2.2, 5.5);
-  cap.position.set(0, 3.0, -4.2);
+  cap.scale.set(7, 5.6, 3.8);
+  cap.position.set(0, -0.3, -3.0);
   g.add(cap);
+  const brow = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 12), m.turf);
+  brow.scale.set(3.7, 0.9, 1.2);
+  brow.position.set(0, 2.85, -0.05);
+  g.add(brow);
   // Round door with a brass knob, in a timber frame.
   const ring = new THREE.Mesh(new THREE.TorusGeometry(1.05, 0.14, 10, 32), m.wood);
   ring.position.set(0, 1.12, 1.0);
@@ -104,35 +101,35 @@ export function hobbitHole(i: number): THREE.Group {
   // Round windows either side.
   for (const s of [-1, 1]) {
     const wf = new THREE.Mesh(new THREE.TorusGeometry(0.45, 0.08, 8, 24), m.wood);
-    wf.position.set(s * 2.3, 1.5, 0.82 - Math.abs(s) * 0.3);
-    wf.rotation.y = -s * 0.5;
+    wf.position.set(s * 2.3, 1.5, 0.74);
+    wf.rotation.y = -s * 0.29;
     const pane = new THREE.Mesh(new THREE.CircleGeometry(0.42, 24), m.glass);
     pane.position.copy(wf.position);
-    pane.rotation.y = -s * 0.5;
+    pane.rotation.y = -s * 0.29;
     g.add(wf, pane);
     for (const r of [0, Math.PI / 2]) {
       const bar = new THREE.Mesh(new THREE.BoxGeometry(0.84, 0.04, 0.04), m.wood);
       bar.position.copy(wf.position);
-      bar.rotation.set(0, -s * 0.5, r);
+      bar.rotation.set(0, -s * 0.29, r);
       g.add(bar);
     }
     // Flower box.
     const box = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.2, 0.25), m.wood);
-    box.position.set(s * 2.3, 0.95, 0.95 - Math.abs(s) * 0.3);
-    box.rotation.y = -s * 0.5;
+    box.position.set(s * 2.3, 0.95, 0.86);
+    box.rotation.y = -s * 0.29;
     g.add(box);
     for (let k = 0; k < 6; k++) {
       const fl = new THREE.Mesh(
         new THREE.SphereGeometry(0.08, 6, 5),
         MAT.paint([0xe8433a, 0xf5c518, 0xf070b0, 0xffffff][(k + i) % 4]!, 0.8, 0),
       );
-      fl.position.set(s * 2.3 + (k - 2.5) * 0.14, 1.1, 0.95 - Math.abs(s) * 0.3);
+      fl.position.set(s * 2.3 + (k - 2.5) * 0.14, 1.1, 0.86);
       g.add(fl);
     }
   }
   // Chimney poking out of the turf.
   const chim = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.32, 1.6, 12), m.stone);
-  chim.position.set(1.6, 5.0, -4.5);
+  chim.position.set(1.8, 5.0, -3.4);
   g.add(chim);
   // Garden gate posts and a path.
   const path = new THREE.Mesh(new THREE.CircleGeometry(1.4, 16), MAT.paint(0x9c8a6a, 1, 0));
