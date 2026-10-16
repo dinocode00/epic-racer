@@ -260,11 +260,13 @@ export const MIDDLE_EARTH = (() => {
 
   // ------------------------------------------------------------ Dead Marshes
   b.region('deadMarshes').mark('deadMarshes').width(10).begin('open');
-  for (let i = 0; i < 4; i++)
-    b.hazard(15 + i * 22, { kind: 'mud', lat: i % 2 ? 2.5 : -2.5, r: 3, effect: 'slow' });
+  for (let i = 0; i < 3; i++)
+    b.hazard(12 + i * 20, { kind: 'mud', lat: i % 2 ? 2.5 : -2.5, r: 3, effect: 'slow' });
   b.turn(-20, 60);
-  b.turn(20, 60);
   b.end('open').width();
+  // Home to the party field: the starting grid sits in Hobbiton, not the marsh.
+  b.region('hobbiton');
+  b.turn(20, 60);
   b.closeLoop();
 
   return b.build({

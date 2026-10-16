@@ -24,9 +24,13 @@ export class KartView {
   private eagle: ReturnType<typeof greatEagle> | null = null;
   private airPitch = 0;
 
+  /** Bounding sphere of the model in kart-local space (long pods reach far ahead). */
+  private bounds = new THREE.Sphere();
+
   constructor(vehicleId: string, color: string) {
     this.model = buildVehicle(vehicleId, color);
     this.root.add(this.model);
+    new THREE.Box3().setFromObject(this.model).getBoundingSphere(this.bounds);
     for (const ex of this.model.userData.exhausts) {
       const f = flame();
       f.position.copy(ex);
@@ -34,6 +38,13 @@ export class KartView {
       this.model.userData.body.add(f);
       this.flames.push(f);
     }
+  }
+
+  /** True when any part of this kart would sit right on top of the given camera. */
+  crowds(cam: THREE.Vector3): boolean {
+    tmp.copy(this.bounds.center);
+    this.root.localToWorld(tmp);
+    return tmp.distanceTo(cam) < this.bounds.radius + 1.2;
   }
 
   update(k: KartState, steer: number, alpha: number, dt: number, fx: Effects): void {

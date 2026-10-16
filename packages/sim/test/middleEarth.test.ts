@@ -35,6 +35,7 @@ describe('Middle-earth', () => {
       'pelennor',
       'mordor',
       'deadMarshes',
+      'hobbiton', // back on the party field for the grid
     ]);
     for (const k of [
       'balrogWhip',

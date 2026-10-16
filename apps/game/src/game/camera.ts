@@ -9,6 +9,8 @@ export class ChaseCam {
   private look = new THREE.Vector3();
   private fov = 64;
   private init = false;
+  /** Ground height under a point (or -Infinity to skip), so the camera never sinks into a hill. */
+  groundAt?: (x: number, z: number) => number;
 
   update(v: KartView, speed: number, boosting: boolean, lookBack: boolean, dt: number): void {
     const dir = lookBack ? -1 : 1;
@@ -34,6 +36,8 @@ export class ChaseCam {
     // Never let the camera fall too far behind at high speed.
     const off = this.pos.clone().sub(v.pos);
     if (off.length() > dist * 1.6) this.pos.copy(v.pos).add(off.setLength(dist * 1.6));
+    const g = this.groundAt?.(this.pos.x, this.pos.z) ?? -Infinity;
+    if (this.pos.y < g + 1.2) this.pos.y = g + 1.2;
 
     this.camera.position.copy(this.pos);
     this.camera.up.copy(this.up);

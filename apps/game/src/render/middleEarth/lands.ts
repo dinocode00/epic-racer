@@ -477,7 +477,9 @@ function marshes(ctx: DressContext): Hook {
     x.ellipse(w / 2, h * 0.66, w * 0.08, h * 0.04, 0, 0, Math.PI * 2);
     x.fill();
   });
-  for (let s = s0 - 30; s < L + 10; s += 14) {
+  // Pools stop where Hobbiton's party field takes over again before the grid.
+  const s1 = (track.def.regions ?? []).find(([id, rs]) => id === 'hobbiton' && rs > s0)?.[1] ?? L;
+  for (let s = s0 - 30; s < s1 - 5; s += 14) {
     for (const side of [-1, 1]) {
       const f = track.frameAtS(s);
       const p = tv(off(f, side * (16 + ((s * 7) % 12)), 0));
@@ -490,7 +492,7 @@ function marshes(ctx: DressContext): Hook {
         new THREE.MeshBasicMaterial({ map: faceTex, transparent: true, depthWrite: false }),
       );
       face.rotation.x = -Math.PI / 2;
-      face.position.set(p.x + 2, f.pos.y - 0.75, p.z);
+      face.position.set(p.x + 2, f.pos.y - 0.55, p.z); // pale faces just under the surface sheen
       scene.add(face);
       const candle = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 6), MAT.glow(0xbfffd0, 2.5));
       candle.position.set(p.x - 2, f.pos.y + 0.2, p.z + 1);

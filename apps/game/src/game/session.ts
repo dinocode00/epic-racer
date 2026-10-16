@@ -117,6 +117,13 @@ export class RaceSession {
     this.world.scene.add(this.hazardViews.group);
     this.cams = this.humans.map(() => new ChaseCam());
     if (players.length === 3) this.spectator = new ChaseCam();
+    // Keep cameras out of hillsides on big jumps (not in tunnels, where rock sits overhead).
+    const tunnels = track.tunnels ?? [];
+    const underground = (s: number) => tunnels.some(([a, b]) => s >= a - 10 && s <= b + 10);
+    this.cams.forEach((c, i) => {
+      const k = this.race.karts[this.humans[i]!]!;
+      c.groundAt = (x, z) => (underground(k.s) ? -Infinity : this.world.terrain.height(x, z));
+    });
 
     this.hudRoot = document.getElementById('hud')!;
     this.hudRoot.innerHTML = '';
@@ -220,10 +227,7 @@ export class RaceSession {
         camera: c.camera,
         before: () => {
           // Hide other karts that would sit on top of this camera and block the view.
-          this.views.forEach(
-            (v) => (v.root.visible = v === kv || v.pos.distanceTo(c.camera.position) > 4.5),
-          );
-          this.world.applyAtmosphere(this.world.atmosphereAt(this.race.karts[this.humans[i]!]!.s));
+          this.views.forEach((v) => (v.root.visible = v === kv || !v.crowds(c.camera.position)));
           this.world.applyAtmosphere(this.world.atmosphereAt(this.race.karts[this.humans[i]!]!.s));
           this.world.focusSun(kv.pos);
           fx.setViewportHeight(
