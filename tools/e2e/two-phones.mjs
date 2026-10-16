@@ -12,7 +12,10 @@ const fail = (msg) => {
 
 const tv = await browser.newPage({ viewport: { width: 640, height: 360 } });
 tv.on('pageerror', (e) => fail('TV error ' + e.message));
-await tv.goto(BASE + '/', { waitUntil: 'domcontentloaded' });
+// The light proving ground keeps the software renderer from starving the phone pages.
+await tv.goto(BASE + '/?track=proving', { waitUntil: 'domcontentloaded' });
+// Wait for the lobby's QR code before the phones join.
+await tv.waitForSelector('.lobby .qr svg', { timeout: 300000 });
 
 const phones = [];
 for (const [name, ride] of [['Rex', 'nazgul'], ['Sam', 'pod']]) {
@@ -22,19 +25,27 @@ for (const [name, ride] of [['Rex', 'nazgul'], ['Sam', 'pod']]) {
   await p.goto(BASE + '/c/');
   await p.fill('#nm', name);
   await p.tap('#go');
-  await p.waitForSelector('.car');
+  await p.waitForSelector('.car', { timeout: 120000 });
   await p.tap(`.car[data-id="${ride}"]`);
   await p.tap('#ready');
   phones.push({ p, ctx });
 }
 await tv.waitForFunction(() => window.__epic?.session, null, { timeout: 120000 });
 for (const { p, ctx } of phones) {
-  await p.waitForSelector('.btn.gas');
+  // Poll on a timer: with the TV's software-rendered 3D hogging the GPU process, phone pages
+  // barely produce frames, so frame-based visibility waits stall.
+  await p.waitForFunction(() => !!document.querySelector('.btn.gas'), null, { polling: 500, timeout: 180000 });
   const cdp = await ctx.newCDPSession(p);
   const gas = await p.locator('.btn.gas').boundingBox();
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: gas.x + gas.width / 2, y: gas.y + gas.height / 2, id: 1 }] });
 }
 await tv.waitForTimeout(8000); // the software renderer in CI is slow to drain the socket
+// The TV must be receiving GAS from both phones (not autopilot covering for a silent phone).
+const held = await tv.evaluate(() =>
+  window.__epic.members.map((m) => ({ name: m.name, throttle: m.source.state.throttle, quietMs: Math.round(performance.now() - m.source.lastSeen) })),
+);
+console.log(JSON.stringify(held));
+held.forEach((h) => h.throttle !== 1 && fail(`${h.name}: TV did not receive GAS`));
 const res = await tv.evaluate(() => {
   const e = window.__epic;
   e.session.frame(0.016);

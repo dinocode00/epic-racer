@@ -13,13 +13,16 @@ export class Net {
   private ws: WebSocket | null = null;
   info: ServerInfo | null = null;
   connected = false;
+  /** True when the page isn't served by the home server (e.g. a hosted copy): no phones. */
+  standalone = false;
+  private misses = 0;
   /** Counters for diagnostics. */
   stats = { inputs: 0, messages: 0, other: '' };
   onJoin?: (slot: number, playerId: string, name: string) => void;
   onLeave?: (slot: number) => void;
   onMsg?: (slot: number, msg: Extract<ServerToHost, { t: 'padMsg' }>['msg']) => void;
   onInput?: (slot: number, pad: PadState) => void;
-  onInfo?: (info: ServerInfo) => void;
+  onInfo?: (info: ServerInfo | null) => void;
 
   start(): void {
     void this.fetchInfo();
@@ -27,17 +30,35 @@ export class Net {
   }
 
   private async fetchInfo(): Promise<void> {
+    let r: Response;
     try {
-      const r = await fetch('/api/info');
+      r = await fetch('/api/info');
+    } catch {
+      // The server may still be starting; after a couple of misses, offer couch mode meanwhile.
+      if (++this.misses === 2) {
+        this.standalone = true;
+        this.onInfo?.(null);
+      }
+      setTimeout(() => void this.fetchInfo(), 3000);
+      return;
+    }
+    try {
       if (!r.ok) throw new Error(String(r.status));
       this.info = (await r.json()) as ServerInfo;
-      this.onInfo?.(this.info);
+      if (this.standalone) {
+        this.standalone = false; // the home server came up after all
+        this.connect();
+      }
     } catch {
-      setTimeout(() => void this.fetchInfo(), 3000);
+      // Something answered, but it isn't our server: run keyboard / Xbox only.
+      this.standalone = true;
+      this.ws?.close();
     }
+    this.onInfo?.(this.info);
   }
 
   private connect(): void {
+    if (this.standalone) return;
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
     const ws = new WebSocket(`${proto}://${location.host}${WS_PATH}?role=host`);
     ws.binaryType = 'arraybuffer';

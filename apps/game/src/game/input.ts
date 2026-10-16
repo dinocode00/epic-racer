@@ -7,29 +7,83 @@ export interface InputSource {
   poll(): PadState;
 }
 
+/** Which keys a keyboard player drives with: everything, or one half of a shared keyboard. */
+export type KeyScheme = 'all' | 'arrows' | 'wasd';
+
+const KEYS: Record<
+  KeyScheme,
+  {
+    left: string[];
+    right: string[];
+    gas: string[];
+    brake: string[];
+    drift: string[];
+    item: string[];
+    back: string[];
+  }
+> = {
+  all: {
+    left: ['ArrowLeft', 'KeyA'],
+    right: ['ArrowRight', 'KeyD'],
+    gas: ['ArrowUp', 'KeyW'],
+    brake: ['ArrowDown', 'KeyS'],
+    drift: ['Space', 'ShiftLeft', 'ShiftRight'],
+    item: ['KeyE', 'KeyX', 'ControlLeft'],
+    back: ['KeyC'],
+  },
+  arrows: {
+    left: ['ArrowLeft'],
+    right: ['ArrowRight'],
+    gas: ['ArrowUp'],
+    brake: ['ArrowDown'],
+    drift: ['ShiftRight', 'Slash', 'Numpad0'],
+    item: ['Period', 'ControlRight'],
+    back: ['Comma'],
+  },
+  wasd: {
+    left: ['KeyA'],
+    right: ['KeyD'],
+    gas: ['KeyW'],
+    brake: ['KeyS'],
+    drift: ['Space', 'ShiftLeft'],
+    item: ['KeyE', 'ControlLeft'],
+    back: ['KeyC'],
+  },
+};
+
+/** One shared set of held keys, so several keyboard players can split one keyboard. */
+const held = new Set<string>();
+let listening = false;
+function listen(): void {
+  if (listening) return;
+  listening = true;
+  window.addEventListener('keydown', (e) => {
+    held.add(e.code);
+    if (e.code.startsWith('Arrow') || e.code === 'Space' || e.code === 'Tab') e.preventDefault();
+  });
+  window.addEventListener('keyup', (e) => held.delete(e.code));
+  window.addEventListener('blur', () => held.clear());
+}
+
 export class KeyboardSource implements InputSource {
   readonly kind = 'keyboard';
-  readonly label = 'Keyboard';
-  private keys = new Set<string>();
-  constructor() {
-    window.addEventListener('keydown', (e) => {
-      this.keys.add(e.code);
-      if (e.code.startsWith('Arrow') || e.code === 'Space') e.preventDefault();
-    });
-    window.addEventListener('keyup', (e) => this.keys.delete(e.code));
-    window.addEventListener('blur', () => this.keys.clear());
+  readonly label: string;
+  constructor(readonly scheme: KeyScheme = 'all') {
+    this.label = scheme === 'all' ? 'Keyboard' : scheme === 'arrows' ? 'Arrow keys' : 'WASD';
+    listen();
   }
   has(...codes: string[]): boolean {
-    return codes.some((c) => this.keys.has(c));
+    return codes.some((c) => held.has(c));
   }
   poll(): PadState {
+    const k = KEYS[this.scheme];
     const p = neutralPad();
-    p.steer = (this.has('ArrowRight', 'KeyD') ? 1 : 0) - (this.has('ArrowLeft', 'KeyA') ? 1 : 0);
-    p.throttle = this.has('ArrowUp', 'KeyW') ? 1 : 0;
-    p.brake = this.has('ArrowDown', 'KeyS') ? 1 : 0;
-    p.drift = this.has('Space', 'ShiftLeft', 'ShiftRight');
-    p.item = this.has('KeyE', 'KeyX', 'ControlLeft');
-    p.lookBack = this.has('KeyC');
+    p.steer = (this.has(...k.right) ? 1 : 0) - (this.has(...k.left) ? 1 : 0);
+    p.throttle = this.has(...k.gas) ? 1 : 0;
+    p.brake = this.has(...k.brake) ? 1 : 0;
+    p.drift = this.has(...k.drift);
+    p.item = this.has(...k.item);
+    p.lookBack = this.has(...k.back);
     p.pause = this.has('Escape', 'KeyP');
     return p;
   }
@@ -43,7 +97,7 @@ export class GamepadSource implements InputSource {
     readonly label: string,
   ) {}
   poll(): PadState {
-    const gp = navigator.getGamepads()[this.index];
+    const gp = gamepads()[this.index];
     const p = neutralPad();
     if (!gp) return p;
     const b = (i: number) => gp.buttons[i]?.value ?? 0;
@@ -62,7 +116,7 @@ export class GamepadSource implements InputSource {
     return p;
   }
   rumble(strength: number, ms: number): void {
-    const gp = navigator.getGamepads()[this.index];
+    const gp = gamepads()[this.index];
     void gp?.vibrationActuator?.playEffect('dual-rumble', {
       duration: ms,
       strongMagnitude: strength,
@@ -83,8 +137,17 @@ export class PhoneSource implements InputSource {
 }
 
 /** Lists connected gamepads, keyed by index. */
+/** Safe getGamepads: some embedded pages forbid controller access and throw. */
+export function gamepads(): (Gamepad | null)[] {
+  try {
+    return [...(navigator.getGamepads?.() ?? [])];
+  } catch {
+    return [];
+  }
+}
+
 export function connectedGamepads(): { index: number; id: string }[] {
-  return [...navigator.getGamepads()]
+  return gamepads()
     .filter((g): g is Gamepad => !!g && g.connected)
     .map((g) => ({ index: g.index, id: g.id }));
 }

@@ -14,6 +14,7 @@ import {
   KeyboardSource,
   PhoneSource,
   connectedGamepads,
+  gamepads,
 } from './game/input.ts';
 import { Net } from './game/net.ts';
 import { type PlayerSetup, RaceSession } from './game/session.ts';
@@ -33,6 +34,9 @@ const view = new View(document.getElementById('stage')!);
 view.setLook((params.get('look') as LookName) ?? 'modern');
 const ui = document.getElementById('ui')!;
 const keyboard = new KeyboardSource();
+// Two players can share one keyboard: arrows + Enter, and WASD + Space.
+const kbArrows = new KeyboardSource('arrows');
+const kbWasd = new KeyboardSource('wasd');
 const net = new Net();
 const MAX_HUMANS = 4;
 
@@ -162,9 +166,9 @@ function edges(key: string, now: LocalPad) {
 }
 
 function pollLocal(): void {
-  // Keyboard: Enter joins / readies, arrows change ride, Backspace leaves.
+  // Keyboard player 1: Enter joins / readies, arrows change ride, Backspace leaves.
   const kb = {
-    ...keyboard.poll(),
+    ...kbArrows.poll(),
     a: keyboard.has('Enter', 'NumpadEnter'),
     b: keyboard.has('Backspace'),
     start: keyboard.has('Enter'),
@@ -172,8 +176,18 @@ function pollLocal(): void {
     rb: keyboard.has('KeyT'),
   };
   handleLocal('keyboard', 'keyboard', kb, () => keyboard);
+  // Keyboard player 2 on the same keyboard: Space joins / readies, A D change ride, Q leaves.
+  const kb2 = {
+    ...kbWasd.poll(),
+    a: keyboard.has('Space'),
+    b: keyboard.has('KeyQ'),
+    start: false,
+    lb: false,
+    rb: false,
+  };
+  handleLocal('keyboard2', 'keyboard', kb2, () => kbWasd);
   for (const gp of connectedGamepads()) {
-    const raw = navigator.getGamepads()[gp.index];
+    const raw = gamepads()[gp.index];
     if (!raw) continue;
     const src = new GamepadSource(gp.index, gp.id);
     const p = {
@@ -195,7 +209,9 @@ function handleLocal(
   make: () => InputSource,
 ): void {
   const e = edges(key, p);
-  if (state === 'results' && (e.a || e.start)) return toLobby();
+  // A short grace period so a drift button held over the line doesn't skip the results.
+  if (state === 'results' && (e.a || e.start) && performance.now() - resultsAt > 2500)
+    return toLobby();
   if (state !== 'lobby') return;
   if (e.lb || e.rb) return cycleTrack(e.rb ? 1 : -1);
   const m = members.find((x) => x.key === key);
@@ -252,19 +268,37 @@ function toLobby(): void {
   renderLobby();
 }
 
+const joinHint = () =>
+  net.standalone
+    ? 'Press <b>Enter</b> or <b>Space</b><br>or <b>A</b> on a pad'
+    : 'Scan the QR code<br>or press <b>A</b> on a pad';
+
 function renderLobby(): void {
   if (state !== 'lobby') return;
   const info = net.info;
   const slots = Array.from({ length: MAX_HUMANS }, (_, i) => {
     const m = members[i];
     if (!m)
-      return `<div class="slot empty"><div>${i === members.length ? 'Scan the QR code<br>or press <b>A</b> on a pad' : ''}</div></div>`;
+      return `<div class="slot empty"><div>${i === members.length ? joinHint() : ''}</div></div>`;
     const v = vehicleById(m.vehicle);
-    const tag = m.kind === 'phone' ? 'PHONE' : m.kind === 'gamepad' ? 'XBOX' : 'KEYS';
+    const tag =
+      m.kind === 'phone'
+        ? 'PHONE'
+        : m.kind === 'gamepad'
+          ? 'XBOX'
+          : m.key === 'keyboard2'
+            ? 'KEYS · WASD'
+            : 'KEYS · ARROWS';
+    const pick =
+      m.kind === 'gamepad'
+        ? '◀ ▶ ride · A ready'
+        : m.key === 'keyboard2'
+          ? 'A / D ride · Space ready'
+          : '← → ride · Enter ready';
     return `<div class="slot on ${m.connected ? '' : 'off'}" style="--c:${m.color}">
       <div class="who"><span>${m.name}</span><span class="tag">${tag}</span></div>
       <div class="veh">${VEHICLE_ICONS[v.id] ?? ''}<div class="vn">${v.name}</div></div>
-      <div class="state ${m.ready ? 'ready' : ''}">${m.ready ? 'READY!' : m.kind === 'phone' ? 'choosing on phone…' : '◀ ▶ ride · A ready'}</div>
+      <div class="state ${m.ready ? 'ready' : ''}">${m.ready ? 'READY!' : m.kind === 'phone' ? 'choosing on phone…' : pick}</div>
     </div>`;
   }).join('');
   const allReady = members.length > 0 && members.every((m) => m.ready);
@@ -272,12 +306,22 @@ function renderLobby(): void {
   if (!allReady) startAt = 0;
   ui.innerHTML = `<div class="lobby">
     <h1>EPIC RACER</h1>
-    <div class="join">
+    ${
+      net.standalone
+        ? `<div class="join couch">
+      <div class="room">COUCH MODE</div>
+      <div class="alt"><b>Keyboard P1:</b> press Enter · arrows drive · Right Shift drift<br>
+      <b>Keyboard P2:</b> press Space · WASD drive · Left Shift drift<br>
+      <b>Xbox pads:</b> press A · RT gas · LT brake · RB drift<br><br>
+      Phone controllers need the home server (see README).</div>
+    </div>`
+        : `<div class="join">
       <div class="qr">${info?.qrSvg ?? ''}</div>
       <div class="url">${info ? info.controllerUrl.replace('http://', '') : 'starting server…'}</div>
       <div class="room">ROOM ${info?.room ?? '----'}</div>
-      <div class="alt">Phones: scan to get a controller<br>Xbox pads: press A · Keyboard: press Enter</div>
-    </div>
+      <div class="alt">Phones: scan to get a controller<br>Xbox pads: press A · Keyboard: Enter (arrows) or Space (WASD)</div>
+    </div>`
+    }
     <div class="slots">${slots}</div>
     <div class="foot"><span class="track">Track: <b>${track().def.name}</b> · ${track().def.laps} laps · ${track().blurb} <i class="hint">(LB/RB or T to change)</i></span><span class="go" id="go">${allReady ? 'Starting…' : members.length ? 'Waiting for everyone to be ready' : ''}</span></div>
   </div>`;
@@ -311,12 +355,17 @@ function startRace(players: PlayerSetup[], laps = track().def.laps): void {
 }
 
 function startFromLobby(): void {
+  // A lone keyboard player gets every key; two share the keyboard half each.
+  const kbPlayers = members.filter((m) => m.kind === 'keyboard').length;
   startRace(
     members.map((m) => ({
       name: m.name,
       color: m.color,
       vehicle: m.vehicle,
-      source: m.source,
+      source:
+        m.kind === 'keyboard'
+          ? new KeyboardSource(kbPlayers > 1 ? (m.key === 'keyboard' ? 'arrows' : 'wasd') : 'all')
+          : m.source,
       away:
         m.kind === 'phone'
           ? () => !m.connected || performance.now() - (m.source as PhoneSource).lastSeen > 10000

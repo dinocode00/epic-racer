@@ -110,7 +110,7 @@ function onHost(m: HostToPad): void {
       else renderLobby();
       break;
     case 'race':
-      showRace();
+      if (mode !== 'race') showRace(); // a repeat must not rebuild the pad and drop held buttons
       break;
     case 'hud':
       updateHud(m.place, m.lap, m.laps, m.item, m.boost);
