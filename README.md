@@ -6,27 +6,56 @@ Nazgûl rider) through movie scenes on a TV, using iPhones or Xbox controllers a
 See [docs/PLAN.md](docs/PLAN.md) for the full design, and [docs/screens](docs/screens) for
 renders from the latest build.
 
-## Run it
+## Play it
 
-Requires Node 22+ and pnpm (`corepack enable`).
+### At home with phones (the full setup)
+
+You need [Node.js 22+](https://nodejs.org) on the computer that drives the TV. Then, in a
+terminal:
 
 ```sh
+corepack enable     # once: provides pnpm
+git clone https://github.com/dinocode00/epic-racer.git
+cd epic-racer
+git checkout claude/keen-curie-e7kh6o
 pnpm install
 pnpm start          # builds, starts the server, prints a URL + QR code
 ```
 
-Open the printed URL on the laptop connected to the TV. Phones scan the QR code to join.
+1. On the computer, open `http://localhost:4000` and go fullscreen (F11). Mirror or cast
+   that screen to the TV (HDMI, AirPlay, Chromecast tab cast…).
+2. Each player scans the QR code with their iPhone (same Wi-Fi), types a name and picks a
+   ride. Xbox controllers join with **A**, the keyboard with **Enter** / **Space**.
+3. When everyone is **Ready** the race starts. 2 players split the screen top/bottom,
+   3-4 players get quarters.
+
+If phones can't reach the URL, check they're on the same Wi-Fi and that the computer's
+firewall allows Node on port 4000.
+
+### Couch mode (no server)
+
+Any static copy of `apps/game/dist` (e.g. the hosted build) runs without the server: the
+lobby switches to **couch mode** for the keyboard (up to two players) and Xbox controllers.
+Phones need the home setup above.
 
 ## Controls
 
-| Action | Keyboard | Xbox controller | Phone |
-|---|---|---|---|
-| Steer | ← → / A D | Left stick / D-pad | Drag on the left half |
-| Accelerate | ↑ / W | RT | GAS |
-| Brake / reverse | ↓ / S | LT | BRAKE |
-| Drift (hold while turning) | Space / Shift | A / RB | DRIFT |
-| Look back | C | Y | — |
-| Toggle Retro look | F2 | — | — |
+| Action                     | Keyboard (solo) | Keyboard P1 / P2 (shared) | Xbox controller    | Phone                 |
+| -------------------------- | --------------- | ------------------------- | ------------------ | --------------------- |
+| Join / ready               | Enter           | Enter / Space             | A                  | READY                 |
+| Change ride (lobby)        | ← →             | ← → / A D                 | Stick / D-pad      | Tap a ride            |
+| Change track (lobby)       | T               | T                         | LB / RB            | ◀ ▶                   |
+| Steer                      | ← → or A D      | ← → / A D                 | Left stick / D-pad | Drag on the left half |
+| Accelerate                 | ↑ or W          | ↑ / W                     | RT                 | GAS                   |
+| Brake / reverse            | ↓ or S          | ↓ / S                     | LT                 | BRAKE                 |
+| Drift (hold while turning) | Space / Shift   | Right Shift / Left Shift  | A / RB             | DRIFT                 |
+| Look back                  | C               | , / C                     | Y                  | —                     |
+| Leave (lobby)              | Backspace       | Backspace / Q             | B                  | —                     |
+| Toggle Retro look          | F2              | F2                        | —                  | —                     |
+
+Drift tip: hold drift through a corner; the sparks go blue → orange → purple, and letting
+go fires a mini-turbo. Press GAS when the countdown shows **1** (not earlier) for a start
+boost.
 
 ## Developer URL options
 
