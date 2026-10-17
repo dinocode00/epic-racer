@@ -15,6 +15,8 @@ export class Hud {
   private bar: HTMLElement;
   private drift: HTMLDivElement;
   private done: HTMLDivElement;
+  private draftEl: HTMLDivElement;
+  private draftBar: HTMLElement;
   private last = '';
 
   constructor(parent: HTMLElement, name: string, color: string) {
@@ -26,6 +28,7 @@ export class Hud {
       <div class="name" style="background:${color}">${name}</div>
       <div class="speedo"><div class="kmh">0</div><div class="unit">KM/H</div><div class="bar"><i></i></div></div>
       <div class="drift"><i></i><i></i><i></i></div>
+      <div class="draft">SLIPSTREAM<div class="meter"><i></i></div></div>
       <div class="done" hidden></div>`;
     parent.appendChild(this.el);
     const q = <T extends HTMLElement>(s: string) => this.el.querySelector(s) as T;
@@ -35,6 +38,8 @@ export class Hud {
     this.bar = q('.bar i');
     this.drift = q('.drift');
     this.done = q('.done');
+    this.draftEl = q('.draft');
+    this.draftBar = q('.draft i');
   }
 
   setRect(x: number, y: number, w: number, h: number): void {
@@ -51,7 +56,8 @@ export class Hud {
 
   update(k: KartState, lap: number, laps: number): void {
     const lvl = k.drift.active ? driftLevel(k.drift.charge) : 0;
-    const key = `${k.place}|${lap}|${Math.round(k.speed * 3.6)}|${lvl}|${k.drift.active}|${k.finished}|${k.boostTime > 0}`;
+    const draft = Math.round(Math.min(1, k.draft / 1.1) * 20);
+    const key = `${k.place}|${lap}|${Math.round(k.speed * 3.6)}|${lvl}|${k.drift.active}|${k.finished}|${k.boostTime > 0}|${draft}`;
     if (key === this.last) return;
     this.last = key;
     this.place.innerHTML = ordinal(k.place);
@@ -60,6 +66,8 @@ export class Hud {
     this.bar.style.width = `${Math.min(100, (Math.max(0, k.speed) / (k.params.topSpeed * 1.3)) * 100)}%`;
     this.drift.classList.toggle('on', k.drift.active);
     [...this.drift.children].forEach((c, i) => (c.className = lvl > i ? `l${lvl}` : ''));
+    this.draftEl.classList.toggle('on', draft > 2);
+    this.draftBar.style.width = `${draft * 5}%`;
     this.done.hidden = !k.finished;
     if (k.finished) this.done.innerHTML = `FINISH! ${ordinal(k.place)}`;
   }

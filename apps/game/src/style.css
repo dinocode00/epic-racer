@@ -27,6 +27,10 @@ body { font-family: 'Russo One', 'Arial Black', system-ui, sans-serif; color: va
 .vp .drift i.l1 { background: #4aa3ff; box-shadow: 0 0 12px #4aa3ff; }
 .vp .drift i.l2 { background: #ff9a1f; box-shadow: 0 0 12px #ff9a1f; }
 .vp .drift i.l3 { background: #c95cff; box-shadow: 0 0 12px #c95cff; }
+.vp .draft { position: absolute; left: 50%; bottom: 12%; transform: translateX(-50%); text-align: center; font-size: min(2.4vh, 2vw); letter-spacing: 0.12em; color: #dff4ff; text-shadow: 0 2px 0 var(--shadow); opacity: 0; transition: opacity 0.15s; }
+.vp .draft.on { opacity: 1; }
+.vp .draft .meter { width: min(18vh, 14vw); height: min(1vh, 0.8vw); margin: 0.4em auto 0; background: rgba(0,0,0,0.45); border-radius: 99px; overflow: hidden; }
+.vp .draft .meter i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #8fd8ff, #ffffff); border-radius: 99px; }
 .vp .done { position: absolute; inset: 0; display: grid; place-items: center; font-size: min(10vh, 8vw); color: var(--gold); text-shadow: 0 6px 0 var(--shadow); }
 
 .countdown { position: fixed; inset: 0; display: grid; place-items: center; font-size: 22vh; color: var(--gold); text-shadow: 0 1.2vh 0 #b5581c, 0 0 6vh rgba(0,0,0,0.5); pointer-events: none; }

@@ -26,9 +26,9 @@ export interface KartParams {
 
 export function paramsFor(v: VehicleDef): KartParams {
   return {
-    topSpeed: 30 + (v.speed - 3) * 1.6,
-    accel: 15 + (3 - v.weight) * 1.4 + (v.handling - 3) * 0.4,
-    turnRate: 1.85 + (v.handling - 3) * 0.17,
+    topSpeed: 38 + (v.speed - 3) * 2,
+    accel: 19 + (3 - v.weight) * 1.6 + (v.handling - 3) * 0.5,
+    turnRate: 1.9 + (v.handling - 3) * 0.17,
     mass: 1 + (v.weight - 3) * 0.3,
     rideHeight: v.hover ? 0.7 : 0,
   };
@@ -64,8 +64,14 @@ export interface KartState {
   progress: number;
   drift: { active: boolean; dir: number; charge: number };
   boostTime: number;
-  /** Spin-out timer (hit, bad start). */
+  /** Spin-out timer (hit, bad start): no control, losing speed; heading is kept. */
   stunTime: number;
+  /** Length of the current spin-out, so the renderer can spin the body whole turns. */
+  stunTotal: number;
+  /** Knocked off balance by a hit from behind: weak steering, sliding sideways. */
+  wobbleTime: number;
+  /** Seconds spent tucked in behind another kart; a full charge fires a boost. */
+  draft: number;
   /** Slowed by mud, a searchlight... */
   slowTime: number;
   /** Last impact strength 0..1, decays; renderer uses it for shake and sparks. */
@@ -74,6 +80,8 @@ export interface KartState {
   air: boolean;
   vel: Vec3;
   airTime: number;
+  /** Arc length where the kart left the ground. */
+  launchS: number;
   /** > 0 while the eagle carries the kart back to the road. */
   rescueTime: number;
   /** Last place the kart was safely on the road, for rescues. */
@@ -131,11 +139,15 @@ export function createKart(
     drift: { active: false, dir: 0, charge: 0 },
     boostTime: 0,
     stunTime: 0,
+    stunTotal: 0,
+    wobbleTime: 0,
+    draft: 0,
     slowTime: 0,
     bump: 0,
     air: false,
     vel: v3(),
     airTime: 0,
+    launchS: s,
     rescueTime: 0,
     safeS: s,
     hitCooldown: 0,
@@ -143,6 +155,17 @@ export function createKart(
     finishTime: 0,
     place: id + 1,
   };
+}
+
+/**
+ * Spin the kart out: it loses speed and control for `seconds`, but keeps facing the way it
+ * was going (the body spins whole turns on screen and comes back round).
+ */
+export function spinOut(k: KartState, seconds: number, keepSpeed: number): void {
+  k.stunTime = seconds;
+  k.stunTotal = seconds;
+  k.speed *= keepSpeed;
+  k.drift = { active: false, dir: 0, charge: 0 };
 }
 
 export function driftLevel(charge: number): number {
@@ -157,6 +180,7 @@ export function launch(k: KartState, pop: number): void {
   k.vel = add(add(scale(k.fwd, k.speed), scale(right, k.slide)), scale(k.up, pop));
   k.air = true;
   k.airTime = 0;
+  k.launchS = k.s;
   k.drift = { active: false, dir: 0, charge: 0 };
 }
 
@@ -179,12 +203,13 @@ export function rescue(k: KartState, track: Track, rules: TrackRules = NO_RULES)
   k.hint = track.nearestIndex(k.pos);
   updateProgress(k, track, s);
   k.lat = 0;
-  k.speed = 14; // the eagle sets you down rolling
+  k.speed = 20; // the eagle sets you down rolling
   k.slide = 0;
   k.air = false;
   k.vel = v3();
   k.rescueTime = RESCUE_TIME;
   k.stunTime = 0;
+  k.wobbleTime = 0;
   k.boostTime = 0;
 }
 
@@ -217,7 +242,8 @@ export function stepKart(
   let spd = k.speed;
 
   const stunned = k.stunTime > 0;
-  const steer = stunned || frozen ? 0 : pad.steer;
+  const wobbling = k.wobbleTime > 0;
+  const steer = stunned || frozen ? 0 : pad.steer * (wobbling ? 0.35 : 1);
   const throttle = stunned || frozen ? 0 : pad.throttle;
   const brake = stunned || frozen ? 0 : pad.brake;
 
@@ -239,15 +265,17 @@ export function stepKart(
     k.drift.charge += dt * (0.7 + 0.5 * Math.abs(steer));
   } else {
     const lowSpeed = clamp(Math.abs(spd) / 5, 0, 1);
-    const highSpeed = 1 - 0.3 * clamp(Math.abs(spd) / P.topSpeed, 0, 1);
+    // Grip fades with speed: at full tilt the tightest corners need a lift or a drift.
+    const highSpeed = 1 - 0.42 * clamp(Math.abs(spd) / P.topSpeed, 0, 1);
     yawRate = steer * P.turnRate * lowSpeed * highSpeed * Math.sign(spd || 1);
   }
-  if (stunned) yawRate = 9; // spin
+  if (stunned) yawRate = 0; // spinning on screen only: the kart keeps its heading
   fwd = rotateAround(fwd, up, -yawRate * dt);
 
   // --- Longitudinal ---
   const boosting = k.boostTime > 0;
-  const top = P.topSpeed * (boosting ? 1.3 : 1) * (k.slowTime > 0 ? 0.55 : 1);
+  const drafting = k.draft > 0.15 ? 1.06 : 1; // a slipstream tow even before it charges
+  const top = P.topSpeed * (boosting ? 1.3 : drafting) * (k.slowTime > 0 ? 0.55 : 1);
   if (throttle > 0 && spd >= -0.5) {
     spd += throttle * P.accel * Math.max(0, 1 - spd / top) * dt * 1.6;
   }
@@ -257,13 +285,14 @@ export function stepKart(
     spd = spd > 0.5 ? spd - 34 * brake * dt : Math.max(-9, spd - 12 * brake * dt);
   }
   if (throttle === 0 && brake === 0) spd = approach(spd, 0, 5 * dt);
-  if (stunned) spd = approach(spd, 0, 25 * dt);
+  if (stunned) spd = approach(spd, 0, 9 * dt);
   // Gravity along slopes, in world space: a little climbing penalty, downhill boost.
   spd -= 7 * fwd.y * dt;
 
   // --- Lateral slide ---
   const targetSlide = k.drift.active ? -k.drift.dir * spd * 0.17 : 0;
-  k.slide = approach(k.slide, targetSlide, 28 * dt);
+  // A shove from behind leaves you sliding sideways for a moment.
+  k.slide = approach(k.slide, targetSlide, (wobbling ? 7 : 28) * dt);
 
   // --- Integrate ---
   const right = cross(fwd, up);
@@ -292,6 +321,7 @@ export function stepKart(
   k.speed = spd;
   k.boostTime = Math.max(0, k.boostTime - dt);
   k.stunTime = Math.max(0, k.stunTime - dt);
+  k.wobbleTime = Math.max(0, k.wobbleTime - dt);
   k.fwd = norm(reject(fwd, p2.frame.up));
   k.up = clone(p2.frame.up);
   k.hint = p2.index;
@@ -348,7 +378,12 @@ function stepAir(k: KartState, pad: PadState, track: Track, dt: number, rules: T
   }
   const height = p.height;
   const falling = dot(k.vel, p.frame.up) <= 0;
-  const overRoad = !gap && Math.abs(lat) <= p.frame.width / 2;
+  // Never touch down behind the take-off point: a kart dribbling off a lip would otherwise
+  // drop back onto the ramp and get stuck there.
+  let back = p.s - k.launchS;
+  if (back > track.length / 2) back -= track.length;
+  if (back < -track.length / 2) back += track.length;
+  const overRoad = !gap && Math.abs(lat) <= p.frame.width / 2 && back > -1;
 
   if (overRoad && falling && height <= k.params.rideHeight) {
     // Touch down.

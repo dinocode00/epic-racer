@@ -1,9 +1,9 @@
 import { type PadState, type TrackDef, type VehicleDef, neutralPad } from '@epic/shared';
 import { type AiBrain, aiDrive, createBrain } from './ai.ts';
 import { type HazardState, collideHazards, createHazards, updateHazards } from './hazards.ts';
-import { type KartState, type TrackRules, createKart, stepKart } from './kart.ts';
+import { type KartState, type TrackRules, createKart, spinOut, stepKart } from './kart.ts';
 import { Track } from './track.ts';
-import { addScaled, dist2, dot, norm, reject, sub } from './vec.ts';
+import { addScaled, cross, dist2, dot, norm, reject, sub } from './vec.ts';
 
 export const STEP = 1 / 60;
 export const COUNTDOWN = 3;
@@ -68,7 +68,7 @@ export class Race {
         for (const [g0] of def.gaps ?? []) {
           let ahead = g0 - s;
           if (ahead < 0) ahead += L;
-          if (ahead < 80) return g0 - 90;
+          if (ahead < 110) return g0 - 120;
         }
         return s;
       },
@@ -115,13 +115,68 @@ export class Race {
         const t = this.firstThrottle[i]!;
         if (Number.isNaN(t)) return;
         if (t > -1.0) k.boostTime = 1.0;
-        else if (t < -2.0) k.stunTime = 0.6; // revved too early
+        else if (t < -2.0) spinOut(k, 0.6, 1); // revved too early
       });
     }
 
+    if (!frozen) this.slipstream();
     this.collideKarts();
     this.applyBoostPads();
     this.updatePlaces();
+  }
+
+  /**
+   * Tucking in close behind another kart charges a slipstream: a small tow at once, and a
+   * boost when the charge is full.
+   */
+  private slipstream(): void {
+    const FULL = 1.1;
+    for (const A of this.karts) {
+      if (A.air || A.rescueTime > 0 || A.stunTime > 0 || A.speed < 18) {
+        A.draft = Math.max(0, A.draft - STEP * 2);
+        continue;
+      }
+      const right = cross(A.fwd, A.up);
+      const behindSomeone = this.karts.some((B) => {
+        if (B === A || B.air || B.rescueTime > 0) return false;
+        const rel = sub(B.pos, A.pos);
+        const ahead = dot(rel, A.fwd);
+        return (
+          ahead > 2.5 &&
+          ahead < 16 &&
+          Math.abs(dot(rel, right)) < 1.8 + ahead * 0.06 &&
+          dot(A.fwd, B.fwd) > 0.8
+        );
+      });
+      if (behindSomeone) {
+        A.draft += STEP;
+        if (A.draft >= FULL) {
+          A.boostTime = Math.max(A.boostTime, 1.0);
+          A.draft = 0;
+        }
+      } else A.draft = Math.max(0, A.draft - STEP * 2);
+    }
+  }
+
+  /** A rear-ender knocks the kart in front off balance: it wobbles and slides aside. */
+  private rearEnd(
+    hitter: KartState,
+    victim: KartState,
+    n: { x: number; y: number; z: number },
+    closing: number,
+  ): void {
+    if (victim.hitCooldown > 0) return;
+    const right = cross(victim.fwd, victim.up);
+    let side = Math.sign(dot(n, right));
+    if (side === 0) side = victim.id % 2 ? 1 : -1;
+    victim.wobbleTime = 0.9;
+    victim.slide = side * (6 + closing * 0.5);
+    victim.speed = Math.max(0, victim.speed * 0.82);
+    victim.drift = { active: false, dir: 0, charge: 0 };
+    victim.bump = 1;
+    victim.hitCooldown = 0.8;
+    hitter.speed -= closing * 0.35;
+    hitter.bump = Math.max(hitter.bump, 0.4);
   }
 
   private collideKarts(): void {
@@ -142,6 +197,14 @@ export class Race {
         B.pos = addScaled(B.pos, n, (overlap * ma) / (ma + mb));
         // Closing speed along the contact normal. Only resolve when moving together.
         const closing = dot(A.fwd, n) * A.speed - dot(B.fwd, n) * B.speed;
+        // Rear-enders: the one in front pays for it.
+        const aHitsB = dot(A.fwd, n) > 0.7 && dot(B.fwd, n) > 0.5;
+        const bHitsA = dot(B.fwd, n) < -0.7 && dot(A.fwd, n) < -0.5;
+        if (closing > 1.5 && (aHitsB || bHitsA)) {
+          if (aHitsB) this.rearEnd(A, B, n, closing);
+          else this.rearEnd(B, A, { x: -n.x, y: -n.y, z: -n.z }, closing);
+          continue;
+        }
         if (closing > 0) {
           const j = (closing * 1.2) / (1 / ma + 1 / mb);
           A.speed -= (j * dot(A.fwd, n)) / ma;

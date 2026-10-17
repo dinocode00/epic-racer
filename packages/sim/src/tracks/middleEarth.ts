@@ -33,23 +33,24 @@ export const MIDDLE_EARTH = (() => {
 
   // ------------------------------------------------------------ Hobbiton
   b.region('hobbiton').mark('partyField');
-  b.hazard(60, bump('hayBale', 5, 1.1)).hazard(75, bump('hayBale', -4.5, 1.1));
-  b.hazard(95, {
+  b.hazard(40, bump('hayBale', 5, 1.1)).hazard(55, bump('hayBale', -4.5, 1.1));
+  b.hazard(70, {
     kind: 'sheep',
     lat: 0,
     r: 1.0,
     effect: 'bump',
     move: { axis: 'lat', amp: 6, period: 5 },
   });
-  b.hazard(105, {
+  b.hazard(80, {
     kind: 'sheep',
     lat: 2,
     r: 1.0,
     effect: 'bump',
     move: { axis: 'lat', amp: 5, period: 4, phase: 2 },
   });
-  b.straight(130);
-  b.mark('bagEnd').ramp(28, 14).flight({ drop: 2, pop: 3, landing: 35 }); // over the top of Bag End
+  b.straight(85);
+  // Big air clean over the top of Bag End.
+  b.mark('bagEnd').ramp(30, 22).flight({ speed: 32, drop: 6, pop: 7, landing: 40 });
   b.turn(55, 70, 6);
   b.mark('gandalfLane');
   b.hazard(10, {
@@ -68,7 +69,7 @@ export const MIDDLE_EARTH = (() => {
       strike: { period: 5, warn: 1, active: 0.4, phase: i * 1.2 },
       fromLap: 2,
     });
-  b.straight(130);
+  b.straight(110, 8); // climbing back up from the Bag End landing
   b.turn(-40, 60, 6);
   b.mark('millBridge');
   b.hazard(20, {
@@ -85,9 +86,10 @@ export const MIDDLE_EARTH = (() => {
     effect: 'bump',
     move: { axis: 'lat', amp: 7, period: 3, phase: Math.PI },
   });
-  b.straight(60);
+  // Launch off the mill bridge over the brook.
+  b.straight(14).ramp(16, 20).flight({ speed: 31, drop: 3, pop: 5, landing: 25 });
   b.turn(25, 80);
-  b.straight(50, 7);
+  b.straight(20, 7);
 
   // ------------------------------------------------------------ Weathertop
   b.region('weathertop');
@@ -99,12 +101,13 @@ export const MIDDLE_EARTH = (() => {
       effect: 'spin',
       move: { axis: 's', amp: 18, period: 6, phase: i * 2 },
     });
-  b.straight(100, 18);
+  b.straight(100, 25);
   b.mark('weathertopSummit');
-  b.turn(150, 20, 4); // summit hairpin
-  b.mark('weathertopLeap').ramp(22, 16).flight({ drop: 16, pop: 4, landing: 45 });
-  b.turn(-65, 55, 6);
-  b.straight(80, 17);
+  b.turn(150, 20, 4); // summit hairpin: brake or drift at these speeds
+  // Leap off the summit of Amon Sûl: the longest hang time in the Shire.
+  b.mark('weathertopLeap').ramp(24, 24).flight({ speed: 30, drop: 12, pop: 8, landing: 55 });
+  b.turn(-65, 45, 6);
+  b.straight(20, 17);
 
   // ------------------------------------------------------------ Rivendell
   b.region('rivendell');
@@ -132,7 +135,7 @@ export const MIDDLE_EARTH = (() => {
   for (let i = 0; i < 8; i++)
     b.hazard(20 + i * 22, bump('pillar', [-4, 4, 0, -5, 5, -2, 3, 0][i]!, 1.6));
   b.straight(200);
-  b.turn(70, 50, 6);
+  b.turn(70, 32, 6);
   for (let i = 0; i < 4; i++)
     b.hazard(20 + i * 30, {
       kind: 'fallingRock',
@@ -152,8 +155,11 @@ export const MIDDLE_EARTH = (() => {
     effect: 'launch',
     strike: { period: 4, warn: 1.0, active: 0.45 },
   });
-  b.mark('bridgeBreak').ramp(12, 10).flight({ drop: 1, pop: 4, landing: 20, open: true });
-  b.straight(25);
+  // The bridge breaks under the Balrog: leap the gap with nothing either side.
+  b.mark('bridgeBreak')
+    .ramp(14, 16)
+    .flight({ speed: 30, drop: 0, pop: 7, landing: 24, open: true });
+  b.straight(10);
   b.end('open').width();
   b.mark('moriaExit').straight(30).end('tunnels');
   b.straight(10);
@@ -164,29 +170,34 @@ export const MIDDLE_EARTH = (() => {
   b.mark('mallorns');
   for (let i = 0; i < 7; i++)
     b.hazard(25 + i * 28, bump('mallorn', [-3.5, 3.5, 0, -4.5, 2, 4.5, -1][i]!, 2.2));
-  b.straight(320, 4);
+  b.straight(205, 10);
+  // Off a great mallorn root and through the canopy.
+  b.mark('mallornLeap').ramp(18, 22).flight({ speed: 30, drop: 0, pop: 7, landing: 35 });
+  b.straight(10, 2);
   b.turn(25, 100);
 
   // ------------------------------------------------------------ Argonath
   b.region('argonath').mark('argonath');
   b.straight(40);
-  b.mark('anduinJump').ramp(30, 16).flight({ speed: 32, drop: 4, pop: 6, landing: 40 });
-  b.straight(60, 12);
+  // Fly the Anduin between the two kings.
+  b.mark('anduinJump').ramp(32, 24).flight({ speed: 29, drop: 4, pop: 9, landing: 50 });
+  b.straight(15, 12);
 
   // ------------------------------------------------------------ Rohan
   b.region('rohan');
   b.turn(45, 90, 6);
   b.mark('edoras');
-  for (let i = 0; i < 3; i++) b.ramp(14, 12).flight({ drop: 0.5, pop: 2, landing: 22 }); // rolling whoops
+  // Rolling whoops across the plains: hit them flat out and you sail.
+  for (let i = 0; i < 3; i++) b.ramp(12, 16).flight({ speed: 36, drop: 0, pop: 4, landing: 20 });
   for (let i = 0; i < 3; i++)
-    b.hazard(-60 + i * 25, {
+    b.hazard(12 + i * 22, {
       kind: 'rohirrim',
       lat: 0,
       r: 1.8,
       effect: 'spin',
       move: { axis: 'lat', amp: 8, period: 4.5, phase: i * 1.6 },
     });
-  b.straight(60, 8);
+  b.turn(50, 28, 8).turn(-50, 28, 8); // a tight S through the charge
 
   // ------------------------------------------------------------ Pelennor & Minas Tirith
   b.region('pelennor');
@@ -201,34 +212,38 @@ export const MIDDLE_EARTH = (() => {
       move: { axis: 'lat', amp: 10, period: 9, phase: i * 2.1 },
     });
   for (let i = 0; i < 4; i++)
-    b.hazard(30 + i * 45, {
+    b.hazard(22 + i * 22, {
       kind: 'boulder',
       lat: [3, -4, 1, -2][i]!,
       r: 3,
       effect: 'spin',
       strike: { period: 6, warn: 1.6, active: 0.5, phase: i * 1.4 },
     });
-  b.straight(150);
+  b.straight(60, 18);
   b.mark('minasTirith').mark('greatGate');
-  b.straight(50, 10);
+  b.straight(50, 13);
   b.turn(170, 15, 0); // switchback up the tiers
-  b.straight(55, 10);
+  b.straight(55, 13);
   b.turn(-170, 15, 0);
-  b.straight(45, 10);
-  b.mark('prow').ramp(24, 15).flight({ speed: 32, drop: 30, pop: 4, landing: 50 });
+  b.straight(45, 12);
+  // Off the prow of Minas Tirith: the biggest drop in Middle-earth.
+  b.mark('prow').ramp(26, 24).flight({ speed: 30, drop: 26, pop: 9, landing: 45 });
   // ------------------------------------------------------------ Osgiliath
   // Catapult stones and falling masonry among the ruins.
   b.region('osgiliath').mark('osgiliath');
   for (let i = 0; i < 4; i++)
-    b.hazard(25 + i * 38, {
+    b.hazard(25 + i * 28, {
       kind: 'boulder',
       lat: [-3.5, 3, 0, -2][i]!,
       r: 3,
       effect: 'spin',
       strike: { period: 5, warn: 1.4, active: 0.5, phase: i * 1.3 },
     });
-  b.turn(55, 70, 8);
-  b.straight(130, 27); // up onto the plateau of Mordor
+  b.turn(65, 70, 8);
+  b.straight(15, 2);
+  // Jump the broken bridge of Osgiliath.
+  b.mark('osgiliathBridge').ramp(16, 20).flight({ speed: 31, drop: 0, pop: 6, landing: 28 });
+  b.straight(25, 7); // up onto the plateau of Mordor
 
   // ------------------------------------------------------------ Mordor
   b.region('mordor').mark('blackGate');
@@ -246,7 +261,7 @@ export const MIDDLE_EARTH = (() => {
     effect: 'bump',
     strike: { period: 7, warn: 1.2, active: 1.8 },
   });
-  b.straight(60);
+  b.straight(60, 3);
   b.turn(-30, 60, 6);
   b.mark('mountDoom');
   for (let i = 0; i < 3; i++)
@@ -258,7 +273,7 @@ export const MIDDLE_EARTH = (() => {
       strike: { period: 4, warn: 1.1, active: 0.5, phase: i * 1.3 },
     });
   b.straight(60);
-  b.mark('lavaJump').ramp(20, 14).flight({ drop: 0, pop: 4, landing: 30, open: true });
+  b.mark('lavaJump').ramp(24, 22).flight({ speed: 32, drop: 0, pop: 8, landing: 35, open: true });
   b.mark('baradDur');
   b.hazard(30, {
     kind: 'eyeBeam',
@@ -267,15 +282,15 @@ export const MIDDLE_EARTH = (() => {
     effect: 'slow',
     move: { axis: 'lat', amp: 7, period: 5 },
   });
-  b.turn(35, 60, 8);
-  b.straight(90);
+  b.turn(25, 60, 8);
+  b.straight(30, 10);
 
   // ------------------------------------------------------------ Dead Marshes
   b.region('deadMarshes').mark('deadMarshes').width(10).begin('open');
   for (let i = 0; i < 4; i++)
     b.hazard(15 + i * 22, { kind: 'mud', lat: i % 2 ? 2.5 : -2.5, r: 3, effect: 'slow' });
-  b.turn(-20, 60);
-  b.turn(20, 60);
+  b.turn(-35, 30);
+  b.turn(35, 30);
   b.end('open').width();
   b.closeLoop();
 

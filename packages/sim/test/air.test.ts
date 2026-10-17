@@ -51,7 +51,8 @@ describe('jumps, gaps and hazards', () => {
       const nearRamp = k.s > def.marks!.ramp! - 40 && k.s < def.marks!.afterJump!;
       // Steer like the AI, but crawl over the lip so the jump falls short.
       const pad = aiDrive(brain, k, race.track, k.progress, 1 / 60);
-      race.step([{ ...pad, drift: false, throttle: nearRamp && k.speed > 5 ? 0 : 1 }]);
+      const crawl = nearRamp && k.speed > 5;
+      race.step([{ ...pad, drift: false, throttle: crawl ? 0 : 1, brake: crawl ? 1 : 0 }]);
       if (k.rescueTime > 0) rescued = true;
     }
     expect(rescued).toBe(true);

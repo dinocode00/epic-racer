@@ -38,7 +38,26 @@ export class KartView {
       this.model.userData.body.add(f);
       this.flames.push(f);
     }
+    // Slipstream: thin wind streaks rushing past while tucked in behind someone.
+    const streakMat = new THREE.MeshBasicMaterial({
+      color: 0xdff4ff,
+      transparent: true,
+      opacity: 0,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    const r = Math.max(1.2, this.bounds.radius * 0.8);
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      const m = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, 3.2), streakMat);
+      m.position.set(Math.cos(a) * r, 0.9 + Math.sin(a) * r * 0.6, 0);
+      m.userData.phase = i * 0.37;
+      this.streaks.add(m);
+    }
+    this.streaks.visible = false;
+    this.root.add(this.streaks);
   }
+  private streaks = new THREE.Group();
 
   /** True when any part of this kart would sit right on top of the given camera. */
   crowds(cam: THREE.Vector3): boolean {
@@ -95,7 +114,18 @@ export class KartView {
     const body = ud.body;
     body.rotation.set(0, this.yawOff, this.lean);
     if (ud.hover) body.position.y = Math.sin(this.t * 3.1) * 0.08 + Math.sin(this.t * 7.3) * 0.02;
-    if (k.stunTime > 0) body.rotation.y += this.t * 14;
+    if (k.stunTime > 0 && k.stunTotal > 0) {
+      // Spin out: whole turns that ease off and come back round facing forward.
+      const turns = Math.max(1, Math.round(k.stunTotal * 2.2));
+      const t = 1 - k.stunTime / k.stunTotal;
+      body.rotation.y += turns * Math.PI * 2 * (1 - (1 - t) * (1 - t));
+    }
+    if (k.wobbleTime > 0) {
+      // Knocked off balance from behind: a fishtailing wobble that settles.
+      const w = Math.min(1, k.wobbleTime / 0.9);
+      body.rotation.y += Math.sin(this.t * 20) * 0.32 * w;
+      body.rotation.z += Math.sin(this.t * 17 + 1) * 0.1 * w;
+    }
     if (k.bump > 0.05) body.position.x = (Math.random() - 0.5) * k.bump * 0.15;
     else body.position.x = 0;
 
@@ -108,6 +138,17 @@ export class KartView {
     });
 
     ud.animate?.(this.t, k.speed, dt);
+
+    const draft = Math.min(1, k.draft / 1.1);
+    this.streaks.visible = draft > 0.12 && !k.air;
+    if (this.streaks.visible) {
+      this.streaks.children.forEach((c) => {
+        const m = c as THREE.Mesh;
+        // Streaks flow back past the kart (local +z is behind); faster as the charge builds.
+        m.position.z = ((((this.t * (8 + draft * 10) + m.userData.phase * 4) % 6) + 6) % 6) - 2;
+        (m.material as THREE.MeshBasicMaterial).opacity = 0.15 + draft * 0.45;
+      });
+    }
 
     // Boost flames; pod engines always idle with a short blue glow.
     const boost = k.boostTime > 0 ? 1 : 0;

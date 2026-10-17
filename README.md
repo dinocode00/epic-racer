@@ -53,9 +53,17 @@ Phones need the home setup above.
 | Leave (lobby)              | Backspace       | Backspace / Q             | B                  | —                     |
 | Toggle Retro look          | F2              | F2                        | —                  | —                     |
 
-Drift tip: hold drift through a corner; the sparks go blue → orange → purple, and letting
-go fires a mini-turbo. Press GAS when the countdown shows **1** (not earlier) for a start
-boost.
+Racing tips:
+
+- **Drift**: hold drift through a corner; the sparks go blue → orange → purple, and letting
+  go fires a mini-turbo. At full speed the tightest corners need a drift or a lift.
+- **Slipstream**: tuck in close behind another racer; the SLIPSTREAM meter fills and fires
+  a boost.
+- **Bump**: ram someone from behind and they wobble and slide sideways with barely any
+  steering for a moment.
+- **Hazards** that spin you (riders, falling rock, boulders) cost you speed and control for
+  about a second, but you come out still facing the right way.
+- **Start boost**: press GAS when the countdown shows **1** (not earlier).
 
 ## Developer URL options
 

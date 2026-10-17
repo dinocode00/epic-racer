@@ -65,12 +65,14 @@ export function aiDrive(
   // Corner severity further ahead decides drifting and lifting.
   const far = track.frameAtS(k.s + look * 2.2).tan;
   const bend = Math.acos(clamp(dot(far, k.fwd), -1, 1));
-  pad.throttle = bend > 0.9 && k.speed > 24 ? 0.6 : 1;
+  pad.throttle = bend > 0.9 && k.speed > 26 ? 0.5 : 1;
+  // Brake for hairpins at speed, as grip fades.
+  if (bend > 1.6 && k.speed > 22) pad.brake = 0.6;
   pad.drift = bend > 0.55 && k.speed > 18 && Math.abs(angle) > 0.12;
 
   // Mild rubber band on AI only: never slows humans.
   const gap = leaderProgress - k.progress;
-  const discipline = 0.86 + 0.1 * b.skill + clamp(gap / 400, -0.06, 0.08);
+  const discipline = 0.92 + 0.07 * b.skill + clamp(gap / 300, -0.05, 0.1);
   if (k.speed > k.params.topSpeed * discipline && k.boostTime <= 0) pad.throttle = 0.2;
   return pad;
 }

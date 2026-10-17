@@ -170,10 +170,13 @@ export function dressHobbiton(ctx: DressContext): (t: number, dt: number) => voi
       110,
     );
     const len = a.distanceTo(b);
-    const cloth = new THREE.Mesh(
-      new THREE.PlaneGeometry(len, len * 0.107),
-      new THREE.MeshStandardMaterial({ map: banner, side: THREE.DoubleSide }),
-    );
+    // Two single-sided faces back to back, so the words read correctly from both ways.
+    const cloth = new THREE.Group();
+    const mat = new THREE.MeshStandardMaterial({ map: banner });
+    const front = new THREE.Mesh(new THREE.PlaneGeometry(len, len * 0.107), mat);
+    const back = front.clone();
+    back.rotation.y = Math.PI;
+    cloth.add(front, back);
     cloth.position.copy(a).lerp(b, 0.5);
     cloth.lookAt(
       cloth.position.clone().add(new THREE.Vector3().subVectors(b, a).cross(V(0, 1, 0))),

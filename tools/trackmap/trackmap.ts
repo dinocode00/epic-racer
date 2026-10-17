@@ -53,7 +53,9 @@ const LABELS: Record<string, string> = {
   bridgeBreak: 'Broken bridge JUMP',
   anduinJump: 'JUMP the Anduin between the kings',
   greatGate: 'Great Gate, switchbacks up Minas Tirith',
-  prow: 'LEAP off the prow (30 m drop)',
+  prow: 'LEAP off the prow (26 m drop)',
+  mallornLeap: 'Mallorn root JUMP',
+  osgiliathBridge: 'Broken bridge of Osgiliath JUMP',
   lavaJump: 'JUMP the lava (Eagles rescue)',
   crest1: 'Blind crest',
   bridgeStart: 'Stone bridge over the brook, watermill',
@@ -108,7 +110,8 @@ for (const [name, s] of Object.entries(marks)) {
   if (NOTES[name]) labels += `<text x="${x + dx}" y="${y + 20}" text-anchor="${anchor}" class="n">${NOTES[name]}</text>`;
 }
 let legend = '';
-regions.forEach(([rid], i) => {
+const legendIds = [...new Set(regions.map(([rid]) => rid))];
+legendIds.forEach((rid, i) => {
   const [c, name] = REGION_STYLE[rid] ?? ['#888', rid];
   legend += `<rect x="${W - 210}" y="${14 + i * 22}" width="16" height="16" rx="3" fill="${c}"/><text x="${W - 188}" y="${27 + i * 22}" class="m">${name}</text>`;
 });
@@ -132,8 +135,8 @@ for (const h of def.hazards ?? []) {
     hz = sz(p.z + f.right.z * h.lat);
   extras += `<circle cx="${hx.toFixed(1)}" cy="${hz.toFixed(1)}" r="3.2" fill="#e8321e" stroke="#fff" stroke-width="1"/>`;
 }
-legend += `<circle cx="${W - 202}" cy="${14 + regions.length * 22 + 8}" r="4" fill="#e8321e" stroke="#fff"/><text x="${W - 188}" y="${27 + regions.length * 22}" class="m">hazard</text>`;
-legend += `<path d="M${W - 210} ${14 + (regions.length + 1) * 22 + 8} h16" stroke="#555" stroke-width="5" stroke-dasharray="3 3"/><text x="${W - 188}" y="${27 + (regions.length + 1) * 22}" class="m">jump / gap</text>`;
+legend += `<circle cx="${W - 202}" cy="${14 + legendIds.length * 22 + 8}" r="4" fill="#e8321e" stroke="#fff"/><text x="${W - 188}" y="${27 + legendIds.length * 22}" class="m">hazard</text>`;
+legend += `<path d="M${W - 210} ${14 + (legendIds.length + 1) * 22 + 8} h16" stroke="#555" stroke-width="5" stroke-dasharray="3 3"/><text x="${W - 188}" y="${27 + (legendIds.length + 1) * 22}" class="m">jump / gap</text>`;
 const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
 <defs><pattern id="chk" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="2" height="2" fill="#000"/><rect x="2" y="2" width="2" height="2" fill="#000"/><rect x="2" width="2" height="2" fill="#fff"/><rect y="2" width="2" height="2" fill="#fff"/></pattern>
 <style>.l{font:bold 15px sans-serif}.m{font:bold 14px sans-serif;fill:#222}.n{font:italic 13px sans-serif;fill:#8a2a1a}</style></defs>

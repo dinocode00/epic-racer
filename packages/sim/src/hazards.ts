@@ -1,5 +1,5 @@
 import type { HazardDef } from '@epic/shared';
-import { type KartState, launch } from './kart.ts';
+import { type KartState, launch, spinOut } from './kart.ts';
 import type { Track } from './track.ts';
 import { addScaled } from './vec.ts';
 
@@ -109,8 +109,7 @@ export function collideHazards(k: KartState, hs: HazardState[], track: Track): v
       }
       case 'spin':
         if (k.hitCooldown <= 0) {
-          k.stunTime = 1.0;
-          k.speed *= 0.4;
+          spinOut(k, 0.9, 0.5);
           k.bump = 1;
           k.hitCooldown = 1.5;
         }
@@ -119,7 +118,7 @@ export function collideHazards(k: KartState, hs: HazardState[], track: Track): v
         if (k.hitCooldown <= 0 && !k.air) {
           k.speed *= 0.6;
           launch(k, 13);
-          k.stunTime = 0.5;
+          k.stunTime = k.stunTotal = 0.5;
           k.bump = 1;
           k.hitCooldown = 1.5;
         }
