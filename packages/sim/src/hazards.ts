@@ -73,7 +73,8 @@ export function sDelta(a: number, b: number, L: number): number {
 
 /** Apply hazard effects to one kart. */
 export function collideHazards(k: KartState, hs: HazardState[], track: Track): void {
-  if (k.rescueTime > 0) return;
+  // Rescued, carried by an eagle, or an unstoppable Batmissile: hazards can't touch you.
+  if (k.rescueTime > 0 || k.eagleTime > 0 || k.special?.kind === 'missile') return;
   const KART_R = 1.1;
   for (const h of hs) {
     if (!h.active) continue;

@@ -16,6 +16,25 @@ import {
   v3,
 } from './vec.ts';
 
+export type ItemKind =
+  'boost' | 'boost3' | 'shot' | 'homing' | 'trap' | 'shield' | 'whip' | 'special' | 'eagle';
+export type SpecialKind = 'morgul' | 'flame' | 'missile' | 'jacks';
+
+/** Each vehicle's special ability. */
+export const SPECIAL_OF: Record<string, SpecialKind> = {
+  nazgul: 'morgul',
+  pod: 'flame',
+  bat: 'missile',
+  mach5: 'jacks',
+};
+/** Top-speed multiplier while a special runs (the jacks ride on a normal boost). */
+const SPECIAL_SPEED: Record<SpecialKind, number> = {
+  morgul: 1.28,
+  flame: 1.42,
+  missile: 1.35,
+  jacks: 1.3,
+};
+
 export interface KartParams {
   topSpeed: number;
   accel: number;
@@ -72,6 +91,23 @@ export interface KartState {
   wobbleTime: number;
   /** Seconds spent tucked in behind another kart; a full charge fires a boost. */
   draft: number;
+  /** Held item (one slot), how many uses it has left, and the roulette in progress. */
+  item: ItemKind | null;
+  itemCount: number;
+  rollTime: number;
+  rollItem: ItemKind | null;
+  /** Holding ITEM with a shot or trap: it trails behind as a shield. */
+  trailing: boolean;
+  /** Mithril shield: blocks the next item hit. */
+  shieldTime: number;
+  /** Can't be hit by items again for a moment after a hit. */
+  immuneTime: number;
+  /** The vehicle's special ability while it runs. */
+  special: { kind: SpecialKind; time: number; side: number } | null;
+  /** Carried forward by a Great Eagle (the track item). */
+  eagleTime: number;
+  /** An attack is closing in (for the HUD warning). */
+  threat: 'homing' | 'whip' | null;
   /** Slowed by mud, a searchlight... */
   slowTime: number;
   /** Last impact strength 0..1, decays; renderer uses it for shake and sparks. */
@@ -142,6 +178,16 @@ export function createKart(
     stunTotal: 0,
     wobbleTime: 0,
     draft: 0,
+    item: null,
+    itemCount: 0,
+    rollTime: 0,
+    rollItem: null,
+    trailing: false,
+    shieldTime: 0,
+    immuneTime: 0,
+    special: null,
+    eagleTime: 0,
+    threat: null,
     slowTime: 0,
     bump: 0,
     air: false,
@@ -233,6 +279,7 @@ export function stepKart(
     k.rescueTime = Math.max(0, k.rescueTime - dt);
     return;
   }
+  if (k.eagleTime > 0) return stepEagle(k, track, dt, rules);
   if (k.air) return stepAir(k, pad, track, dt, rules);
 
   const P = k.params;
@@ -273,9 +320,11 @@ export function stepKart(
   fwd = rotateAround(fwd, up, -yawRate * dt);
 
   // --- Longitudinal ---
-  const boosting = k.boostTime > 0;
+  const specialMul = k.special ? SPECIAL_SPEED[k.special.kind] : 0;
+  const boosting = k.boostTime > 0 || specialMul > 0;
   const drafting = k.draft > 0.15 ? 1.06 : 1; // a slipstream tow even before it charges
-  const top = P.topSpeed * (boosting ? 1.3 : drafting) * (k.slowTime > 0 ? 0.55 : 1);
+  const top =
+    P.topSpeed * (specialMul || (boosting ? 1.3 : drafting)) * (k.slowTime > 0 ? 0.55 : 1);
   if (throttle > 0 && spd >= -0.5) {
     spd += throttle * P.accel * Math.max(0, 1 - spd / top) * dt * 1.6;
   }
@@ -345,6 +394,36 @@ export function stepKart(
   // Kicker ramps throw you into the air.
   const pop = rules.kickerBetween(s0, p2.s);
   if (pop !== null && spd > 8) launch(k, pop);
+}
+
+/** The Great Eagle carries the kart forward high over the road, then sets it down. */
+const EAGLE_SPEED = 70;
+const EAGLE_HEIGHT = 7;
+function stepEagle(k: KartState, track: Track, dt: number, rules: TrackRules): void {
+  k.eagleTime = Math.max(0, k.eagleTime - dt);
+  // Never set down over a gap: keep flying until there's road underneath.
+  if (k.eagleTime === 0 && rules.isGap((k.s + 8) % track.length)) k.eagleTime = 0.1;
+  const s = (k.s + EAGLE_SPEED * dt) % track.length;
+  const f = track.frameAtS(s);
+  const lat = k.lat * Math.exp(-dt * 2);
+  const lift = k.eagleTime > 0 ? Math.min(1, k.eagleTime * 2, (2.6 - k.eagleTime) * 3 + 0.3) : 0;
+  k.pos = track.pointAt(s, lat, k.params.rideHeight + EAGLE_HEIGHT * lift);
+  k.fwd = clone(f.tan);
+  k.up = clone(f.up);
+  k.hint = track.nearestIndex(k.pos);
+  updateProgress(k, track, s);
+  k.lat = lat;
+  k.air = false;
+  k.vel = v3();
+  k.slide = 0;
+  k.stunTime = 0;
+  k.wobbleTime = 0;
+  k.boostTime = Math.max(0, k.boostTime - dt);
+  if (k.eagleTime === 0) {
+    k.speed = Math.max(k.speed, 36);
+    k.boostTime = Math.max(k.boostTime, 0.6);
+    k.safeS = s;
+  }
 }
 
 function stepAir(k: KartState, pad: PadState, track: Track, dt: number, rules: TrackRules): void {

@@ -1,6 +1,7 @@
 import { type PadState, type TrackDef, type VehicleDef, neutralPad } from '@epic/shared';
 import { type AiBrain, aiDrive, createBrain } from './ai.ts';
 import { type HazardState, collideHazards, createHazards, updateHazards } from './hazards.ts';
+import { ItemSystem } from './items.ts';
 import { type KartState, type TrackRules, createKart, spinOut, stepKart } from './kart.ts';
 import { Track } from './track.ts';
 import { addScaled, cross, dist2, dot, norm, reject, sub } from './vec.ts';
@@ -28,6 +29,7 @@ export class Race {
   private padCooldown: number[] = [];
   readonly hazards: HazardState[];
   readonly rules: TrackRules;
+  readonly items: ItemSystem;
 
   constructor(def: TrackDef, entrants: Entrant[], laps = def.laps) {
     this.track = new Track(def);
@@ -45,6 +47,12 @@ export class Race {
     this.firstThrottle = entrants.map(() => NaN);
     this.padCooldown = entrants.map(() => 0);
     this.hazards = createHazards(def.hazards ?? []);
+    this.items = new ItemSystem(
+      this.track,
+      this.karts,
+      this.brains.map((b) => b !== null),
+      laps,
+    );
     const L = this.track.length;
     const inRanges = (ranges: [number, number][] | undefined) => (s: number) =>
       (ranges ?? []).some(([a, b]) => s >= a && s <= b);
@@ -119,6 +127,7 @@ export class Race {
       });
     }
 
+    this.items.step(this.time, dt, pads, !frozen);
     if (!frozen) this.slipstream();
     this.collideKarts();
     this.applyBoostPads();
@@ -132,13 +141,13 @@ export class Race {
   private slipstream(): void {
     const FULL = 1.1;
     for (const A of this.karts) {
-      if (A.air || A.rescueTime > 0 || A.stunTime > 0 || A.speed < 18) {
+      if (A.air || A.rescueTime > 0 || A.eagleTime > 0 || A.stunTime > 0 || A.speed < 18) {
         A.draft = Math.max(0, A.draft - STEP * 2);
         continue;
       }
       const right = cross(A.fwd, A.up);
       const behindSomeone = this.karts.some((B) => {
-        if (B === A || B.air || B.rescueTime > 0) return false;
+        if (B === A || B.air || B.rescueTime > 0 || B.eagleTime > 0) return false;
         const rel = sub(B.pos, A.pos);
         const ahead = dot(rel, A.fwd);
         return (
@@ -186,6 +195,7 @@ export class Race {
         const A = this.karts[a]!,
           B = this.karts[b]!;
         if (A.air || B.air || A.rescueTime > 0 || B.rescueTime > 0) continue;
+        if (A.eagleTime > 0 || B.eagleTime > 0) continue;
         const d2 = dist2(A.pos, B.pos);
         if (d2 >= 4 * R * R || d2 < 1e-6) continue;
         const d = Math.sqrt(d2);
@@ -196,6 +206,14 @@ export class Race {
         A.pos = addScaled(A.pos, n, (-overlap * mb) / (ma + mb));
         B.pos = addScaled(B.pos, n, (overlap * ma) / (ma + mb));
         // Closing speed along the contact normal. Only resolve when moving together.
+        // The Batmissile ploughs through: whoever it touches is knocked aside.
+        const aMissile = A.special?.kind === 'missile',
+          bMissile = B.special?.kind === 'missile';
+        if (aMissile !== bMissile) {
+          if (aMissile) this.items.ram(A, B);
+          else this.items.ram(B, A);
+          continue;
+        }
         const closing = dot(A.fwd, n) * A.speed - dot(B.fwd, n) * B.speed;
         // Rear-enders: the one in front pays for it.
         const aHitsB = dot(A.fwd, n) > 0.7 && dot(B.fwd, n) > 0.5;

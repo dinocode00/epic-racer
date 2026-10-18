@@ -300,10 +300,20 @@ export const MIDDLE_EARTH = (() => {
     defaultWidth: 16,
     laps: 2,
     boostPads: [],
-    itemRows: [],
   });
   // Home to the party field for the last stretch, so the starting grid sits in Hobbiton.
   def.regions!.push(['hobbiton', new Track(def).length - 50]);
+  // Item box rows, on open road clear of jumps: about one every 600 m.
+  const m = def.marks!;
+  def.itemRows = [
+    25,
+    m.gandalfLane! + 85,
+    m.rivendellFalls! + 30,
+    m.mallorns! - 30,
+    m.argonath! + 6,
+    m.oliphaunts! - 25,
+    m.mountDoom! - 30,
+  ];
   return def;
 })();
 

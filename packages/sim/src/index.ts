@@ -5,6 +5,7 @@ export * from './kart.ts';
 export * from './ai.ts';
 export * from './race.ts';
 export * from './hazards.ts';
+export * from './items.ts';
 export { PROVING } from './tracks/proving.ts';
 export { SHIRE, SHIRE_MARKS } from './tracks/shire.ts';
 export { MIDDLE_EARTH, ME_MARKS, ME_REGIONS } from './tracks/middleEarth.ts';
