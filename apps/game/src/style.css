@@ -72,3 +72,15 @@ body { font-family: 'Russo One', 'Arial Black', system-ui, sans-serif; color: va
 
 .focus-hint { position: fixed; left: 50%; bottom: 3vh; transform: translateX(-50%); z-index: 50; padding: 1vh 2.4vh; border-radius: 1.2vh; background: rgba(18,16,34,0.9); border: 0.3vh solid #f5c518; color: #fff; font-size: 2.2vh; pointer-events: none; }
 .focus-hint[hidden] { display: none; }
+
+.vp .slot { position: absolute; left: 3%; top: 19%; width: min(11vh, 8vw); height: min(11vh, 8vw); border-radius: 1.4vh; background: rgba(10,8,24,0.55); border: 0.35vh solid rgba(255,255,255,0.35); display: grid; place-items: center; opacity: 0.55; transition: opacity 0.15s, transform 0.15s; }
+.vp .slot .ic { font-size: min(6.5vh, 4.8vw); line-height: 1; }
+.vp .slot .nm { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 0.5vh; white-space: nowrap; font-size: min(1.9vh, 1.5vw); text-shadow: 0 2px 0 var(--shadow); }
+.vp .slot .ct { position: absolute; right: -0.6em; bottom: -0.4em; font-size: min(2.4vh, 1.8vw); color: var(--gold); text-shadow: 0 2px 0 var(--shadow); }
+.vp .slot.have, .vp .slot.roll { opacity: 1; border-color: var(--gold); box-shadow: 0 0 2vh rgba(255,200,80,0.45); }
+.vp .slot.roll { transform: scale(1.06); }
+.vp .slot.hold { box-shadow: 0 0 2.4vh rgba(120,200,255,0.8); border-color: #9fd8ff; }
+.vp .warn { position: absolute; left: 50%; top: 16%; transform: translateX(-50%); padding: 0.6vh 1.6vh; border-radius: 1vh; font-size: min(3.2vh, 2.4vw); white-space: nowrap; text-shadow: 0 2px 0 var(--shadow); }
+.vp .warn.danger { background: rgba(200,30,10,0.75); animation: warnpulse 0.35s infinite alternate; }
+.vp .warn.power { background: rgba(20,20,40,0.6); color: var(--gold); }
+@keyframes warnpulse { from { transform: translateX(-50%) scale(1); } to { transform: translateX(-50%) scale(1.07); } }

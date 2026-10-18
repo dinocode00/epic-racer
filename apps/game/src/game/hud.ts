@@ -1,4 +1,5 @@
-import { type KartState, driftLevel } from '@epic/sim';
+import { type KartState, SPECIAL_OF, driftLevel } from '@epic/sim';
+import { ROULETTE, itemSkin } from './itemSkins.ts';
 
 const ordinal = (n: number): string => {
   const s = ['th', 'st', 'nd', 'rd'];
@@ -18,6 +19,13 @@ export class Hud {
   private draftEl: HTMLDivElement;
   private draftBar: HTMLElement;
   private last = '';
+  private slot!: HTMLDivElement;
+  private slotIcon!: HTMLDivElement;
+  private slotName!: HTMLDivElement;
+  private slotCount!: HTMLElement;
+  private warn!: HTMLDivElement;
+  private lastItem = '';
+  trackId = '';
 
   constructor(parent: HTMLElement, name: string, color: string) {
     this.el = document.createElement('div');
@@ -29,6 +37,8 @@ export class Hud {
       <div class="speedo"><div class="kmh">0</div><div class="unit">KM/H</div><div class="bar"><i></i></div></div>
       <div class="drift"><i></i><i></i><i></i></div>
       <div class="draft">SLIPSTREAM<div class="meter"><i></i></div></div>
+      <div class="slot"><div class="ic"></div><div class="nm"></div><b class="ct"></b></div>
+      <div class="warn" hidden></div>
       <div class="done" hidden></div>`;
     parent.appendChild(this.el);
     const q = <T extends HTMLElement>(s: string) => this.el.querySelector(s) as T;
@@ -38,6 +48,11 @@ export class Hud {
     this.bar = q('.bar i');
     this.drift = q('.drift');
     this.done = q('.done');
+    this.slot = q('.slot');
+    this.slotIcon = q('.slot .ic');
+    this.slotName = q('.slot .nm');
+    this.slotCount = q('.slot .ct');
+    this.warn = q('.warn');
     this.draftEl = q('.draft');
     this.draftBar = q('.draft i');
   }
@@ -54,7 +69,49 @@ export class Hud {
     this.el.style.setProperty('--s', String(Math.min(w, h)));
   }
 
-  update(k: KartState, lap: number, laps: number): void {
+  /** The held item, the roulette, and warnings about incoming attacks. */
+  private updateItem(k: KartState, t: number): void {
+    const special = SPECIAL_OF[k.vehicle.id];
+    let icon = '',
+      name = '',
+      count = '',
+      cls = '';
+    if (k.rollTime > 0) {
+      const kind = ROULETTE[Math.floor(t * 14) % ROULETTE.length]!;
+      icon = itemSkin(this.trackId, kind, special).icon;
+      cls = 'roll';
+    } else if (k.item) {
+      const skin = itemSkin(this.trackId, k.item, special);
+      icon = skin.icon;
+      name = skin.name;
+      count = k.item === 'boost3' && k.itemCount > 1 ? `×${k.itemCount}` : '';
+      cls = k.trailing ? 'have hold' : 'have';
+    }
+    const active = k.special
+      ? `${itemSkin(this.trackId, 'special', k.special.kind).icon} ${itemSkin(this.trackId, 'special', k.special.kind).name}!`
+      : k.eagleTime > 0
+        ? '🦅 The Eagles are coming!'
+        : '';
+    const threat =
+      k.threat === 'whip'
+        ? `🔥 ${itemSkin(this.trackId, 'whip').name.toUpperCase()}!`
+        : k.threat === 'homing'
+          ? `⚠ ${itemSkin(this.trackId, 'homing').name.toUpperCase()} INCOMING`
+          : '';
+    const key = `${icon}|${name}|${count}|${cls}|${active}|${threat}`;
+    if (key === this.lastItem) return;
+    this.lastItem = key;
+    this.slot.className = `slot ${cls}`;
+    this.slotIcon.textContent = icon;
+    this.slotName.textContent = name;
+    this.slotCount.textContent = count;
+    this.warn.hidden = !threat && !active;
+    this.warn.textContent = threat || active;
+    this.warn.className = threat ? 'warn danger' : 'warn power';
+  }
+
+  update(k: KartState, lap: number, laps: number, t = 0): void {
+    this.updateItem(k, t);
     const lvl = k.drift.active ? driftLevel(k.drift.charge) : 0;
     const draft = Math.round(Math.min(1, k.draft / 1.1) * 20);
     const key = `${k.place}|${lap}|${Math.round(k.speed * 3.6)}|${lvl}|${k.drift.active}|${k.finished}|${k.boostTime > 0}|${draft}`;

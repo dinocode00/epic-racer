@@ -230,8 +230,20 @@ function updateHud(
   if (!hudEls) return;
   hudEls.place.textContent = ordinal(place);
   hudEls.lap.textContent = `LAP ${lap}/${laps}`;
-  hudEls.item.hidden = !item;
-  hudEls.item.textContent = item ?? '';
+  // The held item shows on the ITEM button itself (icon + name), so a glance is enough.
+  const [icon, label] = (item ?? '').split('|');
+  hudEls.item.hidden = true;
+  const btn = app.querySelector<HTMLElement>('.btn.item');
+  if (btn) {
+    const html = item
+      ? `<span class="ic">${icon}</span><span class="lb">${label ?? ''}</span>`
+      : 'ITEM';
+    if (btn.dataset.html !== html) {
+      btn.dataset.html = html;
+      btn.innerHTML = html;
+      btn.classList.toggle('has', !!item);
+    }
+  }
   if (boost > 0) {
     hudEls.flash.style.background =
       'radial-gradient(circle, rgba(255,160,40,0.35), transparent 70%)';

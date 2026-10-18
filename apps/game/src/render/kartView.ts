@@ -59,6 +59,165 @@ export class KartView {
   }
   private streaks = new THREE.Group();
 
+  // ---------------------------------------------------------------- item visuals
+  private gold: ReturnType<typeof greatEagle> | null = null;
+  private fxParts: {
+    shield: THREE.Mesh;
+    blade: THREE.Group;
+    jet: THREE.Mesh;
+    held: THREE.Mesh;
+    jacks: THREE.Group;
+  } | null = null;
+
+  private buildFx() {
+    const r = Math.max(1.6, this.bounds.radius * 0.95);
+    const shield = new THREE.Mesh(
+      new THREE.SphereGeometry(r, 24, 16),
+      new THREE.MeshStandardMaterial({
+        color: 0xdfe8f2,
+        metalness: 1,
+        roughness: 0.15,
+        transparent: true,
+        opacity: 0.28,
+        depthWrite: false,
+      }),
+    );
+    shield.position.copy(this.bounds.center);
+    // Morgul blade: a long pale sword held out to one side.
+    const blade = new THREE.Group();
+    const steel = new THREE.MeshStandardMaterial({
+      color: 0xcfe4ff,
+      emissive: 0x7fb6ff,
+      emissiveIntensity: 1.6,
+      metalness: 0.9,
+      roughness: 0.2,
+    });
+    const edge = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.08, 0.22), steel);
+    edge.position.x = 2.4;
+    const hilt = new THREE.Mesh(
+      new THREE.BoxGeometry(0.12, 0.12, 0.7),
+      new THREE.MeshStandardMaterial({ color: 0x1a1a1e, metalness: 0.6 }),
+    );
+    hilt.position.x = 0.45;
+    const tip = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.6, 4), steel);
+    tip.rotation.z = -Math.PI / 2;
+    tip.position.x = 4.6;
+    blade.add(edge, hilt, tip);
+    blade.position.y = 2.2;
+    // Flame vent: a roaring jet out of the back (+z is behind).
+    const jet = new THREE.Mesh(
+      new THREE.ConeGeometry(1.4, 12, 16, 1, true).translate(0, -6, 0).rotateX(-Math.PI / 2),
+      new THREE.MeshBasicMaterial({
+        color: 0xff7a1a,
+        transparent: true,
+        opacity: 0.6,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      }),
+    );
+    jet.position.set(0, 0.9, this.bounds.center.z + this.bounds.radius * 0.6);
+    // The held shot or trap, trailed behind.
+    const held = new THREE.Mesh(
+      new THREE.IcosahedronGeometry(0.4, 0),
+      new THREE.MeshStandardMaterial({ color: 0xffd46a, emissive: 0xaa6a10 }),
+    );
+    held.position.set(0, 0.6, this.bounds.center.z + this.bounds.radius + 0.6);
+    // Mach 5 auto-jacks: four struts that punch down under the car.
+    const jacks = new THREE.Group();
+    for (const [x, z] of [
+      [-0.8, -1.2],
+      [0.8, -1.2],
+      [-0.8, 1.2],
+      [0.8, 1.2],
+    ] as const) {
+      const j = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.08, 0.08, 1.2, 6),
+        new THREE.MeshStandardMaterial({ color: 0x9aa0a8, metalness: 0.9, roughness: 0.3 }),
+      );
+      j.position.set(x, -0.3, z);
+      jacks.add(j);
+    }
+    this.root.add(shield, blade, jet, held, jacks);
+    return { shield, blade, jet, held, jacks };
+  }
+
+  private itemVisuals(k: KartState, dt: number, fx: Effects): void {
+    const sp = k.special;
+    if (!this.fxParts && !k.shieldTime && !sp && !k.trailing && !k.eagleTime) return;
+    this.fxParts ??= this.buildFx();
+    const P = this.fxParts;
+    P.shield.visible = k.shieldTime > 0;
+    if (P.shield.visible) P.shield.rotation.y += dt * 0.8;
+    P.held.visible = k.trailing && !!k.item;
+    if (P.held.visible) P.held.rotation.set(this.t * 3, this.t * 2, 0);
+    P.blade.visible = sp?.kind === 'morgul';
+    if (sp?.kind === 'morgul') {
+      // +x is the kart's right; swing smoothly to the side with the nearest rival.
+      const want = sp.side >= 0 ? 0 : Math.PI;
+      P.blade.rotation.y += (want - P.blade.rotation.y) * Math.min(1, dt * 10);
+      tmp.set(4.6, 0, 0).applyEuler(P.blade.rotation).add(P.blade.position);
+      this.root.localToWorld(tmp);
+      fx.sparks.emit(tmp, new THREE.Vector3(), new THREE.Color(0.6, 0.85, 1.6), 0.7, 0.3, 0.35);
+    }
+    this.flameOn = sp?.kind === 'flame';
+    P.jet.visible = this.flameOn;
+    if (sp?.kind === 'flame') {
+      P.jet.scale.set(
+        0.8 + Math.random() * 0.4,
+        0.8 + Math.random() * 0.4,
+        0.85 + Math.random() * 0.3,
+      );
+      for (let i = 0; i < 4; i++) {
+        tmp.set((Math.random() - 0.5) * 1.5, 0.9, P.jet.position.z + Math.random() * 10);
+        this.root.localToWorld(tmp);
+        fx.sparks.emit(
+          tmp,
+          new THREE.Vector3(0, 2, 0),
+          new THREE.Color(1.6, 0.55, 0.1),
+          1,
+          0.6,
+          0.35,
+        );
+      }
+    }
+    P.jacks.visible = sp?.kind === 'jacks' && sp.time > 1.6;
+    // Batmissile: the car narrows into a long rocket with a roaring afterburner.
+    const body = this.model.userData.body;
+    const missile = sp?.kind === 'missile';
+    const sx = missile ? 0.55 : 1,
+      sz = missile ? 1.18 : 1;
+    body.scale.x += (sx - body.scale.x) * Math.min(1, dt * 10);
+    body.scale.z += (sz - body.scale.z) * Math.min(1, dt * 10);
+    // The Great Eagle (the track item) is golden, so it's never mistaken for a rescue.
+    if (k.eagleTime > 0) {
+      if (!this.gold) {
+        this.gold = greatEagle();
+        this.gold.group.scale.setScalar(1.7);
+        this.gold.group.traverse((o) => {
+          const m = o as THREE.Mesh;
+          if (m.isMesh) {
+            const mat = (m.material as THREE.MeshStandardMaterial).clone();
+            mat.color = new THREE.Color(0xd9a93a);
+            mat.emissive = new THREE.Color(0x3a2606);
+            mat.metalness = 0.6;
+            m.material = mat;
+          }
+        });
+        this.root.add(this.gold.group);
+      }
+      this.gold.group.visible = true;
+      this.gold.group.position.set(0, 3.3, 0);
+      this.gold.flap(this.t * 1.4);
+    } else if (this.gold) this.gold.group.visible = false;
+  }
+
+  /** Called per viewport: the owner's own chase camera sits inside the flame jet. */
+  setViewer(own: boolean): void {
+    if (this.fxParts) this.fxParts.jet.visible = this.flameOn && !own;
+  }
+  private flameOn = false;
+
   /** True when any part of this kart would sit right on top of the given camera. */
   crowds(cam: THREE.Vector3): boolean {
     tmp.copy(this.bounds.center);
@@ -100,6 +259,7 @@ export class KartView {
     } else if (this.eagle) {
       this.eagle.group.visible = false;
     }
+    this.itemVisuals(k, dt, fx);
 
     const ud = this.model.userData;
     const lvl = k.drift.active ? driftLevel(k.drift.charge) : -1;
@@ -151,7 +311,8 @@ export class KartView {
     }
 
     // Boost flames; pod engines always idle with a short blue glow.
-    const boost = k.boostTime > 0 ? 1 : 0;
+    // Specials (except the morgul gallop) roar like a boost.
+    const boost = k.boostTime > 0 || (k.special && k.special.kind !== 'morgul') ? 1 : 0;
     const idle = ud.hover ? 0.35 : 0.0;
     const len = Math.max(
       boost * (1.1 + Math.sin(this.t * 40) * 0.15),

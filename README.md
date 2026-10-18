@@ -49,6 +49,7 @@ Phones need the home setup above.
 | Accelerate                 | ↑ or W          | ↑ / W                     | RT                 | GAS                   |
 | Brake / reverse            | ↓ or S          | ↓ / S                     | LT                 | BRAKE                 |
 | Drift (hold while turning) | Space / Shift   | Right Shift / Left Shift  | A / RB             | DRIFT                 |
+| Use item (hold to trail)   | E / Ctrl        | . or Right Ctrl / E       | X or LB            | ITEM                  |
 | Look back                  | C               | , / C                     | Y                  | —                     |
 | Leave (lobby)              | Backspace       | Backspace / Q             | B                  | —                     |
 | Toggle Retro look          | F2              | F2                        | —                  | —                     |
@@ -64,6 +65,13 @@ Racing tips:
 - **Hazards** that spin you (riders, falling rock, boulders) cost you speed and control for
   about a second, but you come out still facing the right way.
 - **Start boost**: press GAS when the countdown shows **1** (not earlier).
+- **Items**: drive through the glowing boxes. Tap ITEM to use what you get. Hold ITEM with
+  arrows, a firework or caltrops to trail it behind you as a shield, then let go to fire;
+  hold BRAKE (or look back) as you let go to fire backwards.
+- **Specials**: sometimes a box gives your vehicle's own ability: the Nazgûl's Morgul
+  Charge (a blade that cuts racers alongside), the Pod Racer's Flame Vent (scorches anyone
+  behind), the Batmissile (ram straight through) and the Mach 5's Auto-Jacks + robot bird.
+- **Great Eagle** (Middle-earth's own item): carried up the road, safe from everything.
 
 ## Developer URL options
 

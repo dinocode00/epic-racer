@@ -1,6 +1,6 @@
 # Items, power-ups and special abilities (design draft)
 
-Status: brainstorm for review. Nothing here is built yet.
+Status: built (first version). Decisions below are final for now; numbers are first-pass tuning.
 Background research: [reports/Kart racer item design.md](../reports/Kart%20racer%20item%20design.md).
 
 ## Decisions so far
@@ -114,6 +114,10 @@ read on a split screen. Each has its own colour and sound.
   trail; hold back (S or Down) while firing to throw backwards.
 - All warnings appear on the TV in the attacker's colour, with a distinct sound per threat.
   iPhones can't vibrate from a web page; Xbox pads rumble.
+
+Chosen: all four specials as written; the Nazgûl blade swings to the nearest rival
+automatically; Middle-earth's item is the **Great Eagle**. Firing backwards is "hold BRAKE
+(or look back) while you use it" on every controller.
 
 ## Build order once approved
 

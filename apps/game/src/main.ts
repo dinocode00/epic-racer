@@ -20,6 +20,8 @@ import { Net } from './game/net.ts';
 import { type PlayerSetup, RaceSession } from './game/session.ts';
 import { Showroom } from './game/showroom.ts';
 import { TRACKS, trackById } from './game/tracks.ts';
+import { itemSkin } from './game/itemSkins.ts';
+import { type KartState, SPECIAL_OF } from '@epic/sim';
 
 /**
  * TV host. Flow: lobby (join with phone / Xbox pad / keyboard, pick rides, ready up)
@@ -375,6 +377,15 @@ function startFromLobby(): void {
 }
 
 let hudTimer = 0;
+/** "icon|name" for the phone's ITEM button (a spinning roulette while it rolls). */
+function phoneItem(k: KartState): string | null {
+  if (k.rollTime > 0) return '🎲|…';
+  if (!k.item) return null;
+  const skin = itemSkin(track().def.id, k.item, SPECIAL_OF[k.vehicle.id]);
+  const n = k.item === 'boost3' && k.itemCount > 1 ? ` ×${k.itemCount}` : '';
+  return `${skin.icon}|${skin.name}${n}`;
+}
+
 function sendPhoneHud(dt: number): void {
   hudTimer += dt;
   if (hudTimer < 0.1 || !session) return;
@@ -388,7 +399,7 @@ function sendPhoneHud(dt: number): void {
       place: k.place,
       lap: session!.race.lapOf(k),
       laps: session!.race.laps,
-      item: null,
+      item: phoneItem(k),
       boost: k.boostTime,
     });
   });

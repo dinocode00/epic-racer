@@ -134,7 +134,10 @@ export class ItemSystem {
   readonly projectiles: Projectile[] = [];
   readonly traps: Trap[] = [];
   readonly strikes: Strike[] = [];
+  /** Events from the latest step (tests, AI). */
   events: ItemEvent[] = [];
+  /** Events since the renderer last asked (several steps can run per frame). */
+  private log: ItemEvent[] = [];
   private nextId = 1;
   private seed = 1234567;
   private held: boolean[];
@@ -205,6 +208,19 @@ export class ItemSystem {
     }
     if (!racing) return;
     this.pickups(time);
+    this.stepActions(dt, pads);
+    this.log.push(...this.events);
+    if (this.log.length > 200) this.log.splice(0, this.log.length - 200);
+  }
+
+  /** Hand over (and clear) the events since the last call. */
+  takeLog(): ItemEvent[] {
+    const out = this.log;
+    this.log = [];
+    return out;
+  }
+
+  private stepActions(dt: number, pads: (PadState | undefined)[]): void {
     this.karts.forEach((k, i) => {
       if (k.finished) return;
       if (this.isAi[i]) this.aiUse(k, dt);

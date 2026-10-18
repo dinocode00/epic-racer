@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { type PadState, type TrackDef, VEHICLES, neutralPad, vehicleById } from '@epic/shared';
 import { type AiBrain, COUNTDOWN, Race, STEP, aiDrive, createBrain } from '@epic/sim';
 import { HazardViews } from '../render/hazardViews.ts';
+import { ItemViews } from '../render/itemViews.ts';
 import { KartView } from '../render/kartView.ts';
 import type { View, Viewport } from '../render/view.ts';
 import type { Theme } from '../render/themes.ts';
@@ -55,6 +56,7 @@ export class RaceSession {
   readonly world: World;
   private views: KartView[];
   private hazardViews: HazardViews;
+  private itemViews: ItemViews;
   private cams: ChaseCam[];
   private huds: Hud[];
   private spectator?: ChaseCam;
@@ -115,6 +117,8 @@ export class RaceSession {
     });
     this.hazardViews = new HazardViews(this.race.track, this.race.hazards);
     this.world.scene.add(this.hazardViews.group);
+    this.itemViews = new ItemViews(this.race.track, this.race.items);
+    this.world.scene.add(this.itemViews.group);
     this.cams = this.humans.map(() => new ChaseCam());
     if (players.length === 3) this.spectator = new ChaseCam();
     // Keep cameras out of hillsides on big jumps (not in tunnels, where rock sits overhead).
@@ -130,6 +134,7 @@ export class RaceSession {
     const rects = layout(players.length === 3 ? 4 : players.length);
     this.huds = players.map((p, i) => {
       const h = new Hud(this.hudRoot, p.name, p.color);
+      h.trackId = track.id;
       const r = rects[i]!;
       h.setRect(...r);
       return h;
@@ -190,6 +195,7 @@ export class RaceSession {
       this.views[i]!.update(k, steer, alpha, dt, fx);
     });
     this.hazardViews.update(this.race.hazards, fx, dt);
+    this.itemViews.update(this.race.time, this.race.karts, fx, dt);
     fx.update(dt);
     this.world.update(dt);
 
@@ -197,7 +203,7 @@ export class RaceSession {
     this.humans.forEach((ki, i) => {
       const k = this.race.karts[ki]!;
       this.cams[i]!.update(this.views[ki]!, k.speed, k.boostTime > 0, !!this.pads[i]?.lookBack, dt);
-      this.huds[i]!.update(k, this.race.lapOf(k), this.race.laps);
+      this.huds[i]!.update(k, this.race.lapOf(k), this.race.laps, this.race.time);
     });
     if (this.spectator) {
       const leader = this.race.karts.find((k) => k.place === 1)!;
@@ -227,7 +233,10 @@ export class RaceSession {
         camera: c.camera,
         before: () => {
           // Hide other karts that would sit on top of this camera and block the view.
-          this.views.forEach((v) => (v.root.visible = v === kv || !v.crowds(c.camera.position)));
+          this.views.forEach((v) => {
+            v.root.visible = v === kv || !v.crowds(c.camera.position);
+            v.setViewer(v === kv);
+          });
           this.world.applyAtmosphere(this.world.atmosphereAt(this.race.karts[this.humans[i]!]!.s));
           this.world.focusSun(kv.pos);
           fx.setViewportHeight(
@@ -247,7 +256,10 @@ export class RaceSession {
         h,
         camera: sc.camera,
         before: () => {
-          this.views.forEach((v) => (v.root.visible = true));
+          this.views.forEach((v) => {
+            v.root.visible = true;
+            v.setViewer(false);
+          });
           const leader = this.race.karts.find((k) => k.place === 1)!;
           this.world.applyAtmosphere(this.world.atmosphereAt(leader.s));
           this.world.focusSun(sc.camera.position);

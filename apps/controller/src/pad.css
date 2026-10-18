@@ -45,3 +45,8 @@ button.big.ready { background: #3fbf5f; color: #fff; box-shadow: 0 4px 0 #1e7a34
 .trackpick { display: flex; align-items: center; gap: 12px; font-size: 17px; }
 .trackpick button { font-size: 20px; width: 44px; height: 44px; border-radius: 12px; border: 0; background: var(--panel); color: var(--ink); }
 .trackpick b { color: var(--gold); }
+
+.btn.item { align-content: center; row-gap: 0.4vmin; opacity: 0.6; }
+.btn.item.has { opacity: 1; box-shadow: 0 0 4vmin rgba(255,200,80,0.8); }
+.btn.item .ic { font-size: 9vmin; line-height: 1; }
+.btn.item .lb { font-size: 2.6vmin; text-align: center; padding: 0 1vmin; }
