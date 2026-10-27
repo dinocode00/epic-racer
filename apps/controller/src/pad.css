@@ -200,31 +200,31 @@ button.big.ready {
   box-shadow: 0 2px 0 rgba(0, 0, 0, 0.35);
   filter: brightness(1.2);
 }
-/* Left thumb: DRIFT (held through corners) nearest the thumb, BRAKE below, ITEM above. */
+/* Left thumb: big DRIFT and ITEM side by side along the thumb's arc, BRAKE in the corner. */
 .btn.drift {
-  width: 36vmin;
-  height: 36vmin;
-  right: 7%;
-  bottom: 10%;
+  width: 38vmin;
+  height: 38vmin;
+  right: 5%;
+  bottom: 8%;
   background: #3a7bd5;
   font-size: 5.5vmin;
+}
+.btn.item {
+  width: 38vmin;
+  height: 38vmin;
+  right: 28%;
+  top: 9%;
+  background: var(--gold);
+  color: #222;
+  font-size: 5vmin;
 }
 .btn.brake {
   width: 25vmin;
   height: 25vmin;
-  left: 5%;
+  left: 4%;
   bottom: 5%;
   background: #c94040;
   font-size: 4.2vmin;
-}
-.btn.item {
-  width: 27vmin;
-  height: 27vmin;
-  left: 9%;
-  top: 6%;
-  background: var(--gold);
-  color: #222;
-  font-size: 4vmin;
 }
 /* Right thumb: the knob sits under the thumb wherever it lands and slides sideways to steer. */
 .drive {
@@ -235,7 +235,7 @@ button.big.ready {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 60%;
+  width: calc(30% + 40vmin); /* the knob plus its full-lock travel each way */
   height: 10px;
   margin-top: -5px;
   border-radius: 5px;
@@ -336,11 +336,11 @@ button.big.ready {
   box-shadow: 0 0 4vmin rgba(255, 200, 80, 0.8);
 }
 .btn.item .ic {
-  font-size: 9vmin;
+  font-size: 12vmin;
   line-height: 1;
 }
 .btn.item .lb {
-  font-size: 2.6vmin;
+  font-size: 3.2vmin;
   text-align: center;
   padding: 0 1vmin;
 }

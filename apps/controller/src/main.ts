@@ -274,14 +274,16 @@ function bindPad(): void {
   let originX = 0;
   let box = drive.getBoundingClientRect();
   const btnTouches = new Map<number, HTMLElement | null>();
-  const range = () => box.width * 0.3;
+  // A short slide reaches full lock, so the thumb barely has to move.
+  const range = () => box.width * 0.15;
 
   const steerTo = (x: number) => {
     const r = range();
     // Past full lock the start point follows the thumb, so turning back answers at once.
     originX = Math.max(x - r, Math.min(x + r, originX));
     const v = (x - originX) / r;
-    pad.steer = Math.abs(v) < 0.06 ? 0 : v;
+    // Curved so a small slide already turns firmly; the last stretch tops up to full lock.
+    pad.steer = Math.abs(v) < 0.06 ? 0 : Math.sign(v) * Math.abs(v) ** 0.6;
     rail.style.left = `${originX - box.left}px`;
     knob.style.left = `${originX - box.left}px`;
     knob.style.transform = `translateX(${v * r}px)`;
@@ -290,7 +292,7 @@ function bindPad(): void {
     driveTouch = id;
     box = drive.getBoundingClientRect();
     originX = x;
-    rail.style.width = `${2 * range()}px`;
+    rail.style.width = `${2 * range() + knob.offsetWidth}px`;
     rail.style.top = knob.style.top = `${y - box.top}px`;
     drive.classList.add('on');
     steerTo(x);
