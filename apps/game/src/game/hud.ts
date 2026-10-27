@@ -67,6 +67,11 @@ export class Hud {
     // Scale text with the viewport's share of the screen.
     this.el.style.fontSize = `${Math.min(w, h) * 100}%`;
     this.el.style.setProperty('--s', String(Math.min(w, h)));
+    // In a four-way split the HUD corner nearest the screen centre makes room for the map.
+    const quad = w < 1 && h < 1;
+    this.el.classList.toggle('quad', quad);
+    for (const c of ['q-TL', 'q-TR', 'q-BL', 'q-BR']) this.el.classList.remove(c);
+    if (quad) this.el.classList.add(`q-${y < 0.5 ? 'T' : 'B'}${x < 0.5 ? 'L' : 'R'}`);
   }
 
   /** The held item, the roulette, and warnings about incoming attacks. */

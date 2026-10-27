@@ -84,3 +84,13 @@ body { font-family: 'Russo One', 'Arial Black', system-ui, sans-serif; color: va
 .vp .warn.danger { background: rgba(200,30,10,0.75); animation: warnpulse 0.35s infinite alternate; }
 .vp .warn.power { background: rgba(20,20,40,0.6); color: var(--gold); }
 @keyframes warnpulse { from { transform: translateX(-50%) scale(1); } to { transform: translateX(-50%) scale(1.07); } }
+
+.minimap { position: absolute; width: 27vh; height: 27vh; opacity: 0.82; filter: drop-shadow(0 0.4vh 0.6vh rgba(0,0,0,0.35)); }
+.minimap.p1 { right: 2.5%; top: 50%; transform: translateY(-62%); }
+.minimap.p2 { left: 72%; top: 50%; transform: translate(-50%, -50%); width: 24vh; height: 24vh; }
+.minimap.p3, .minimap.p4 { left: 50%; top: 50%; transform: translate(-50%, -50%); width: 21vh; height: 21vh; }
+/* Four-way split: the HUD item in the corner touching the centre steps aside for the map. */
+.vp.q-TL .speedo { right: 15%; }
+.vp.q-TR .name { left: 15%; }
+.vp.q-BL .lap { right: 15%; }
+.vp.q-BR .place, .vp.q-BR .slot { left: 15%; }

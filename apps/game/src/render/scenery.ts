@@ -2,6 +2,16 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { Track } from '@epic/sim';
 import * as tex from './textures.ts';
+import {
+  TREES,
+  barkMaterial,
+  grassMaterial,
+  leafDepth,
+  leafMaterial,
+  rockGeo,
+  tuftGeo,
+  uprightNormals,
+} from './foliage.ts';
 
 // ---------- noise ----------
 function hash(x: number, z: number): number {
@@ -247,7 +257,12 @@ export interface TerrainLook {
   layers?: [() => THREE.Texture, () => THREE.Texture, () => THREE.Texture, () => THREE.Texture];
 }
 
-/** Material that blends four ground textures by a per-vertex `splat` weight. */
+/**
+ * Material that blends four ground textures by a per-vertex `splat` weight, sampled in
+ * world space. Rock is projected from three sides (no stretching on cliffs), the main
+ * layers are mixed with a rotated second sample and broad light/dark patches so the
+ * tiling doesn't show.
+ */
 function splatMaterial(layers: THREE.Texture[]): THREE.MeshStandardMaterial {
   const mat = new THREE.MeshStandardMaterial({ map: layers[0], vertexColors: true, roughness: 1 });
   mat.onBeforeCompile = (sh) => {
@@ -257,22 +272,42 @@ function splatMaterial(layers: THREE.Texture[]): THREE.MeshStandardMaterial {
     sh.vertexShader = sh.vertexShader
       .replace(
         '#include <common>',
-        '#include <common>\nattribute vec4 splat;\nvarying vec4 vSplat;',
+        '#include <common>\nattribute vec4 splat;\nvarying vec4 vSplat;\nvarying vec3 vWPos;\nvarying vec3 vWNor;',
       )
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSplat = splat;');
+      .replace(
+        '#include <begin_vertex>',
+        `#include <begin_vertex>
+        vSplat = splat;
+        vWPos = (modelMatrix * vec4(transformed, 1.0)).xyz;
+        vWNor = normalize(mat3(modelMatrix) * objectNormal);`,
+      );
     sh.fragmentShader = sh.fragmentShader
       .replace(
         '#include <common>',
-        '#include <common>\nuniform sampler2D map1; uniform sampler2D map2; uniform sampler2D map3;\nvarying vec4 vSplat;',
+        `#include <common>
+        uniform sampler2D map1; uniform sampler2D map2; uniform sampler2D map3;
+        varying vec4 vSplat; varying vec3 vWPos; varying vec3 vWNor;
+        vec4 twoScale(sampler2D t, vec2 uv) {
+          // A second, rotated and rescaled sample hides the repeat.
+          vec2 r = vec2(uv.x * 0.8 - uv.y * 0.6, uv.x * 0.6 + uv.y * 0.8) * 0.41;
+          return mix(texture2D(t, uv), texture2D(t, r), 0.45);
+        }`,
       )
       .replace(
         '#include <map_fragment>',
-        `vec4 sampledDiffuseColor = texture2D(map, vMapUv) * vSplat.x + texture2D(map1, vMapUv * 0.7) * vSplat.y
-          + texture2D(map2, vMapUv) * vSplat.z + texture2D(map3, vMapUv * 1.3) * vSplat.w;
-         diffuseColor *= sampledDiffuseColor;`,
+        `vec2 wuv = vWPos.xz / 24.0;
+        vec3 an = pow(abs(normalize(vWNor)), vec3(4.0));
+        an /= (an.x + an.y + an.z);
+        vec4 rockT = texture2D(map1, vWPos.zy / 18.0) * an.x
+          + texture2D(map1, vWPos.xz / 18.0) * an.y
+          + texture2D(map1, vWPos.xy / 18.0) * an.z;
+        vec4 sampledDiffuseColor = twoScale(map, wuv) * vSplat.x + rockT * vSplat.y
+          + twoScale(map2, wuv) * vSplat.z + twoScale(map3, wuv * 1.3) * vSplat.w;
+        float macro = 0.8 + 0.42 * dot(texture2D(map, vWPos.xz / 460.0 + 0.37).rgb, vec3(0.333));
+        diffuseColor *= vec4(sampledDiffuseColor.rgb * macro, 1.0);`,
       );
   };
-  mat.customProgramCacheKey = () => 'terrain-splat';
+  mat.customProgramCacheKey = () => 'terrain-splat-2';
   return mat;
 }
 
@@ -391,87 +426,9 @@ export function buildTerrain(terrain: Terrain, look: TerrainLook = {}): THREE.Gr
   return g;
 }
 
-function colored(g: THREE.BufferGeometry, hex: number): THREE.BufferGeometry {
-  const c = new THREE.Color(hex);
-  const n = g.attributes.position!.count;
-  const arr = new Float32Array(n * 3);
-  for (let i = 0; i < n; i++) arr.set([c.r, c.g, c.b], i * 3);
-  g.setAttribute('color', new THREE.BufferAttribute(arr, 3));
-  return g;
-}
-
-function pineGeo(): THREE.BufferGeometry {
-  const parts = [
-    colored(new THREE.CylinderGeometry(0.25, 0.35, 2, 6).translate(0, 1, 0), 0x6b4a2e),
-  ];
-  const greens = [0x2f6b35, 0x37783c, 0x418844];
-  for (let k = 0; k < 3; k++) {
-    const r = 2.6 - k * 0.65;
-    parts.push(
-      colored(new THREE.ConeGeometry(r, 3.2, 8).translate(0, 2.6 + k * 1.6, 0), greens[k]!),
-    );
-  }
-  return mergeGeometries(parts.map((p) => (p.index ? p.toNonIndexed() : p)))!;
-}
-
-function broadleafGeo(): THREE.BufferGeometry {
-  const parts = [
-    colored(new THREE.CylinderGeometry(0.3, 0.45, 3, 6).translate(0, 1.5, 0), 0x6b4a2e),
-    colored(new THREE.IcosahedronGeometry(2.6, 1).scale(1, 0.85, 1).translate(0, 4.6, 0), 0x4f9440),
-    colored(new THREE.IcosahedronGeometry(1.8, 1).translate(1.4, 4.0, 0.6), 0x5aa548),
-    colored(new THREE.IcosahedronGeometry(1.7, 1).translate(-1.2, 4.2, -0.7), 0x46863a),
-  ];
-  return mergeGeometries(parts.map((p) => (p.index ? p.toNonIndexed() : p)))!;
-}
-
 export type FoliageKind = 'pine' | 'broad' | 'autumn' | 'mallorn' | 'dead';
 
-function autumnGeo(): THREE.BufferGeometry {
-  const parts = [
-    colored(new THREE.CylinderGeometry(0.3, 0.45, 3, 6).translate(0, 1.5, 0), 0x5b3f2a),
-    colored(new THREE.IcosahedronGeometry(2.6, 1).scale(1, 0.85, 1).translate(0, 4.6, 0), 0xd9822b),
-    colored(new THREE.IcosahedronGeometry(1.8, 1).translate(1.4, 4.0, 0.6), 0xe8b440),
-    colored(new THREE.IcosahedronGeometry(1.7, 1).translate(-1.2, 4.2, -0.7), 0xb8502a),
-  ];
-  return mergeGeometries(parts.map((p) => (p.index ? p.toNonIndexed() : p)))!;
-}
-
-/** Mallorn: tall silver trunk, high golden canopy. */
-function mallornGeo(): THREE.BufferGeometry {
-  const parts = [
-    colored(new THREE.CylinderGeometry(0.9, 1.6, 26, 10).translate(0, 13, 0), 0xc9cbd0),
-  ];
-  for (let i = 0; i < 6; i++) {
-    const a = (i / 6) * Math.PI * 2;
-    parts.push(
-      colored(
-        new THREE.IcosahedronGeometry(4.5, 1)
-          .scale(1, 0.55, 1)
-          .translate(Math.cos(a) * 4.5, 24 + (i % 2) * 3, Math.sin(a) * 4.5),
-        i % 2 ? 0xe2c04a : 0xd4b23a,
-      ),
-    );
-  }
-  parts.push(
-    colored(new THREE.IcosahedronGeometry(5, 1).scale(1, 0.6, 1).translate(0, 29, 0), 0xf0d468),
-  );
-  return mergeGeometries(parts.map((p) => (p.index ? p.toNonIndexed() : p)))!;
-}
-
-/** Bare, twisted dead tree (Mordor, Dead Marshes). */
-function deadGeo(): THREE.BufferGeometry {
-  const parts = [colored(new THREE.CylinderGeometry(0.15, 0.4, 4, 6).translate(0, 2, 0), 0x2e2622)];
-  for (let i = 0; i < 4; i++) {
-    const b = new THREE.CylinderGeometry(0.05, 0.14, 2.2, 5).translate(0, 1.1, 0);
-    b.rotateZ(0.7 + (i % 2) * 0.3);
-    b.rotateY((i / 4) * Math.PI * 2);
-    b.translate(0, 2.4 + i * 0.4, 0);
-    parts.push(colored(b, 0x2e2622));
-  }
-  return mergeGeometries(parts.map((p) => (p.index ? p.toNonIndexed() : p)))!;
-}
-
-/** Forests and rocks, instanced. */
+/** Forests and rocks, instanced: organic canopies with leaf cards, swaying in the wind. */
 export function buildFoliage(
   terrain: Terrain,
   opts: {
@@ -483,19 +440,7 @@ export function buildFoliage(
   } = {},
 ): THREE.Group {
   const g = new THREE.Group();
-  const leafMat = new THREE.MeshStandardMaterial({
-    vertexColors: true,
-    roughness: 0.9,
-    flatShading: true,
-  });
   const KINDS: FoliageKind[] = ['pine', 'broad', 'autumn', 'mallorn', 'dead'];
-  const geos: Record<FoliageKind, () => THREE.BufferGeometry> = {
-    pine: pineGeo,
-    broad: broadleafGeo,
-    autumn: autumnGeo,
-    mallorn: mallornGeo,
-    dead: deadGeo,
-  };
   const placed: Record<FoliageKind, THREE.Matrix4[]> = {
     pine: [],
     broad: [],
@@ -549,24 +494,106 @@ export function buildFoliage(
       );
     }
   }
+  const barkMat = barkMaterial();
+  const tint = new THREE.Color();
   for (const k of KINDS) {
-    if (!placed[k].length) continue;
-    const im = new THREE.InstancedMesh(geos[k](), leafMat, placed[k].length);
-    placed[k].forEach((m, i) => im.setMatrixAt(i, m));
-    im.castShadow = true;
-    im.receiveShadow = true;
-    g.add(im);
+    const list = placed[k];
+    if (!list.length) continue;
+    const geo = TREES[k]();
+    const meshes: THREE.InstancedMesh[] = [
+      new THREE.InstancedMesh(geo.solid, barkMat, list.length),
+    ];
+    if (geo.leaves) {
+      const lm = new THREE.InstancedMesh(geo.leaves, leafMaterial(geo.needles), list.length);
+      lm.customDepthMaterial = leafDepth(geo.needles);
+      meshes.push(lm);
+    }
+    list.forEach((m, i) => {
+      // Each tree a little lighter or darker, a little warmer or cooler.
+      const l = 0.82 + tex.rnd() * 0.3;
+      tint.setRGB(l * (0.96 + tex.rnd() * 0.08), l, l * (0.94 + tex.rnd() * 0.1));
+      for (const im of meshes) {
+        im.setMatrixAt(i, m);
+        im.setColorAt(i, tint);
+      }
+    });
+    for (const im of meshes) {
+      im.castShadow = true;
+      im.receiveShadow = true;
+      g.add(im);
+    }
   }
-  const rockMat = new THREE.MeshStandardMaterial({
-    color: 0x8b8781,
-    roughness: 0.95,
-    flatShading: true,
-  });
-  const rim = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1, 0), rockMat, rocks.length);
+  const rockMat = new THREE.MeshStandardMaterial({ map: tex.rock('#8b8781'), roughness: 0.95 });
+  const rim = new THREE.InstancedMesh(rockGeo(), rockMat, rocks.length);
   rocks.forEach((m, i) => rim.setMatrixAt(i, m));
   rim.castShadow = true;
+  rim.receiveShadow = true;
   g.add(rim);
   return g;
+}
+
+/**
+ * Tufts of grass along both sides of the road wherever the ground is grassy, tinted to
+ * match the land. They sway and shrink away in the distance.
+ */
+export function buildGrass(
+  terrain: Terrain,
+  track: Track,
+  look?: TerrainLook,
+  max = 42000,
+): THREE.Mesh {
+  const mats: THREE.Matrix4[] = [];
+  const cols: THREE.Color[] = [];
+  const gaps = track.def.gaps ?? [];
+  const tunnels = track.def.tunnels ?? [];
+  const skip = (s: number) =>
+    gaps.some(([a, b]) => s > a - 4 && s < b + 4) ||
+    tunnels.some(([a, b]) => s > a - 20 && s < b + 20);
+  // The meadow texture's own green, so tufts melt into the ground.
+  const base = new THREE.Color('#6fae40');
+  for (let pass = 0; pass < 5 && mats.length < max; pass++)
+    for (let s = tex.rnd() * 2; s < track.length && mats.length < max; s += 0.8) {
+      if (skip(s)) continue;
+      const f = track.frameAtS(s);
+      for (const side of [-1, 1]) {
+        const out = 1.2 + Math.pow(tex.rnd(), 2.2) * 28;
+        const lat = side * (f.width / 2 + out);
+        const p = track.pointAt(s, lat, 0);
+        const { d, h, s: ns } = terrain.nearest(p.x, p.z);
+        if (d < 1.2) continue;
+        const y = terrain.heightFrom(p.x, p.z, d, h, ns);
+        let c = base.clone();
+        if (look?.paint) {
+          const pt = look.paint(p.x, p.z, y, 0, ns, d);
+          const grassy = pt.splat[0] / (pt.splat[0] + pt.splat[1] + pt.splat[2] + pt.splat[3] || 1);
+          if (tex.rnd() > grassy * 1.15 - 0.1) continue;
+          c = new THREE.Color(base.r * pt.tint[0], base.g * pt.tint[1], base.b * pt.tint[2]);
+        }
+        const k = 0.8 + tex.rnd() * 0.4;
+        cols.push(c.multiplyScalar(k));
+        const sc = 0.7 + tex.rnd() * 0.7;
+        mats.push(
+          new THREE.Matrix4().compose(
+            new THREE.Vector3(p.x, y - 0.05, p.z),
+            new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), tex.rnd() * 6.28),
+            new THREE.Vector3(sc, sc * (0.8 + tex.rnd() * 0.5), sc),
+          ),
+        );
+      }
+    }
+  const im = new THREE.InstancedMesh(
+    uprightNormals(tuftGeo()),
+    grassMaterial(),
+    Math.max(1, mats.length),
+  );
+  mats.forEach((m, i) => {
+    im.setMatrixAt(i, m);
+    im.setColorAt(i, cols[i]!);
+  });
+  im.count = mats.length;
+  im.receiveShadow = true;
+  im.frustumCulled = false;
+  return im;
 }
 
 /** Grandstand alongside the start straight, on the outside of the first corner. */

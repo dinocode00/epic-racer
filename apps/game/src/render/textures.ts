@@ -28,7 +28,7 @@ function canvas(w: number, h = w): [HTMLCanvasElement, CanvasRenderingContext2D]
 function finish(c: HTMLCanvasElement, repeat = true, srgb = true): THREE.CanvasTexture {
   const t = new THREE.CanvasTexture(c);
   if (repeat) t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  t.anisotropy = 8;
+  t.anisotropy = 16; // the renderer clamps this to what the GPU supports
   if (srgb) t.colorSpace = THREE.SRGBColorSpace;
   all.push(t);
   return t;
@@ -929,4 +929,124 @@ export function goldGrass(): THREE.CanvasTexture {
     x.stroke();
   }
   return finish(c);
+}
+
+/**
+ * Alpha cut-out texture from a canvas, with the average opaque colour bled into the
+ * transparent pixels. Canvas textures store black there, which shows up as dark fringes
+ * once the texture is mipmapped.
+ */
+function cutout(c: HTMLCanvasElement): THREE.DataTexture {
+  const x = c.getContext('2d')!;
+  const img = x.getImageData(0, 0, c.width, c.height);
+  const d = img.data;
+  let r = 0,
+    g = 0,
+    b = 0,
+    n = 0;
+  for (let i = 0; i < d.length; i += 4)
+    if (d[i + 3]! > 128) {
+      r += d[i]!;
+      g += d[i + 1]!;
+      b += d[i + 2]!;
+      n++;
+    }
+  n = Math.max(1, n);
+  const out = new Uint8Array(d.length);
+  for (let i = 0; i < d.length; i += 4) {
+    const a = d[i + 3]!;
+    const k = a / 255;
+    out[i] = Math.round(d[i]! * k + (r / n) * (1 - k));
+    out[i + 1] = Math.round(d[i + 1]! * k + (g / n) * (1 - k));
+    out[i + 2] = Math.round(d[i + 2]! * k + (b / n) * (1 - k));
+    out[i + 3] = a;
+  }
+  // Canvas rows run top-down; flip so v = 1 is the top like other textures.
+  const flipped = new Uint8Array(out.length);
+  const row = c.width * 4;
+  for (let y = 0; y < c.height; y++)
+    flipped.set(out.subarray(y * row, (y + 1) * row), (c.height - 1 - y) * row);
+  const t = new THREE.DataTexture(flipped, c.width, c.height, THREE.RGBAFormat);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.magFilter = THREE.LinearFilter;
+  t.minFilter = THREE.LinearMipmapLinearFilter;
+  t.generateMipmaps = true;
+  t.anisotropy = 4;
+  t.needsUpdate = true;
+  return t;
+}
+
+/** Leaf cluster for canopy cards: overlapping leaves on transparency, tinted per tree. */
+export function leafCluster(): THREE.Texture {
+  const S = 256;
+  const [c, x] = canvas(S);
+  x.clearRect(0, 0, S, S);
+  for (let i = 0; i < 150; i++) {
+    const a = rnd() * Math.PI * 2,
+      r = Math.sqrt(rnd()) * S * 0.4;
+    const px = S / 2 + Math.cos(a) * r,
+      py = S / 2 + Math.sin(a) * r;
+    const v = Math.floor(170 + rnd() * 85);
+    x.save();
+    x.translate(px, py);
+    x.rotate(rnd() * Math.PI * 2);
+    x.fillStyle = `rgb(${v},${v},${Math.floor(v * 0.92)})`;
+    x.beginPath();
+    x.ellipse(0, 0, 9 + rnd() * 7, 4 + rnd() * 3, 0, 0, Math.PI * 2);
+    x.fill();
+    x.strokeStyle = `rgba(255,255,255,0.25)`;
+    x.lineWidth = 1;
+    x.beginPath();
+    x.moveTo(-8, 0);
+    x.lineTo(8, 0);
+    x.stroke();
+    x.restore();
+  }
+  return cutout(c);
+}
+
+/** Pine needle spray: fans of thin strokes from a twig. */
+export function needleCluster(): THREE.Texture {
+  const S = 256;
+  const [c, x] = canvas(S);
+  x.clearRect(0, 0, S, S);
+  x.lineCap = 'round';
+  for (let b = 0; b < 9; b++) {
+    const y0 = S * (0.15 + b * 0.085);
+    const len = S * (0.18 + rnd() * 0.18);
+    for (let i = 0; i < 40; i++) {
+      const t = i / 40;
+      const ox = S / 2 + (t - 0.5) * len * 2;
+      const v = Math.floor(160 + rnd() * 90);
+      x.strokeStyle = `rgb(${v},${v},${v})`;
+      x.lineWidth = 2;
+      x.beginPath();
+      x.moveTo(ox, y0);
+      x.lineTo(ox + (rnd() - 0.5) * 14, y0 + 16 + rnd() * 14);
+      x.stroke();
+    }
+  }
+  return cutout(c);
+}
+
+/** Grass blades: tapered strokes rising from the bottom edge. */
+export function grassBlades(): THREE.Texture {
+  const W = 256,
+    H = 128;
+  const [c, x] = canvas(W, H);
+  x.clearRect(0, 0, W, H);
+  for (let i = 0; i < 70; i++) {
+    const bx = rnd() * W;
+    const h = H * (0.45 + rnd() * 0.55);
+    const lean = (rnd() - 0.5) * 30;
+    const v = Math.floor(200 + rnd() * 55);
+    x.fillStyle = `rgb(${v},${v},${v})`;
+    x.beginPath();
+    x.moveTo(bx - 3, H);
+    x.quadraticCurveTo(bx + lean * 0.3, H - h * 0.6, bx + lean, H - h);
+    x.quadraticCurveTo(bx + lean * 0.3 + 2, H - h * 0.6, bx + 3, H);
+    x.closePath();
+    x.fill();
+  }
+  return cutout(c);
 }

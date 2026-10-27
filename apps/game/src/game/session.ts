@@ -9,6 +9,7 @@ import type { Theme } from '../render/themes.ts';
 import { World } from '../render/world.ts';
 import { ChaseCam } from './camera.ts';
 import { Hud } from './hud.ts';
+import { Minimap } from './minimap.ts';
 import type { InputSource } from './input.ts';
 
 export interface PlayerSetup {
@@ -67,6 +68,7 @@ export class RaceSession {
   private countdownEl: HTMLDivElement;
   private hudRoot: HTMLElement;
   private dividers: HTMLDivElement[] = [];
+  private minimap: Minimap;
   onFinished?: (
     order: { name: string; color: string; vehicle: string; human: boolean; time: number }[],
   ) => void;
@@ -150,6 +152,7 @@ export class RaceSession {
       mk({ left: '0', right: '0', top: 'calc(50% - 2px)', height: '4px' });
       if (players.length > 2) mk({ top: '0', bottom: '0', left: 'calc(50% - 2px)', width: '4px' });
     }
+    this.minimap = new Minimap(this.hudRoot, this.race.track, players.length);
     this.countdownEl = document.createElement('div');
     this.countdownEl.className = 'countdown';
     this.hudRoot.appendChild(this.countdownEl);
@@ -209,6 +212,8 @@ export class RaceSession {
       const leader = this.race.karts.find((k) => k.place === 1)!;
       this.spectator.update(this.views[leader.id]!, leader.speed, leader.boostTime > 0, false, dt);
     }
+
+    this.minimap.update(this.race.karts, this.colors, this.humans);
 
     // Countdown.
     const t = this.race.time;

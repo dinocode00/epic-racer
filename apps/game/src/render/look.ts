@@ -58,7 +58,7 @@ export function applyTextureLook(look: LookName): void {
     const retro = look === 'retro';
     t.magFilter = retro ? THREE.NearestFilter : THREE.LinearFilter;
     t.minFilter = retro ? THREE.NearestFilter : THREE.LinearMipmapLinearFilter;
-    t.anisotropy = retro ? 1 : 8;
+    t.anisotropy = retro ? 1 : 16;
     t.needsUpdate = true;
   }
 }

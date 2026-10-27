@@ -1,4 +1,9 @@
 import * as THREE from 'three';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { Pass } from 'three/examples/jsm/postprocessing/Pass.js';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { type LookName, applyTextureLook, psxUniforms } from './look.ts';
 
 /** A viewport in normalised screen coordinates, origin top-left. */
@@ -14,6 +19,62 @@ export interface Viewport {
 
 const RETRO_LINES = 240;
 
+/** Draws every viewport into the composer's buffer (the first pass of the modern look). */
+class ViewportsPass extends Pass {
+  scene: THREE.Scene | null = null;
+  viewports: Viewport[] = [];
+  constructor() {
+    super();
+    this.needsSwap = false;
+  }
+  override render(
+    r: THREE.WebGLRenderer,
+    _w: THREE.WebGLRenderTarget,
+    read: THREE.WebGLRenderTarget,
+  ): void {
+    if (!this.scene) return;
+    const W = read.width,
+      H = read.height;
+    r.setRenderTarget(read);
+    r.setClearColor(0x000000, 1);
+    r.clear();
+    for (const vp of this.viewports) {
+      const x = Math.round(vp.x * W),
+        w = Math.round(vp.w * W),
+        h = Math.round(vp.h * H);
+      const y = H - Math.round(vp.y * H) - h;
+      vp.camera.aspect = w / h;
+      vp.camera.updateProjectionMatrix();
+      psxUniforms.uSnapRes.value.set(w, h);
+      vp.before?.();
+      read.viewport.set(x, y, w, h);
+      read.scissor.set(x, y, w, h);
+      read.scissorTest = true;
+      r.setRenderTarget(read); // three reads the target viewport on bind
+      r.render(this.scene, vp.camera);
+    }
+    read.viewport.set(0, 0, W, H);
+    read.scissorTest = false;
+  }
+}
+
+/** A gentle grade after tone mapping: a touch more colour and contrast, a soft vignette. */
+const GradeShader = {
+  uniforms: { tDiffuse: { value: null as THREE.Texture | null } },
+  vertexShader: /* glsl */ `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+  fragmentShader: /* glsl */ `
+    uniform sampler2D tDiffuse; varying vec2 vUv;
+    void main(){
+      vec3 c = texture2D(tDiffuse, vUv).rgb;
+      float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
+      c = mix(vec3(l), c, 1.03);                      // saturation
+      c = mix(c, c * c * (3.0 - 2.0 * c), 0.18);      // gentle S-curve
+      vec2 d = vUv - 0.5;
+      c *= 1.0 - dot(d, d) * 0.32;                     // vignette
+      gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);
+    }`,
+};
+
 /** Owns the WebGL renderer and draws 1-4 viewports in the chosen look. */
 export class View {
   readonly renderer: THREE.WebGLRenderer;
@@ -22,6 +83,10 @@ export class View {
   private post: { scene: THREE.Scene; camera: THREE.OrthographicCamera; mat: THREE.ShaderMaterial };
   private width = 1;
   private height = 1;
+  /** Modern-look post-processing (null on ?quality=low). */
+  private composer: EffectComposer | null = null;
+  private vpPass = new ViewportsPass();
+  private bloom: UnrealBloomPass | null = null;
 
   constructor(container: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({
@@ -66,6 +131,17 @@ export class View {
     scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat));
     this.post = { scene, camera: new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1), mat };
 
+    if (new URLSearchParams(location.search).get('quality') !== 'low') {
+      // Multisampled HDR buffer -> bloom on the brightest things -> tone map -> grade.
+      const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 4 });
+      this.composer = new EffectComposer(this.renderer, target);
+      this.composer.addPass(this.vpPass);
+      this.bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.32, 0.55, 0.92);
+      this.composer.addPass(this.bloom);
+      this.composer.addPass(new OutputPass());
+      this.composer.addPass(new ShaderPass(GradeShader));
+    }
+
     this.resize();
     window.addEventListener('resize', () => this.resize());
   }
@@ -86,11 +162,19 @@ export class View {
     const lines = RETRO_LINES;
     this.rt.setSize(Math.round((lines * this.width) / this.height), lines);
     this.post.mat.uniforms.uRes!.value.set(this.rt.width, this.rt.height);
+    this.composer?.setPixelRatio(this.renderer.getPixelRatio());
+    this.composer?.setSize(this.width, this.height);
   }
 
   render(scene: THREE.Scene, viewports: Viewport[]): void {
     const r = this.renderer;
     const retro = this.look === 'retro';
+    if (!retro && this.composer) {
+      this.vpPass.scene = scene;
+      this.vpPass.viewports = viewports;
+      this.composer.render();
+      return;
+    }
     const W = retro ? this.rt.width : this.width;
     const H = retro ? this.rt.height : this.height;
     r.setRenderTarget(retro ? this.rt : null);

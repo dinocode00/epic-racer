@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { windUniforms } from './foliage.ts';
 import type { Track } from '@epic/sim';
 import { Effects } from './effects.ts';
 import { patchScene } from './look.ts';
@@ -6,6 +7,7 @@ import {
   Terrain,
   buildClouds,
   buildFoliage,
+  buildGrass,
   buildGrandstand,
   buildSky,
   buildTerrain,
@@ -90,6 +92,9 @@ export class World {
         kindAt: theme.foliageAt?.(track, this.terrain),
       }),
     );
+    // Roadside grass (skipped on ?quality=low for slower machines).
+    if (new URLSearchParams(location.search).get('quality') !== 'low')
+      s.add(buildGrass(this.terrain, track, theme.terrainPaint?.(track)));
     if (theme.grandstand) s.add(buildGrandstand(track));
     if (theme.clouds) {
       const clouds = buildClouds(this.terrain);
@@ -171,6 +176,7 @@ export class World {
   /** Per-frame animation of props (mill wheels, water...). */
   update(dt: number): void {
     this.t += dt;
+    windUniforms.uTime.value = this.t;
     this.animate?.(this.t, dt);
   }
 
