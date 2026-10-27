@@ -10,17 +10,28 @@ renders from the latest build.
 
 ### At home with phones (the full setup)
 
-You need [Node.js 22+](https://nodejs.org) on the computer that drives the TV. Then, in a
-terminal:
+**One-time:** get the game folder onto the computer that drives the TV. Either download it
+from GitHub (on the `claude/keen-curie-e7kh6o` branch: **Code → Download ZIP**, then unzip),
+or clone it so the launcher can fetch updates by itself:
 
 ```sh
-corepack enable     # once: provides pnpm
-git clone https://github.com/dinocode00/epic-racer.git
-cd epic-racer
-git checkout claude/keen-curie-e7kh6o
-pnpm install
-pnpm start          # builds, starts the server, prints a URL + QR code
+git clone -b claude/keen-curie-e7kh6o https://github.com/dinocode00/epic-racer.git
 ```
+
+**Every time:** double-click the launcher in the folder:
+
+- **Mac:** `Start Epic Racer.command` (the first time, right-click it → **Open** → **Open**,
+  because macOS asks about files downloaded from the internet)
+- **Windows:** `Start Epic Racer.bat` (if SmartScreen warns, choose **More info → Run anyway**)
+- **Linux:** `start-epic-racer.sh`
+
+The launcher installs Node.js privately inside the folder if it isn't already on the computer
+(no admin rights needed), fetches the latest version (for a cloned folder), installs and
+builds only when something changed, starts the game and opens it in your browser. The first
+run takes a few minutes; after that it starts in seconds. Keep its window open while you
+play (it shows the QR code for phones); close it to stop the game.
+
+Prefer a terminal? `pnpm install` then `pnpm start` does the same with Node 22+ installed.
 
 1. On the computer, open `http://localhost:4000` and go fullscreen (F11). Mirror or cast
    that screen to the TV (HDMI, AirPlay, Chromecast tab cast…).
