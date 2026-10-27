@@ -39,7 +39,23 @@ function pnpmCommand() {
 }
 const env = { ...process.env, COREPACK_ENABLE_DOWNLOAD_PROMPT: '0', COREPACK_ENABLE_STRICT: '0' };
 // Make sure child processes find this same Node first (matters for the portable copy).
-env.PATH = dirname(process.execPath) + (WIN ? ';' : ':') + (env.PATH ?? env.Path ?? '');
+// Package scripts call plain `pnpm`, so put a corepack shim for it on PATH (in .tools/, no global install).
+const SHIM_DIR = join(ROOT, '.tools', 'bin');
+env.PATH =
+  SHIM_DIR +
+  (WIN ? ';' : ':') +
+  dirname(process.execPath) +
+  (WIN ? ';' : ':') +
+  (env.PATH ?? env.Path ?? '');
+function ensurePnpmShim() {
+  mkdirSync(SHIM_DIR, { recursive: true });
+  spawnSync(pnpmCommand(), ['enable', '--install-directory', SHIM_DIR, 'pnpm'], {
+    cwd: ROOT,
+    env,
+    stdio: 'ignore',
+    shell: WIN,
+  });
+}
 
 function pnpm(args, what) {
   say(what);
@@ -115,6 +131,8 @@ if (existsSync(join(ROOT, '.git'))) {
   if (r.status !== 0)
     say("Couldn't update (offline, or local changes): starting the version you have.");
 }
+
+ensurePnpmShim();
 
 // 2. Install dependencies when they're missing or the lockfile changed.
 const state = readState();
