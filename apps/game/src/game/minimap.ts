@@ -95,25 +95,29 @@ export class Minimap {
     this.layout();
     const S = this.size;
     if (!S) return;
-    const c = this.ctx;
-    c.clearRect(0, 0, S, S);
-    c.drawImage(this.outline, 0, 0);
+    this.ctx.clearRect(0, 0, S, S);
+    this.ctx.drawImage(this.outline, 0, 0);
     // AI first, humans on top; the leader gets a small gold crown ring.
-    const order = [...karts].sort(
-      (a, b) => Number(humans.includes(a.id)) - Number(humans.includes(b.id)),
-    );
-    for (const k of order) {
-      const [px, py] = this.toPx(k.pos.x, k.pos.z);
-      const human = humans.includes(k.id);
-      const r = S * (human ? 0.04 : 0.024);
-      c.beginPath();
-      c.arc(px, py, r, 0, Math.PI * 2);
-      c.fillStyle = human ? colors[k.id]! : 'rgba(205,205,215,0.95)';
-      c.fill();
-      c.lineWidth = S * (human ? 0.012 : 0.007);
-      c.strokeStyle = k.place === 1 ? '#f5c518' : human ? '#fff' : 'rgba(30,30,40,0.9)';
-      c.stroke();
-    }
+    for (let pass = 0; pass < 2; pass++)
+      for (const k of karts) {
+        const human = humans.includes(k.id);
+        if (human !== (pass === 1)) continue;
+        this.dot(k, human, colors);
+      }
+  }
+
+  private dot(k: KartState, human: boolean, colors: string[]): void {
+    const S = this.size;
+    const c = this.ctx;
+    const [px, py] = this.toPx(k.pos.x, k.pos.z);
+    const r = S * (human ? 0.04 : 0.024);
+    c.beginPath();
+    c.arc(px, py, r, 0, Math.PI * 2);
+    c.fillStyle = human ? colors[k.id]! : 'rgba(205,205,215,0.95)';
+    c.fill();
+    c.lineWidth = S * (human ? 0.012 : 0.007);
+    c.strokeStyle = k.place === 1 ? '#f5c518' : human ? '#fff' : 'rgba(30,30,40,0.9)';
+    c.stroke();
   }
 
   dispose(): void {

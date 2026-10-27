@@ -4,8 +4,31 @@ import { greatEagle } from './eagle.ts';
 import { DRIFT_COLORS, type Effects, flame } from './effects.ts';
 import { type VehicleModel, buildVehicle } from './vehicles.ts';
 
-const V = (v: { x: number; y: number; z: number }) => new THREE.Vector3(v.x, v.y, v.z);
 const tmp = new THREE.Vector3();
+// Scratch values reused every frame (no per-frame garbage for the collector to clear up).
+const tA = new THREE.Vector3();
+const tB = new THREE.Vector3();
+const tWp = new THREE.Vector3();
+const tRight = new THREE.Vector3();
+const tBack = new THREE.Vector3();
+const tUp = new THREE.Vector3();
+const tQ = new THREE.Quaternion();
+const tM = new THREE.Matrix4();
+const ZERO = new THREE.Vector3();
+const BLADE_SPARK = new THREE.Color(0.6, 0.85, 1.6);
+const FLAME_RISE = new THREE.Vector3(0, 2, 0);
+const FLAME_SPARK = new THREE.Color(1.6, 0.55, 0.1);
+const DRIFT_SMOKE = new THREE.Color(0.85, 0.85, 0.85);
+const WRAITH_SMOKE = new THREE.Color(0.06, 0.06, 0.09);
+const BUMP_SPARK = new THREE.Color(1.6, 1.2, 0.4);
+const REAR_L = new THREE.Vector3(-0.9, 0.05, 1.6);
+const REAR_R = new THREE.Vector3(0.9, 0.05, 1.6);
+const lerpV = (
+  out: THREE.Vector3,
+  a: { x: number; y: number; z: number },
+  b: { x: number; y: number; z: number },
+  t: number,
+) => out.set(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t);
 
 /** Visual twin of a simulated kart: interpolation, animation and effects. */
 export class KartView {
@@ -158,7 +181,7 @@ export class KartView {
       P.blade.rotation.y += (want - P.blade.rotation.y) * Math.min(1, dt * 10);
       tmp.set(4.6, 0, 0).applyEuler(P.blade.rotation).add(P.blade.position);
       this.root.localToWorld(tmp);
-      fx.sparks.emit(tmp, new THREE.Vector3(), new THREE.Color(0.6, 0.85, 1.6), 0.7, 0.3, 0.35);
+      fx.sparks.emit(tmp, ZERO, BLADE_SPARK, 0.7, 0.3, 0.35);
     }
     this.flameOn = sp?.kind === 'flame';
     P.jet.visible = this.flameOn;
@@ -171,14 +194,7 @@ export class KartView {
       for (let i = 0; i < 4; i++) {
         tmp.set((Math.random() - 0.5) * 1.5, 0.9, P.jet.position.z + Math.random() * 10);
         this.root.localToWorld(tmp);
-        fx.sparks.emit(
-          tmp,
-          new THREE.Vector3(0, 2, 0),
-          new THREE.Color(1.6, 0.55, 0.1),
-          1,
-          0.6,
-          0.35,
-        );
+        fx.sparks.emit(tmp, FLAME_RISE, FLAME_SPARK, 1, 0.6, 0.35);
       }
     }
     P.jacks.visible = sp?.kind === 'jacks' && sp.time > 1.6;
@@ -191,25 +207,60 @@ export class KartView {
     body.scale.z += (sz - body.scale.z) * Math.min(1, dt * 10);
     // The Great Eagle (the track item) is golden, so it's never mistaken for a rescue.
     if (k.eagleTime > 0) {
-      if (!this.gold) {
-        this.gold = greatEagle();
-        this.gold.group.scale.setScalar(1.7);
-        this.gold.group.traverse((o) => {
-          const m = o as THREE.Mesh;
-          if (m.isMesh) {
-            const mat = (m.material as THREE.MeshStandardMaterial).clone();
-            mat.color = new THREE.Color(0xd9a93a);
-            mat.emissive = new THREE.Color(0x3a2606);
-            mat.metalness = 0.6;
-            m.material = mat;
-          }
-        });
-        this.root.add(this.gold.group);
-      }
-      this.gold.group.visible = true;
-      this.gold.group.position.set(0, 3.3, 0);
-      this.gold.flap(this.t * 1.4);
+      const gold = this.goldEagle();
+      gold.group.visible = true;
+      gold.group.position.set(0, 3.3, 0);
+      gold.flap(this.t * 1.4);
     } else if (this.gold) this.gold.group.visible = false;
+  }
+
+  private goldEagle() {
+    if (!this.gold) {
+      this.gold = greatEagle();
+      this.gold.group.scale.setScalar(1.7);
+      this.gold.group.traverse((o) => {
+        const m = o as THREE.Mesh;
+        if (m.isMesh) {
+          const mat = (m.material as THREE.MeshStandardMaterial).clone();
+          mat.color = new THREE.Color(0xd9a93a);
+          mat.emissive = new THREE.Color(0x3a2606);
+          mat.metalness = 0.6;
+          m.material = mat;
+        }
+      });
+      this.root.add(this.gold.group);
+    }
+    return this.gold;
+  }
+
+  private rescueEagle() {
+    if (!this.eagle) {
+      this.eagle = greatEagle();
+      this.eagle.group.scale.setScalar(1.6);
+      this.root.add(this.eagle.group);
+    }
+    return this.eagle;
+  }
+
+  /**
+   * Build and show every effect this kart can ever display (shield, blade, flame, eagles…)
+   * for the loading screen's warm-up render, so none of them stalls the race the first
+   * time it appears. Returns a function that hides them again.
+   */
+  warmup(): () => void {
+    this.fxParts ??= this.buildFx();
+    const parts = [
+      ...Object.values(this.fxParts),
+      this.goldEagle().group,
+      this.rescueEagle().group,
+      this.streaks,
+      ...this.flames,
+    ];
+    parts.forEach((o) => (o.visible = true));
+    return () => {
+      parts.forEach((o) => (o.visible = false));
+      this.streaks.visible = false;
+    };
   }
 
   /** Called per viewport: the owner's own chase camera sits inside the flame jet. */
@@ -227,35 +278,31 @@ export class KartView {
 
   update(k: KartState, steer: number, alpha: number, dt: number, fx: Effects): void {
     this.t += dt;
-    this.pos.copy(V(k.prevPos)).lerp(V(k.pos), alpha);
-    this.fwd.copy(V(k.prevFwd)).lerp(V(k.fwd), alpha).normalize();
-    this.up.copy(V(k.prevUp)).lerp(V(k.up), alpha).normalize();
-    let right = new THREE.Vector3().crossVectors(this.fwd, this.up).normalize();
-    let back = this.fwd.clone().negate();
+    lerpV(this.pos, k.prevPos, k.pos, alpha);
+    lerpV(this.fwd, k.prevFwd, k.fwd, alpha).normalize();
+    lerpV(this.up, k.prevUp, k.up, alpha).normalize();
+    const right = tRight.crossVectors(this.fwd, this.up).normalize();
+    const back = tBack.copy(this.fwd).negate();
     this.root.position.copy(this.pos);
     // In the air, pitch the nose along the flight path.
     const targetPitch = k.air ? Math.atan2(k.vel.y, Math.hypot(k.vel.x, k.vel.z)) * 0.8 : 0;
     this.airPitch += (targetPitch - this.airPitch) * Math.min(1, dt * 6);
-    let up = this.up.clone();
+    const up = tUp.copy(this.up);
     if (Math.abs(this.airPitch) > 0.01) {
-      const q = new THREE.Quaternion().setFromAxisAngle(right, this.airPitch);
-      back = back.applyQuaternion(q);
-      up = up.applyQuaternion(q);
-      right = new THREE.Vector3().crossVectors(back.clone().negate(), up).normalize();
+      tQ.setFromAxisAngle(right, this.airPitch);
+      back.applyQuaternion(tQ);
+      up.applyQuaternion(tQ);
+      right.crossVectors(tA.copy(back).negate(), up).normalize();
     }
-    this.root.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(right, up, back));
+    this.root.quaternion.setFromRotationMatrix(tM.makeBasis(right, up, back));
     // Eagle rescue: carried down from the sky.
     if (k.rescueTime > 0) {
-      if (!this.eagle) {
-        this.eagle = greatEagle();
-        this.eagle.group.scale.setScalar(1.6);
-        this.root.add(this.eagle.group);
-      }
+      const eagle = this.rescueEagle();
       const t = k.rescueTime / RESCUE_TIME;
       this.root.position.addScaledVector(this.up, t * t * 16);
-      this.eagle.group.visible = true;
-      this.eagle.group.position.set(0, 3.2 + (1 - t) * 3 * (1 - t), 0);
-      this.eagle.flap(this.t);
+      eagle.group.visible = true;
+      eagle.group.position.set(0, 3.2 + (1 - t) * 3 * (1 - t), 0);
+      eagle.flap(this.t);
     } else if (this.eagle) {
       this.eagle.group.visible = false;
     }
@@ -325,20 +372,18 @@ export class KartView {
     }
 
     // Particles, in world space.
-    const toWorld = (local: THREE.Vector3) => local.clone().applyMatrix4(body.matrixWorld);
+    const toWorld = (local: THREE.Vector3) => tWp.copy(local).applyMatrix4(body.matrixWorld);
     this.root.updateMatrixWorld();
     if (lvl >= 0 && Math.abs(k.speed) > 5) {
-      const rearL =
-        ud.rear?.[0] ?? (ud.hover ? ud.exhausts[0]! : new THREE.Vector3(-0.9, 0.05, 1.6));
-      const rearR =
-        ud.rear?.[1] ?? (ud.hover ? ud.exhausts[1]! : new THREE.Vector3(0.9, 0.05, 1.6));
-      for (const p of [rearL, rearR]) {
-        const wp = toWorld(p);
+      const rearL = ud.rear?.[0] ?? (ud.hover ? ud.exhausts[0]! : REAR_L);
+      const rearR = ud.rear?.[1] ?? (ud.hover ? ud.exhausts[1]! : REAR_R);
+      for (let side = 0; side < 2; side++) {
+        const wp = toWorld(side ? rearR : rearL);
         const n = lvl > 0 ? 3 : 1;
         for (let i = 0; i < n; i++) {
           tmp
             .set((Math.random() - 0.5) * 4, 1.5 + Math.random() * 3, (Math.random() - 0.5) * 4)
-            .add(right.clone().multiplyScalar(-k.drift.dir * 3));
+            .addScaledVector(right, -k.drift.dir * 3);
           fx.sparks.emit(
             wp,
             tmp,
@@ -352,7 +397,7 @@ export class KartView {
           fx.smoke.emit(
             wp,
             tmp.set(0, 0.6, 0).addScaledVector(this.fwd, -2),
-            new THREE.Color(0.85, 0.85, 0.85),
+            DRIFT_SMOKE,
             0.35,
             0.8,
             0.9,
@@ -365,19 +410,15 @@ export class KartView {
       // Wraith boost: a trail of shadowy smoke instead of jet flames.
       for (let i = 0; i < 3; i++) {
         const wp = toWorld(
-          new THREE.Vector3(
-            (Math.random() - 0.5) * 0.8,
-            0.6 + Math.random() * 1.6,
-            0.6 + Math.random() * 0.6,
-          ),
+          tB.set((Math.random() - 0.5) * 0.8, 0.6 + Math.random() * 1.6, 0.6 + Math.random() * 0.6),
         );
         fx.smoke.emit(
           wp,
-          back
-            .clone()
+          tA
+            .copy(back)
             .multiplyScalar(3)
-            .add(new THREE.Vector3(0, 0.8, 0)),
-          new THREE.Color(0.06, 0.06, 0.09),
+            .setY(tA.y + 0.8),
+          WRAITH_SMOKE,
           0.7,
           0.9,
           0.8,
@@ -387,13 +428,13 @@ export class KartView {
     }
     if (boost) {
       for (const ex of ud.exhausts) {
-        const wp = toWorld(ex.clone().add(new THREE.Vector3(0, 0, 0.6)));
+        const wp = toWorld(tB.copy(ex).setZ(ex.z + 0.6));
         fx.sparks.emit(
           wp,
-          back
-            .clone()
+          tA
+            .copy(back)
             .multiplyScalar(6)
-            .add(new THREE.Vector3((Math.random() - 0.5) * 2, Math.random() * 2, 0)),
+            .add(tB.set((Math.random() - 0.5) * 2, Math.random() * 2, 0)),
           DRIFT_COLORS[2]!,
           1,
           0.18,
@@ -405,9 +446,9 @@ export class KartView {
       for (let i = 0; i < 24; i++) {
         tmp.set((Math.random() - 0.5) * 10, Math.random() * 7, (Math.random() - 0.5) * 10);
         fx.sparks.emit(
-          this.pos.clone().addScaledVector(this.up, 0.6),
+          tWp.copy(this.pos).addScaledVector(this.up, 0.6),
           tmp,
-          new THREE.Color(1.6, 1.2, 0.4),
+          BUMP_SPARK,
           1,
           0.14,
           0.4,

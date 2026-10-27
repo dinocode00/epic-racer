@@ -93,8 +93,11 @@ export class World {
       }),
     );
     // Roadside grass (skipped on ?quality=low for slower machines).
-    if (new URLSearchParams(location.search).get('quality') !== 'low')
-      s.add(buildGrass(this.terrain, track, theme.terrainPaint?.(track)));
+    if (new URLSearchParams(location.search).get('quality') !== 'low') {
+      const grass = buildGrass(this.terrain, track, theme.terrainPaint?.(track));
+      this.grass = grass;
+      s.add(grass);
+    }
     if (theme.grandstand) s.add(buildGrandstand(track));
     if (theme.clouds) {
       const clouds = buildClouds(this.terrain);
@@ -180,13 +183,70 @@ export class World {
     this.animate?.(this.t, dt);
   }
 
-  /** Centre the shadow frustum on a point (per viewport). */
-  focusSun(p: THREE.Vector3): void {
+  /** Draw only part of the roadside grass (automatic quality): 1 = all of it. */
+  setGrassDensity(f: number): void {
+    if (!this.grass) return;
+    const full = this.grass.userData.fullCount as number;
+    this.grass.count = Math.round(full * f);
+    this.grass.visible = this.grass.count > 0;
+  }
+
+  /** Centre the shadow frustum on a point, covering `half` metres around it. */
+  focusSun(p: THREE.Vector3, half = SHADOW_HALF): void {
     this.sun.target.position.copy(p);
     this.sun.position.copy(p).addScaledVector(this.theme.sunDir, 200);
     this.sun.target.updateMatrixWorld();
+    const c = this.sun.shadow.camera;
+    if (c.right !== half) {
+      c.left = c.bottom = -half;
+      c.right = c.top = half;
+      c.far = 400 + half * 2;
+      c.updateProjectionMatrix();
+    }
+  }
+
+  /**
+   * Shadows are drawn once per frame for all viewports when the players are close enough
+   * together for one shadow map to cover them all (the usual case in split screen); returns
+   * false when they're too far apart and each view needs its own.
+   */
+  focusSunOn(points: THREE.Vector3[]): boolean {
+    let x0 = Infinity,
+      x1 = -Infinity,
+      z0 = Infinity,
+      z1 = -Infinity,
+      y = 0;
+    for (const p of points) {
+      x0 = Math.min(x0, p.x);
+      x1 = Math.max(x1, p.x);
+      z0 = Math.min(z0, p.z);
+      z1 = Math.max(z1, p.z);
+      y += p.y / points.length;
+    }
+    // Room around each player plus the spread between them; the sun's slant stretches it.
+    const half = SHADOW_HALF + Math.max(x1 - x0, z1 - z0) * 0.6;
+    if (half > SHADOW_SHARED_MAX) return false;
+    this.focusSun(this.sunAim.set((x0 + x1) / 2, y, (z0 + z1) / 2), Math.max(SHADOW_HALF, half));
+    return true;
+  }
+  private sunAim = new THREE.Vector3();
+  private grass?: THREE.InstancedMesh;
+
+  /** A sharper shadow map when several players share it (if the GPU allows). */
+  setShadowSharing(players: number, maxTexture: number): void {
+    const size = players > 1 && maxTexture >= 4096 ? 4096 : 2048;
+    const sh = this.sun.shadow;
+    if (sh.mapSize.x === size) return;
+    sh.mapSize.set(size, size);
+    sh.map?.dispose();
+    sh.map = null;
   }
 }
+
+/** Shadow coverage around one player (metres each way). */
+const SHADOW_HALF = 45;
+/** Beyond this the shared shadow map gets too blurry, so each view draws its own. */
+const SHADOW_SHARED_MAX = 110;
 
 const mixC = (a: number, b: number, t: number) =>
   new THREE.Color(a).lerp(new THREE.Color(b), t).getHex();

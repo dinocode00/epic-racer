@@ -69,6 +69,7 @@ export class RaceSession {
   private hudRoot: HTMLElement;
   private dividers: HTMLDivElement[] = [];
   private minimap: Minimap;
+  private focus: THREE.Vector3[] = [];
   onFinished?: (
     order: { name: string; color: string; vehicle: string; human: boolean; time: number }[],
   ) => void;
@@ -159,6 +160,40 @@ export class RaceSession {
     players.forEach((p, i) => {
       if (p.autopilot) this.autoBrains.set(this.humans[i]!, createBrain(100 + i, 1));
     });
+    this.world.setShadowSharing(
+      this.cams.length + (this.spectator ? 1 : 0),
+      view.renderer.capabilities.maxTextureSize,
+    );
+    this.prewarm();
+  }
+
+  /**
+   * Before the countdown: draw the whole track once with everything showing, every kart's
+   * shield, blade, flame and eagle, and one of every item, so all shaders are compiled and
+   * all textures are on the GPU. Otherwise each would stall the race the first time it
+   * appears (the "first time" hitches).
+   */
+  private prewarm(): void {
+    const restore = [...this.views.map((v) => v.warmup()), this.itemViews.warmup()];
+    const changed: [THREE.Object3D, boolean, boolean][] = [];
+    this.world.scene.traverse((o) => {
+      // Lights stay as they are: one more light would compile a variant the race never uses.
+      if ((o as THREE.Light).isLight) return;
+      if (!o.visible || o.frustumCulled) {
+        changed.push([o, o.visible, o.frustumCulled]);
+        o.visible = true;
+        o.frustumCulled = false;
+      }
+    });
+    const cam = this.cams[0]?.camera ?? new THREE.PerspectiveCamera();
+    this.view.render(this.world.scene, [{ x: 0, y: 0, w: 1, h: 1, camera: cam, shadow: true }]);
+    for (const [o, visible, culled] of changed) {
+      o.visible = visible;
+      o.frustumCulled = culled;
+    }
+    restore.forEach((r) => r());
+    // Replace the warm-up picture with a proper first frame straight away.
+    this.frame(0);
   }
 
   /** Run the simulation forward instantly (for screenshots and tests). */
@@ -225,8 +260,14 @@ export class RaceSession {
       this.countdownEl.className = 'countdown go';
     } else this.countdownEl.textContent = '';
 
-    // Render all viewports.
+    // Render all viewports. One shadow map covers every player when they're near enough to
+    // each other; otherwise each view redraws it around its own kart.
     const rects = layout(this.players.length === 3 ? 4 : this.players.length);
+    const leaderView = () => this.views[this.race.karts.find((k) => k.place === 1)!.id]!;
+    this.focus.length = 0;
+    for (const ki of this.humans) this.focus.push(this.views[ki]!.pos);
+    if (this.spectator) this.focus.push(leaderView().pos);
+    const sharedShadow = this.world.focusSunOn(this.focus);
     const vps: Viewport[] = this.cams.map((c, i) => {
       const [x, y, w, h] = rects[i]!;
       const kv = this.views[this.humans[i]!]!;
@@ -236,6 +277,7 @@ export class RaceSession {
         w,
         h,
         camera: c.camera,
+        shadow: !sharedShadow || i === 0,
         before: () => {
           // Hide other karts that would sit on top of this camera and block the view.
           this.views.forEach((v) => {
@@ -243,7 +285,7 @@ export class RaceSession {
             v.setViewer(v === kv);
           });
           this.world.applyAtmosphere(this.world.atmosphereAt(this.race.karts[this.humans[i]!]!.s));
-          this.world.focusSun(kv.pos);
+          if (!sharedShadow) this.world.focusSun(kv.pos);
           fx.setViewportHeight(
             h * window.innerHeight * this.view.renderer.getPixelRatio(),
             c.camera.fov,
@@ -260,6 +302,7 @@ export class RaceSession {
         w,
         h,
         camera: sc.camera,
+        shadow: !sharedShadow,
         before: () => {
           this.views.forEach((v) => {
             v.root.visible = true;
@@ -267,7 +310,7 @@ export class RaceSession {
           });
           const leader = this.race.karts.find((k) => k.place === 1)!;
           this.world.applyAtmosphere(this.world.atmosphereAt(leader.s));
-          this.world.focusSun(sc.camera.position);
+          if (!sharedShadow) this.world.focusSun(leaderView().pos);
         },
       });
     }

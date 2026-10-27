@@ -21,6 +21,7 @@ import { type PlayerSetup, RaceSession } from './game/session.ts';
 import { Showroom } from './game/showroom.ts';
 import { TRACKS, trackById } from './game/tracks.ts';
 import { itemSkin } from './game/itemSkins.ts';
+import { AutoQuality, FpsMeter, LEVELS } from './game/quality.ts';
 import { type KartState, SPECIAL_OF } from '@epic/sim';
 
 /**
@@ -30,10 +31,22 @@ import { type KartState, SPECIAL_OF } from '@epic/sim';
  * URL options (testing and screenshots):
  *   ?quick=1 skip the lobby   ?players=1..4  ?demo=1 (autopilot humans)  ?t=20 (skip ahead)
  *   ?look=retro  ?vehicles=pod,bat,nazgul,mach5  ?laps=3  ?scene=showroom  ?fixed=1
+ *   ?fps=1 (frame-rate display)  ?quality=high|low (fixed quality instead of automatic)
  */
 const params = new URLSearchParams(location.search);
 const view = new View(document.getElementById('stage')!);
 view.setLook((params.get('look') as LookName) ?? 'modern');
+// Automatic quality: steps resolution, glow and grass down when frames run slow.
+const quality = new AutoQuality(
+  !params.has('quality'),
+  params.get('quality') === 'low' ? LEVELS.length - 1 : 0,
+);
+const fpsMeter = params.has('fps') && params.get('fps') !== '0' ? new FpsMeter() : null;
+function applyQuality(): void {
+  view.setQuality(quality.settings);
+  session?.world.setGrassDensity(quality.settings.grass);
+  showroom?.world.setGrassDensity(quality.settings.grass);
+}
 const ui = document.getElementById('ui')!;
 const keyboard = new KeyboardSource();
 // Two players can share one keyboard: arrows + Enter, and WASD + Space.
@@ -336,6 +349,7 @@ function startRace(players: PlayerSetup[], laps = track().def.laps): void {
   state = 'race';
   ui.innerHTML = '';
   session = new RaceSession(view, track().def, players, laps, 8, track().theme);
+  applyQuality();
   session.onFinished = (order) => {
     state = 'results';
     resultsAt = performance.now();
@@ -417,6 +431,7 @@ if (params.get('scene') === 'showroom') {
     trackId,
   );
   showroom.hazardTime = Number(params.get('ht') ?? 0);
+  applyQuality();
   (window as unknown as { __epic: unknown }).__epic = { showroom, view };
   if (params.has('s'))
     showroom.spot = {
@@ -460,9 +475,12 @@ net.start();
 
 let last = performance.now();
 function loop(now: number): void {
+  const real = (now - last) / 1000;
   // ?fixed=1 steps exactly one 60 Hz frame per render (deterministic screenshots on slow machines).
-  const dt = params.has('fixed') ? 1 / 60 : Math.min(0.1, (now - last) / 1000);
+  const dt = params.has('fixed') ? 1 / 60 : Math.min(0.1, real);
   last = now;
+  if (quality.frame(real)) applyQuality();
+  fpsMeter?.frame(real, quality, () => view.bufferSize);
   pollLocal();
   if (session) {
     session.frame(dt);

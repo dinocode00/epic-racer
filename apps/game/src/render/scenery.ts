@@ -541,7 +541,7 @@ export function buildGrass(
   track: Track,
   look?: TerrainLook,
   max = 42000,
-): THREE.Mesh {
+): THREE.InstancedMesh {
   const mats: THREE.Matrix4[] = [];
   const cols: THREE.Color[] = [];
   const gaps = track.def.gaps ?? [];
@@ -586,11 +586,21 @@ export function buildGrass(
     grassMaterial(),
     Math.max(1, mats.length),
   );
-  mats.forEach((m, i) => {
-    im.setMatrixAt(i, m);
-    im.setColorAt(i, cols[i]!);
+  // Shuffle the draw order so drawing only the first part (lower quality) thins the grass
+  // evenly along the whole track instead of dropping whole stretches.
+  const order = mats.map((_, i) => i);
+  let seed = 12345;
+  for (let i = order.length - 1; i > 0; i--) {
+    seed = (seed * 1103515245 + 12345) >>> 0;
+    const j = seed % (i + 1);
+    [order[i], order[j]] = [order[j]!, order[i]!];
+  }
+  order.forEach((src, i) => {
+    im.setMatrixAt(i, mats[src]!);
+    im.setColorAt(i, cols[src]!);
   });
   im.count = mats.length;
+  im.userData.fullCount = mats.length;
   im.receiveShadow = true;
   im.frustumCulled = false;
   return im;

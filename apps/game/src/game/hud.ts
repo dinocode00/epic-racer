@@ -115,6 +115,7 @@ export class Hud {
     this.warn.className = threat ? 'warn danger' : 'warn power';
   }
 
+  private lastSlow = '';
   update(k: KartState, lap: number, laps: number, t = 0): void {
     this.updateItem(k, t);
     const lvl = k.drift.active ? driftLevel(k.drift.charge) : 0;
@@ -122,8 +123,13 @@ export class Hud {
     const key = `${k.place}|${lap}|${Math.round(k.speed * 3.6)}|${lvl}|${k.drift.active}|${k.finished}|${k.boostTime > 0}|${draft}`;
     if (key === this.last) return;
     this.last = key;
-    this.place.innerHTML = ordinal(k.place);
-    this.lap.innerHTML = `LAP <b>${lap}</b>/${laps}`;
+    // The speed changes almost every frame; rebuild the place and lap markup only when they do.
+    const slow = `${k.place}|${lap}|${laps}`;
+    if (slow !== this.lastSlow) {
+      this.lastSlow = slow;
+      this.place.innerHTML = ordinal(k.place);
+      this.lap.innerHTML = `LAP <b>${lap}</b>/${laps}`;
+    }
     this.kmh.textContent = String(Math.max(0, Math.round(k.speed * 3.6)));
     this.bar.style.width = `${Math.min(100, (Math.max(0, k.speed) / (k.params.topSpeed * 1.3)) * 100)}%`;
     this.drift.classList.toggle('on', k.drift.active);

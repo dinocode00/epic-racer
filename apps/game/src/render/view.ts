@@ -15,9 +15,26 @@ export interface Viewport {
   camera: THREE.PerspectiveCamera;
   /** Called right before this viewport renders (e.g. move the shadow light). */
   before?: () => void;
+  /**
+   * Redraw the shadow map before this view (default: only before the first one, so all
+   * views share one shadow map per frame).
+   */
+  shadow?: boolean;
 }
 
 const RETRO_LINES = 240;
+/**
+ * The most pixels worth drawing: a TV is 1080p, so a high-DPI laptop screen mirrored or cast
+ * to it gains nothing from more (drawing at 2x density is four times the work).
+ */
+const MAX_PIXELS = 1920 * 1080;
+
+/** What the automatic quality control can turn down. */
+export interface QualitySettings {
+  /** Resolution multiplier on top of the 1080p cap (1 = full). */
+  res: number;
+  bloom: boolean;
+}
 
 /** Draws every viewport into the composer's buffer (the first pass of the modern look). */
 class ViewportsPass extends Pass {
@@ -38,7 +55,7 @@ class ViewportsPass extends Pass {
     r.setRenderTarget(read);
     r.setClearColor(0x000000, 1);
     r.clear();
-    for (const vp of this.viewports) {
+    this.viewports.forEach((vp, i) => {
       const x = Math.round(vp.x * W),
         w = Math.round(vp.w * W),
         h = Math.round(vp.h * H);
@@ -47,12 +64,13 @@ class ViewportsPass extends Pass {
       vp.camera.updateProjectionMatrix();
       psxUniforms.uSnapRes.value.set(w, h);
       vp.before?.();
+      r.shadowMap.needsUpdate = vp.shadow ?? i === 0;
       read.viewport.set(x, y, w, h);
       read.scissor.set(x, y, w, h);
       read.scissorTest = true;
       r.setRenderTarget(read); // three reads the target viewport on bind
-      r.render(this.scene, vp.camera);
-    }
+      r.render(this.scene!, vp.camera);
+    });
     read.viewport.set(0, 0, W, H);
     read.scissorTest = false;
   }
@@ -87,14 +105,16 @@ export class View {
   private composer: EffectComposer | null = null;
   private vpPass = new ViewportsPass();
   private bloom: UnrealBloomPass | null = null;
+  private quality: QualitySettings = { res: 1, bloom: true };
 
   constructor(container: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({
       antialias: true,
       powerPreference: 'high-performance',
     });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = true;
+    // Shadows are redrawn when a view asks (once per frame), not before every view.
+    this.renderer.shadowMap.autoUpdate = false;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.05;
@@ -155,9 +175,30 @@ export class View {
     this.resize();
   }
 
+  /** Pixel density: the screen's, capped at 1080p worth of pixels, times the quality scale. */
+  private pixelRatio(): number {
+    const cap = Math.sqrt(MAX_PIXELS / Math.max(1, this.width * this.height));
+    return Math.min(window.devicePixelRatio || 1, 2, cap) * this.quality.res;
+  }
+
+  /** Apply automatic-quality settings (resolution changes reallocate buffers, so only on change). */
+  setQuality(q: QualitySettings): void {
+    const resChanged = q.res !== this.quality.res;
+    this.quality = { ...q };
+    if (this.bloom) this.bloom.enabled = q.bloom;
+    if (resChanged) this.resize();
+  }
+
+  /** Drawing-buffer size in pixels (for the frame-rate display). */
+  get bufferSize(): { w: number; h: number } {
+    const v = this.renderer.getDrawingBufferSize(new THREE.Vector2());
+    return { w: v.x, h: v.y };
+  }
+
   resize(): void {
     this.width = window.innerWidth;
     this.height = window.innerHeight;
+    this.renderer.setPixelRatio(this.pixelRatio());
     this.renderer.setSize(this.width, this.height);
     const lines = RETRO_LINES;
     this.rt.setSize(Math.round((lines * this.width) / this.height), lines);
@@ -179,7 +220,7 @@ export class View {
     const H = retro ? this.rt.height : this.height;
     r.setRenderTarget(retro ? this.rt : null);
     r.setScissorTest(true);
-    for (const vp of viewports) {
+    viewports.forEach((vp, i) => {
       const x = Math.round(vp.x * W),
         w = Math.round(vp.w * W),
         h = Math.round(vp.h * H);
@@ -188,6 +229,7 @@ export class View {
       vp.camera.updateProjectionMatrix();
       psxUniforms.uSnapRes.value.set(w, h);
       vp.before?.();
+      r.shadowMap.needsUpdate = vp.shadow ?? i === 0;
       if (retro) {
         this.rt.viewport.set(x, y, w, h);
         this.rt.scissor.set(x, y, w, h);
@@ -198,7 +240,7 @@ export class View {
         r.setScissor(x, y, w, h);
       }
       r.render(scene, vp.camera);
-    }
+    });
     r.setScissorTest(false);
     if (retro) {
       r.setRenderTarget(null);

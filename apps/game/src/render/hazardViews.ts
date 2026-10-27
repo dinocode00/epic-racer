@@ -27,24 +27,132 @@ interface HazardView {
   update(h: HazardState, c: Ctx): void;
 }
 
-/** Road frame at a hazard: position on the surface plus basis vectors. */
-function frameAt(track: Track, s: number, lat: number) {
+// Scratch values for the per-frame updates (no garbage for the collector to clear up).
+const sA = new THREE.Vector3();
+const sB = new THREE.Vector3();
+const sC = new THREE.Vector3();
+const sM = new THREE.Matrix4();
+const WORLD_UP = V(0, 1, 0);
+const WHIP_SPARK = new THREE.Color(1.6, 0.6, 0.15);
+const SPRAY = new THREE.Color(0.95, 0.97, 1);
+const LAVA = new THREE.Color(1.6, 0.6, 0.1);
+const TRAIL_SMOKE = new THREE.Color(0.3, 0.28, 0.26);
+const RISE = V(0, 1, 0);
+const DRIFT_UP = V(0, 0.4, 0);
+const DOWN = V(0, -1, 0);
+
+type RoadFrame = {
+  pos: THREE.Vector3;
+  tan: THREE.Vector3;
+  up: THREE.Vector3;
+  right: THREE.Vector3;
+};
+// A small ring of reusable frames: an update uses at most three at once, and none is kept
+// past the frame it was made in.
+const frames: RoadFrame[] = Array.from({ length: 16 }, () => ({
+  pos: new THREE.Vector3(),
+  tan: new THREE.Vector3(),
+  up: new THREE.Vector3(),
+  right: new THREE.Vector3(),
+}));
+let nextFrame = 0;
+
+/** Road frame at a hazard: position on the surface plus basis vectors (valid this frame). */
+function frameAt(track: Track, s: number, lat: number): RoadFrame {
   const f = track.frameAtS(s);
   const p = off(f, lat, 0);
-  return {
-    pos: V(p.x, p.y, p.z),
-    tan: V(f.tan.x, f.tan.y, f.tan.z),
-    up: V(f.up.x, f.up.y, f.up.z),
-    right: V(f.right.x, f.right.y, f.right.z),
-  };
+  const r = frames[nextFrame]!;
+  nextFrame = (nextFrame + 1) % frames.length;
+  r.pos.set(p.x, p.y, p.z);
+  r.tan.set(f.tan.x, f.tan.y, f.tan.z);
+  r.up.set(f.up.x, f.up.y, f.up.z);
+  r.right.set(f.right.x, f.right.y, f.right.z);
+  return r;
 }
 
 /** Orient an object: local -Z along `dir`, local +Y along `up`. */
 function face(o: THREE.Object3D, dir: THREE.Vector3, up: THREE.Vector3): void {
-  const back = dir.clone().negate().normalize();
-  const right = new THREE.Vector3().crossVectors(up, back).normalize();
-  const u = new THREE.Vector3().crossVectors(back, right);
-  o.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(right, u, back));
+  const back = sA.copy(dir).negate().normalize();
+  const right = sB.crossVectors(up, back).normalize();
+  const u = sC.crossVectors(back, right);
+  o.quaternion.setFromRotationMatrix(sM.makeBasis(right, u, back));
+}
+
+/**
+ * A tapering tube through three moving points, rewritten in place each frame (building a
+ * new geometry every frame churns memory and re-uploads buffers to the GPU).
+ */
+class LiveTube {
+  readonly geometry = new THREE.BufferGeometry();
+  readonly points = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
+  private curve = new THREE.CatmullRomCurve3(this.points);
+  private pos: Float32Array;
+  private nrm: Float32Array;
+  private p = new THREE.Vector3();
+  private t = new THREE.Vector3();
+  private side = new THREE.Vector3();
+  private nup = new THREE.Vector3();
+  constructor(
+    private segs: number,
+    private around: number,
+    private r0: number,
+    private r1: number,
+  ) {
+    const n = (segs + 1) * (around + 1);
+    this.pos = new Float32Array(n * 3);
+    this.nrm = new Float32Array(n * 3);
+    const idx: number[] = [];
+    const uv = new Float32Array(n * 2);
+    for (let i = 0; i <= segs; i++)
+      for (let j = 0; j <= around; j++) {
+        uv[(i * (around + 1) + j) * 2] = j / around;
+        uv[(i * (around + 1) + j) * 2 + 1] = i / segs;
+      }
+    for (let i = 0; i < segs; i++)
+      for (let j = 0; j < around; j++) {
+        const a = i * (around + 1) + j,
+          b = a + around + 1;
+        idx.push(a, b, a + 1, b, b + 1, a + 1);
+      }
+    this.geometry.setIndex(idx);
+    this.geometry.setAttribute('position', new THREE.BufferAttribute(this.pos, 3));
+    this.geometry.setAttribute('normal', new THREE.BufferAttribute(this.nrm, 3));
+    this.geometry.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+    (this.geometry.attributes.position as THREE.BufferAttribute).setUsage(THREE.DynamicDrawUsage);
+    (this.geometry.attributes.normal as THREE.BufferAttribute).setUsage(THREE.DynamicDrawUsage);
+  }
+  /** Rebuild from the current `points`. */
+  update(): void {
+    const { segs, around } = this;
+    for (let i = 0; i <= segs; i++) {
+      const u = i / segs;
+      this.curve.getPoint(u, this.p);
+      this.curve.getTangent(u, this.t);
+      this.side.crossVectors(this.t, WORLD_UP);
+      if (this.side.lengthSq() < 1e-6) this.side.set(1, 0, 0);
+      this.side.normalize();
+      this.nup.crossVectors(this.side, this.t).normalize();
+      const r = this.r0 + (this.r1 - this.r0) * u;
+      for (let j = 0; j <= around; j++) {
+        const th = (j / around) * Math.PI * 2;
+        const cs = Math.cos(th),
+          sn = Math.sin(th);
+        const o = (i * (around + 1) + j) * 3;
+        const nx = this.side.x * cs + this.nup.x * sn,
+          ny = this.side.y * cs + this.nup.y * sn,
+          nz = this.side.z * cs + this.nup.z * sn;
+        this.nrm[o] = nx;
+        this.nrm[o + 1] = ny;
+        this.nrm[o + 2] = nz;
+        this.pos[o] = this.p.x + nx * r;
+        this.pos[o + 1] = this.p.y + ny * r;
+        this.pos[o + 2] = this.p.z + nz * r;
+      }
+    }
+    this.geometry.attributes.position!.needsUpdate = true;
+    this.geometry.attributes.normal!.needsUpdate = true;
+    this.geometry.computeBoundingSphere();
+  }
 }
 
 // ---------------------------------------------------------------- telegraph ring
@@ -103,9 +211,7 @@ function simple(
         lastLat = h.lat;
         face(
           root,
-          opts.spinAcross && Math.abs(vel) > 0.01
-            ? b.right.clone().multiplyScalar(Math.sign(vel))
-            : b.tan,
+          opts.spinAcross && Math.abs(vel) > 0.01 ? b.right.multiplyScalar(Math.sign(vel)) : b.tan,
           b.up,
         );
         if (opts.spinAcross && h.def.kind === 'barrel') model.rotation.x += vel * c.dt * 1.2;
@@ -156,8 +262,8 @@ function rider(
         last = cur;
         const dir =
           axis === 's'
-            ? b.tan.clone().multiplyScalar(vel >= 0 ? 1 : -1)
-            : b.right.clone().multiplyScalar(vel >= 0 ? 1 : -1);
+            ? b.tan.multiplyScalar(vel >= 0 ? 1 : -1)
+            : b.right.multiplyScalar(vel >= 0 ? 1 : -1);
         face(root, dir, b.up);
         m.animate(c.t, Math.abs(vel) * 2.5, c.dt);
       },
@@ -294,40 +400,25 @@ function tentacle(): HazardView {
     bumpMap: tex.coatBump(),
     bumpScale: 2,
   });
-  let mesh: THREE.Mesh | null = null;
+  const arm = new LiveTube(20, 10, 0.9, 0.15);
+  const mesh = new THREE.Mesh(arm.geometry, skin);
+  mesh.castShadow = true;
   return {
-    root: root.add(ring),
+    root: root.add(ring, mesh),
     update(h, c) {
       const b = frameAt(c.track, h.s, h.lat);
       updateRing(ring, h, c, b);
       // From the dark lake on the left, arching over to the target.
-      const lake = frameAt(c.track, h.s, -18).pos.addScaledVector(b.up, -2);
+      const [lake, mid, tip] = arm.points as [THREE.Vector3, THREE.Vector3, THREE.Vector3];
+      lake.copy(frameAt(c.track, h.s, -18).pos).addScaledVector(b.up, -2);
       const raise = h.active ? 0 : h.warning ? 9 : 6 + Math.sin(c.t * 1.5 + h.index) * 1.5;
       const tipSide = h.active || h.warning ? h.lat : -12 + Math.sin(c.t + h.index) * 2;
-      const tip = frameAt(c.track, h.s, tipSide).pos.addScaledVector(b.up, raise + 0.4);
-      const mid = lake
-        .clone()
+      tip.copy(frameAt(c.track, h.s, tipSide).pos).addScaledVector(b.up, raise + 0.4);
+      mid
+        .copy(lake)
         .lerp(tip, 0.5)
         .addScaledVector(b.up, 8 + raise * 0.4);
-      const curve = new THREE.CatmullRomCurve3([lake, mid, tip]);
-      if (mesh) {
-        mesh.geometry.dispose();
-        root.remove(mesh);
-      }
-      mesh = new THREE.Mesh(
-        tube(
-          curve,
-          [
-            { t: 0, w: 0.9, h: 0.9 },
-            { t: 1, w: 0.15, h: 0.15 },
-          ],
-          20,
-          10,
-        ),
-        skin,
-      );
-      mesh.castShadow = true;
-      root.add(mesh);
+      arm.update();
     },
   };
 }
@@ -389,7 +480,8 @@ function balrogWhip(): HazardView {
     blending: THREE.AdditiveBlending,
     depthWrite: false,
   });
-  let whip: THREE.Mesh | null = null;
+  const lash = new LiveTube(24, 6, 0.12, 0.12);
+  root.add(new THREE.Mesh(lash.geometry, whipMat));
   return {
     root,
     update(h, c) {
@@ -398,35 +490,26 @@ function balrogWhip(): HazardView {
       // The Balrog stands in the chasm beside the bridge, facing it.
       const stand = frameAt(c.track, h.s + 10, 17);
       B.group.position.copy(stand.pos).addScaledVector(stand.up, -12);
-      face(B.group, stand.right.clone().negate(), V(0, 1, 0));
+      face(B.group, stand.right.negate(), WORLD_UP);
       B.animate(c.t);
       B.group.updateMatrixWorld();
-      const hand = B.whipHand.getWorldPosition(new THREE.Vector3());
-      const target = h.active
-        ? b.pos.clone().addScaledVector(b.up, 0.3)
-        : hand
-            .clone()
-            .add(V(0, 10, 0))
-            .addScaledVector(b.tan, -4);
-      const mid = hand
-        .clone()
-        .lerp(target, 0.5)
-        .add(V(0, h.active ? 3 : 6, 0));
-      if (whip) {
-        whip.geometry.dispose();
-        root.remove(whip);
-      }
-      whip = new THREE.Mesh(
-        new THREE.TubeGeometry(new THREE.CatmullRomCurve3([hand, mid, target]), 24, 0.12, 6),
-        whipMat,
-      );
-      root.add(whip);
+      const [hand, mid, target] = lash.points as [THREE.Vector3, THREE.Vector3, THREE.Vector3];
+      B.whipHand.getWorldPosition(hand);
+      if (h.active) target.copy(b.pos).addScaledVector(b.up, 0.3);
+      else
+        target
+          .copy(hand)
+          .setY(hand.y + 10)
+          .addScaledVector(b.tan, -4);
+      mid.copy(hand).lerp(target, 0.5);
+      mid.y += h.active ? 3 : 6;
+      lash.update();
       if (h.active)
         for (let i = 0; i < 4; i++)
           c.fx.sparks.emit(
             target,
-            V((Math.random() - 0.5) * 8, Math.random() * 6, (Math.random() - 0.5) * 8),
-            new THREE.Color(1.6, 0.6, 0.15),
+            sA.set((Math.random() - 0.5) * 8, Math.random() * 6, (Math.random() - 0.5) * 8),
+            WHIP_SPARK,
             1,
             0.25,
             0.5,
@@ -459,18 +542,13 @@ function boulder(): HazardView {
       const k = h.warning ? (ph - flightStart) / S.warn : h.active ? 1 : 0;
       rock.visible = h.warning;
       // Lobbed from far across the fields (from the east, behind the road's left side).
-      const from = b.pos
-        .clone()
-        .addScaledVector(b.right, -260)
-        .add(V(0, 40, 0));
-      const p = from
-        .clone()
-        .lerp(b.pos, k)
-        .add(V(0, Math.sin(Math.PI * k) * 70, 0));
+      const p = sA.copy(b.pos).addScaledVector(b.right, -260);
+      p.y += 40;
+      p.lerp(b.pos, k);
+      p.y += Math.sin(Math.PI * k) * 70;
       rock.position.copy(p);
       rock.rotation.x += c.dt * 3;
-      if (h.warning)
-        c.fx.smoke.emit(p, V(0, 1, 0), new THREE.Color(0.3, 0.28, 0.26), 0.5, 2.5, 1.2, 2);
+      if (h.warning) c.fx.smoke.emit(p, RISE, TRAIL_SMOKE, 0.5, 2.5, 1.2, 2);
       if (h.active && !landed) {
         landed = true;
         for (let i = 0; i < 50; i++)
@@ -528,9 +606,9 @@ function lavaBurst(): HazardView {
       if (h.active)
         for (let i = 0; i < 6; i++)
           c.fx.sparks.emit(
-            b.pos.clone().addScaledVector(b.up, 1),
-            V((Math.random() - 0.5) * 6, 8 + Math.random() * 8, (Math.random() - 0.5) * 6),
-            new THREE.Color(1.6, 0.6, 0.1),
+            sA.copy(b.pos).addScaledVector(b.up, 1),
+            sB.set((Math.random() - 0.5) * 6, 8 + Math.random() * 8, (Math.random() - 0.5) * 6),
+            LAVA,
             1,
             0.4,
             1.0,
@@ -711,17 +789,18 @@ function eyeBeam(): HazardView {
     root,
     update(h, c) {
       const base = frameAt(c.track, h.def.s, -230);
-      tower.position.copy(base.pos).add(V(0, -6, 0));
+      tower.position.copy(base.pos);
+      tower.position.y -= 6;
       const target = frameAt(c.track, h.s, h.lat);
-      const eyeWorld = eye.getWorldPosition(new THREE.Vector3());
+      const eyeWorld = eye.getWorldPosition(sA);
       eye.lookAt(target.pos);
       eye.rotateY(Math.PI / 2);
       // Beam: a long cone from the Eye to the spot on the road.
-      const dir = target.pos.clone().sub(eyeWorld);
+      const dir = sB.copy(target.pos).sub(eyeWorld);
       const len = dir.length();
       beam.position.copy(eyeWorld).addScaledVector(dir, 0.5);
       beam.scale.set(4.5, len, 4.5);
-      beam.quaternion.setFromUnitVectors(V(0, -1, 0), dir.clone().normalize());
+      beam.quaternion.setFromUnitVectors(DOWN, dir.normalize());
       spot.position.copy(target.pos).addScaledVector(target.up, 0.1);
       face(spot, target.tan, target.up);
       spot.rotateX(-Math.PI / 2);
@@ -761,11 +840,13 @@ function spray(): HazardView {
       const b = frameAt(c.track, h.s, h.lat);
       if (Math.random() < 0.5)
         c.fx.smoke.emit(
-          b.pos
-            .clone()
-            .add(V((Math.random() - 0.5) * 6, 1 + Math.random() * 3, (Math.random() - 0.5) * 6)),
-          V(0, 0.4, 0),
-          new THREE.Color(0.95, 0.97, 1),
+          sA
+            .copy(b.pos)
+            .add(
+              sB.set((Math.random() - 0.5) * 6, 1 + Math.random() * 3, (Math.random() - 0.5) * 6),
+            ),
+          DRIFT_UP,
+          SPRAY,
           0.35,
           2.5,
           1.5,
