@@ -188,12 +188,15 @@ function showRace(): void {
   app.innerHTML = `<div class="pad">
     <div class="bar"><span>${name}</span><span class="place">-</span><span class="lap">LAP 1</span><span class="item" hidden></span><span class="dot"></span></div>
     <div class="zones">
-      <div class="steer"><div class="track"></div><div class="knob"></div><div class="hint">drag to steer</div></div>
       <div class="btns">
-        <div class="btn drift" data-b="drift">DRIFT</div>
         <div class="btn item" data-b="item">ITEM</div>
+        <div class="btn drift" data-b="drift">DRIFT</div>
         <div class="btn brake" data-b="brake">BRAKE</div>
-        <div class="btn gas" data-b="gas">GAS</div>
+      </div>
+      <div class="drive">
+        <div class="rail"></div>
+        <div class="knob"><span>◀</span><b>GAS</b><span>▶</span></div>
+        <div class="hint">hold for gas · slide to steer</div>
       </div>
     </div>
     <div class="flash"></div>
@@ -260,47 +263,84 @@ const ordinal = (n: number) =>
   n + (['th', 'st', 'nd', 'rd'][n % 100 > 10 && n % 100 < 14 ? 0 : n % 10] ?? 'th');
 
 // ---------- touch handling ----------
+// Right thumb: anywhere on the right half holds the gas, and sliding it sideways from where it
+// landed steers, so the gas never has to be let go. Left thumb: DRIFT, ITEM and BRAKE.
 function bindPad(): void {
-  const steerZone = app.querySelector<HTMLElement>('.steer')!;
-  const knob = app.querySelector<HTMLElement>('.knob')!;
+  const drive = app.querySelector<HTMLElement>('.drive')!;
+  const knob = drive.querySelector<HTMLElement>('.knob')!;
+  const rail = drive.querySelector<HTMLElement>('.rail')!;
   const btns = [...app.querySelectorAll<HTMLElement>('.btn')];
-  let steerTouch: number | null = null;
-  let steerOrigin = 0;
+  let driveTouch: number | null = null;
+  let originX = 0;
+  let box = drive.getBoundingClientRect();
   const btnTouches = new Map<number, HTMLElement | null>();
-  const RANGE = () => steerZone.clientWidth * 0.32;
+  const range = () => box.width * 0.3;
 
-  const setSteer = (dx: number) => {
-    const r = RANGE();
-    const v = Math.max(-1, Math.min(1, dx / r));
+  const steerTo = (x: number) => {
+    const r = range();
+    // Past full lock the start point follows the thumb, so turning back answers at once.
+    originX = Math.max(x - r, Math.min(x + r, originX));
+    const v = (x - originX) / r;
     pad.steer = Math.abs(v) < 0.06 ? 0 : v;
+    rail.style.left = `${originX - box.left}px`;
+    knob.style.left = `${originX - box.left}px`;
     knob.style.transform = `translateX(${v * r}px)`;
+  };
+  const startDrive = (id: number, x: number, y: number) => {
+    driveTouch = id;
+    box = drive.getBoundingClientRect();
+    originX = x;
+    rail.style.width = `${2 * range()}px`;
+    rail.style.top = knob.style.top = `${y - box.top}px`;
+    drive.classList.add('on');
+    steerTo(x);
+    navigator.vibrate?.(8);
+  };
+  const endDrive = () => {
+    driveTouch = null;
+    pad.steer = 0;
+    drive.classList.remove('on');
+    for (const el of [knob, rail]) el.style.left = el.style.top = el.style.transform = '';
+  };
+  const inDrive = (x: number, y: number) => {
+    const r = drive.getBoundingClientRect();
+    return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
   };
 
   const refreshButtons = () => {
     const held = new Set([...btnTouches.values()].filter(Boolean).map((b) => b!.dataset.b));
     btns.forEach((b) => b.classList.toggle('down', held.has(b.dataset.b)));
-    pad.throttle = held.has('gas') ? 1 : 0;
     pad.brake = held.has('brake') ? 1 : 0;
+    // Braking wins over the gas: hold both to stop or reverse while still steering.
+    pad.throttle = driveTouch !== null && !pad.brake ? 1 : 0;
     pad.drift = held.has('drift');
     pad.item = held.has('item');
   };
 
+  // Played without looking: a press in a gap takes the nearest button if it's close.
   const btnAt = (x: number, y: number): HTMLElement | null => {
-    const el = document.elementFromPoint(x, y) as HTMLElement | null;
-    return el?.closest<HTMLElement>('.btn') ?? null;
+    let best: HTMLElement | null = null;
+    let bestGap = Math.min(innerWidth, innerHeight) * 0.07;
+    for (const b of btns) {
+      const r = b.getBoundingClientRect();
+      const gap = Math.hypot(x - (r.left + r.right) / 2, y - (r.top + r.bottom) / 2) - r.width / 2;
+      if (gap < bestGap) {
+        bestGap = gap;
+        best = b;
+      }
+    }
+    return best;
   };
 
   const onStart = (e: TouchEvent) => {
     e.preventDefault();
     for (const t of Array.from(e.changedTouches)) {
-      const inSteer = steerZone.contains(document.elementFromPoint(t.clientX, t.clientY));
-      if (inSteer && steerTouch === null) {
-        steerTouch = t.identifier;
-        steerOrigin = t.clientX;
-        setSteer(0);
+      if (inDrive(t.clientX, t.clientY)) {
+        if (driveTouch === null) startDrive(t.identifier, t.clientX, t.clientY);
       } else {
-        btnTouches.set(t.identifier, btnAt(t.clientX, t.clientY));
-        navigator.vibrate?.(8);
+        const b = btnAt(t.clientX, t.clientY);
+        btnTouches.set(t.identifier, b);
+        if (b) navigator.vibrate?.(8);
       }
     }
     refreshButtons();
@@ -308,7 +348,7 @@ function bindPad(): void {
   const onMove = (e: TouchEvent) => {
     e.preventDefault();
     for (const t of Array.from(e.changedTouches)) {
-      if (t.identifier === steerTouch) setSteer(t.clientX - steerOrigin);
+      if (t.identifier === driveTouch) steerTo(t.clientX);
       else if (btnTouches.has(t.identifier))
         btnTouches.set(t.identifier, btnAt(t.clientX, t.clientY)); // slide between buttons
     }
@@ -317,10 +357,7 @@ function bindPad(): void {
   const onEnd = (e: TouchEvent) => {
     e.preventDefault();
     for (const t of Array.from(e.changedTouches)) {
-      if (t.identifier === steerTouch) {
-        steerTouch = null;
-        setSteer(0);
-      }
+      if (t.identifier === driveTouch) endDrive();
       btnTouches.delete(t.identifier);
     }
     refreshButtons();
@@ -332,20 +369,14 @@ function bindPad(): void {
   root.addEventListener('touchcancel', onEnd, { passive: false });
 
   // Mouse fallback so the pad can be tested on a laptop browser.
-  let mouseSteer = false;
   root.addEventListener('mousedown', (e) => {
-    if (steerZone.contains(e.target as Node)) {
-      mouseSteer = true;
-      steerOrigin = e.clientX;
-    } else {
-      btnTouches.set(-1, btnAt(e.clientX, e.clientY));
-      refreshButtons();
-    }
+    if (inDrive(e.clientX, e.clientY)) startDrive(-1, e.clientX, e.clientY);
+    else btnTouches.set(-1, btnAt(e.clientX, e.clientY));
+    refreshButtons();
   });
-  window.addEventListener('mousemove', (e) => mouseSteer && setSteer(e.clientX - steerOrigin));
+  window.addEventListener('mousemove', (e) => driveTouch === -1 && steerTo(e.clientX));
   window.addEventListener('mouseup', () => {
-    mouseSteer = false;
-    setSteer(0);
+    if (driveTouch === -1) endDrive();
     btnTouches.delete(-1);
     refreshButtons();
   });
