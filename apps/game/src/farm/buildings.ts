@@ -176,6 +176,26 @@ function boxM(w: number, h: number, d: number, m: THREE.Material, x = 0, y = 0, 
   return o;
 }
 
+/** Lean-to walls along x: height hHigh at -L/2 falling to hLow at +L/2, width W across z. */
+function lean(L: number, W: number, hHigh: number, hLow: number, m: THREE.Material) {
+  const s = new THREE.Shape();
+  s.moveTo(-L / 2, 0);
+  s.lineTo(L / 2, 0);
+  s.lineTo(L / 2, hLow);
+  s.lineTo(-L / 2, hHigh);
+  s.closePath();
+  const g = new THREE.ExtrudeGeometry(s, { depth: W, bevelEnabled: false });
+  g.translate(0, 0, -W / 2);
+  const uv = g.attributes.uv!,
+    pos = g.attributes.position!,
+    nor = g.attributes.normal!;
+  for (let i = 0; i < uv.count; i++) {
+    if (Math.abs(nor.getZ(i)) > 0.5) uv.setXY(i, pos.getX(i), pos.getY(i));
+    else uv.setXY(i, pos.getZ(i), pos.getY(i));
+  }
+  return new THREE.Mesh(g, m);
+}
+
 /** A gable wall body along x: length L, width W, walls to `eave`, gable peak at `ridge`. */
 function gableBody(
   L: number,
@@ -659,8 +679,7 @@ function barn(): THREE.Group {
   const gl = G.w,
     gw = G.h;
   gar.add(boxM(gl, 0.6, gw, m.stone, 0, -0.1, 0));
-  const walls = boxM(gl, 6.2, gw, m.boards, 0, 3.1, 0);
-  gar.add(walls);
+  gar.add(lean(gl, gw, 6.3, 4.1, m.boards));
   gar.add(shedRoof(-gl / 2, gl / 2, gw, 6.6, 4.4, m.shingle));
   const gd = new THREE.Group();
   gd.add(
