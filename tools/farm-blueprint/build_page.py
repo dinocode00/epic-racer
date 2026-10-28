@@ -72,18 +72,18 @@ def stones(x0, x1, y0, y1):
 
 def barn_ramp_side():
     """West (ramp) side: black roof slope with the painted tree, white trim, paved ramp, well and sandbox."""
-    star = render_svg.conifer((80, -36.5), 3.2, 'f-house').replace('class="f-house"', 'class="f-house el-thin"')
+    star = render_svg.conifer((80, -35), 3.4, 'f-house').replace('class="f-house"', 'class="f-house el-thin"')
     return ('<rect class="f-stone" x="10" y="97" width="140" height="15"/>' + stones(10, 150, 97, 112) +
             '<path class="f-shingle el-line" d="M4 70 L156 70 L148 34 L12 34 Z"/>'
-            '<path class="f-douglas el-thin" d="M80 38 L99 67 H61 Z"/><rect class="f-wood" x="78" y="66" width="4" height="3"/>' + star +
+            '<path class="f-douglas el-thin" d="M80 36 L107 69 H53 Z"/><rect class="f-wood" x="77" y="67" width="6" height="2.5"/>' + star +
             '<rect class="f-barn el-line" x="10" y="70" width="140" height="27"/>'
             '<path class="el-trim" d="M11 71 V96 M149 71 V96 M10 70.5 H150"/>'
             '<rect class="f-barn el-trim" x="57" y="73" width="23" height="24"/><rect class="f-barn el-trim" x="80" y="73" width="23" height="24"/>'
             '<path class="el-trim thin" d="M57 73 L80 97 M80 73 L57 97 M80 73 L103 97 M103 73 L80 97"/>'
             '<path class="el-line f-none" d="M54 80 H40 M44 77 L40 80 L44 83 M106 80 H120 M116 77 L120 80 L116 83"/>'
-            '<path class="f-asphalt el-line" d="M57 97 H103 L110 112 H50 Z"/>'
-            '<ellipse class="f-stone el-line" cx="28" cy="109" rx="8" ry="3.5"/><ellipse class="f-roof" cx="28" cy="108.5" rx="4.5" ry="1.6"/>'
-            '<rect class="f-wood el-line" x="122" y="106" width="16" height="6"/><rect class="f-cover el-thin" x="121" y="104.5" width="18" height="2"/>'
+            '<path class="f-blacktop el-line" d="M57 97 H103 L110 112 H50 Z"/>'
+            '<rect class="f-stone el-thin" x="20.5" y="106.3" width="15" height="5.7"/>' + stones(20.5, 35.5, 106.3, 112) +
+            '<rect class="f-wood el-line" x="122.5" y="110" width="15" height="2"/><rect class="f-cover el-thin" x="122" y="108.8" width="16" height="1.4"/>'
             '<text class="el-label" x="28" y="119">well</text><text class="el-label" x="130" y="119">sandbox</text>')
 
 
@@ -149,11 +149,37 @@ def orchard_tree(kind):
 
 
 def playhouse():
-    return ('<path class="f-barn el-line" d="M54 112 V78 L80 58 L106 78 V112 Z"/>'
-            '<path class="el-trim" d="M55 111 V79 M105 111 V79"/>'
-            '<path class="el-roofedge" d="M48 82 L80 56 L112 82"/>'
-            '<rect class="f-barn el-trim" x="73" y="90" width="14" height="22"/>'
-            '<rect class="f-glass el-trim" x="58" y="86" width="10" height="10"/><rect class="f-glass el-trim" x="92" y="86" width="10" height="10"/>')
+    # 8 x 8 ft at ~6 px per ft: door between the two front windows (one more window on each side).
+    return ('<path class="f-barn el-line" d="M56 112 V78 L80 58 L104 78 V112 Z"/>'
+            '<path class="el-trim" d="M57 111 V79 M103 111 V79"/>'
+            '<path class="el-roofedge" d="M50 82 L80 56 L110 82"/>'
+            '<rect class="f-barn el-trim" x="74" y="90" width="12" height="22"/>'
+            '<rect class="f-glass el-trim" x="60" y="86" width="9" height="9"/><rect class="f-glass el-trim" x="91" y="86" width="9" height="9"/>'
+            '<text class="el-label" x="80" y="119">8 ft wide</text>')
+
+
+def red_garage():
+    # Gable end facing north: big door, white trim, black shingles, rooster weather vane on the ridge.
+    return ('<path class="f-barn el-line" d="M30 112 V64 L80 38 L130 64 V112 Z"/>'
+            '<path class="el-trim" d="M31 111 V65 M129 111 V65"/>'
+            '<path class="el-roofedge" d="M23 68 L80 36 L137 68"/>'
+            '<rect class="f-barn el-trim" x="50" y="74" width="60" height="38"/><path class="el-trim thin" d="M50 74 L110 112 M110 74 L50 112"/>'
+            '<path class="el-line" d="M80 34 V16"/><path class="el-thin" d="M73 22 H87"/>'
+            '<path class="f-roof el-thin" d="M74 14 q2 -6 6 -5 l2 -3 l1 4 q5 0 6 4 l-6 1 l-1 4 q-6 0 -8 -5 z"/>'
+            '<circle class="f-house" cx="80" cy="34" r="1.2"/>')
+
+
+def trees_by_house():
+    # ~1.9 px per ft: house about 30 ft, the big spruces about 45 ft, arborvitae about 11 ft.
+    ppf = 1.9
+    spruce = render_svg.conifer
+    out = ('<path class="f-siding el-thin" d="M58 112 V77 L72 58 L86 77 V112 Z"/><path class="el-roofedge" d="M55 80 L72 57 L89 80"/>')
+    out += '<rect class="f-wood" x="27" y="104" width="4" height="8"/>'
+    out += ''.join(f'<path class="f-spruce el-thin" d="M29 {112 - 45 * ppf + i * 14} L{29 + 6 + i * 3.3} {112 - 45 * ppf + i * 14 + 18} H{29 - 6 - i * 3.3} Z"/>' for i in range(5))
+    out += ''.join(f'<ellipse class="f-arborvitae el-thin" cx="{x}" cy="{112 - 11 * ppf / 2}" rx="4" ry="{11 * ppf / 2}"/>' for x in (104, 113, 122, 131, 140))
+    out += ('<text class="el-label" x="29" y="119">spruce</text><text class="el-label" x="72" y="119">house</text>'
+            '<text class="el-label" x="122" y="119">arborvitae</text>')
+    return out
 
 
 def tree(species, cx, h_ft, ppf=8.2):
@@ -296,7 +322,9 @@ def options():
             fig('10', 'Wire-mesh corn crib about 8 ft tall, half full of yellow ears.', crib, ('Corn crib photos', 'https://en.wikipedia.org/wiki/Corn_crib')),
             fig('15', 'Rusty barrel stove for burning garbage, with its small pile of scrap wood.', stove, ('Barrel stove', 'https://en.wikipedia.org/wiki/Barrel_stove')),
             fig('6', 'Windmill about 15 ft taller than the two-storey house. Still turning.', windmill, ('Water-pumping windmills', 'https://en.wikipedia.org/wiki/Windpump')),
-            fig('17', 'Playhouse painted like the barn, red with white trim, black shingle roof.', playhouse()),
+            fig('17', 'Playhouse, about 8 × 8 ft, painted like the barn with a black shingle roof. Two windows in front, one on each side.', playhouse()),
+            fig('9', 'Red garage seen from the north: big door, white trim, black shingles and the rooster weather vane that turned with the wind.', red_garage()),
+            fig('·', 'By the house: the five spruces stand 10 to 20 ft over the roof; the arborvitae row along the driveway is about 11 ft.', trees_by_house()),
         ]),
     ]
     return ''.join(f'<div class="optset"><h3>{t}</h3><div class="optrow">{"".join(figs)}</div></div>' for t, figs in sets)

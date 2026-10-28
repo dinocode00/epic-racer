@@ -118,7 +118,9 @@ F['red_garage'] = dict(n=9, kind='building', poly=[(1023, 727), (1068, 746), (10
 F['grain_bin'] = dict(n=10, kind='bin', centre=(1192, 735), r=18)
 F['red_shed'] = dict(n=11, kind='building', poly=[(1180, 765), (1202, 775), (1185, 822), (1162, 812)])
 F['greenhouse'] = dict(n=12, kind='greenhouse', poly=[(1213, 805), (1293, 832), (1282, 865), (1203, 838)])
-F['christmas_trees'] = dict(n=13, kind='tree_block', poly=[(805, 768), (1305, 988), (1315, 1175), (802, 1140)],
+# Extended west toward the property line (v5): the slanted top edge continues west until it
+# nearly meets the orchard, leaving only a mowed path along the west line.
+F['christmas_trees'] = dict(n=13, kind='tree_block', poly=[(747, 742), (1305, 988), (1315, 1175), (685, 1132)],
                             marked_tree=(1005, 960))
 F['pumpkin_patch'] = dict(n=14, kind='patch', poly=[(726, 1242), (1340, 1246), (1342, 1366), (630, 1362)])
 F['wood_burner'] = dict(n=15, kind='burner', centre=(730, 450))
@@ -127,9 +129,11 @@ F['playhouse'] = dict(n=17, kind='playhouse', centre=(1280, 425))
 
 # Unnumbered scenery from the sketch
 F['big_tree'] = dict(kind='tree', centre=(842, 440))
+# Mature arborvitae (~11 ft) along the north edge of the driveway, from the road to the windmill
+F['arborvitae'] = dict(kind='tree_row', line=[(775, 257), (875, 307), (955, 345)])
 F['nw_conifers'] = dict(kind='trees', pts=[(890, 210), (865, 255), (850, 295), (930, 285), (980, 260)])
 F['ne_tree_row'] = dict(kind='tree_row', line=[(905, 150), (1180, 270), (1455, 392)])
-F['west_trail'] = dict(kind='trail', line=[(768, 700), (771, 900), (777, 1168)])
+F['west_trail'] = dict(kind='trail', line=[(740, 705), (729, 760), (700, 940), (668, 1168)])
 F['south_lane'] = dict(kind='lane', line=[(640, 1196), (778, 1172), (1060, 1190), (1346, 1210)])
 F['east_trail'] = dict(kind='trail', line=[(1150, 905), (1230, 940), (1305, 980), (1346, 1012), (1349, 1200), (1342, 1366)])
 F['christmas_corner_trees'] = dict(kind='trees', pts=[(805, 760), (800, 1132), (1305, 985), (1315, 1172)])

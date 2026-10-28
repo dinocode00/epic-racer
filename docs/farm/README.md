@@ -7,8 +7,8 @@ routes are deliberately not designed yet.
 | File | What it is |
 | --- | --- |
 | `sketch.jpg` | The hand-drawn master sketch with the 17 numbered landmarks. It wins every disagreement. |
-| `blueprint.png` | The current blueprint (v4): landmarks on the real outline, contours every 2 ft. |
-| `blueprint.json` | The same blueprint as data, in metres (x east, y north, origin at the SW property corner): every confirmed fact, the open questions, the terrain model and all 623 Christmas trees. |
+| `blueprint.png` | The current blueprint (v5): landmarks on the real outline, contours every 2 ft. |
+| `blueprint.json` | The same blueprint as data, in metres (x east, y north, origin at the SW property corner): every confirmed fact, the open questions, the terrain model and all 786 Christmas trees. |
 
 ## Landmarks
 
@@ -17,14 +17,16 @@ routes are deliberately not designed yet.
 9 Red wooden garage · 10 Wire corn crib · 11 Red wooden shed · 12 Plexiglass greenhouse ·
 13 Christmas tree rows · 14 Pumpkin patch · 15 Rusted barrel stove · 16 Clothes lines ·
 17 Kids' playhouse. Also: old stone well, sandbox, vegetable and flower garden, mailbox,
-a very large Scotch pine, a spruce row along the northeast line, mowed grass paths, and a
-wild field of weeds, grass and wildflowers.
+a very large Scotch pine, five huge spruces between the road and the house, a row of 11 ft
+arborvitae along the driveway, a spruce row along the northeast line, mowed grass paths, and
+a wild field of weeds, grass and wildflowers. The red garage has a rooster weather vane.
 
 ## The picture to capture
 
 Lush green summer into early fall: fruit on the trees, flowers blooming, sunshine. Five
 acres bordered by prairie and trees, no fences. A cracked paved country road on the
-northwest side, neighbouring farmhouses behind trees to the northeast and southwest, and a
+northwest side with a light ditch along it, a gravel lane on the northeast, neighbouring
+farmhouses behind trees to the northeast and southwest, and a
 rising hill of grass and wildflowers past the pumpkin patch.
 
 ## Key facts (full list in `blueprint.json` under `confirmed`)
@@ -43,7 +45,8 @@ rising hill of grass and wildflowers past the pumpkin patch.
   trees about 13 ft tall with fruit hanging at about 5 ft; the two west lines are pear and
   cherry.
 - Christmas trees: Scotch pine, Douglas fir, white pine and blue spruce in bands from west
-  to east, in an orderly grid of south-north lines, sizes random tree by tree.
+  to east, in an orderly grid of south-north lines, sizes random tree by tree. The block
+  reaches west to a mowed path along the property line and nearly meets the orchard.
 - Ground (barnyard = 0): falls about 20 ft south to the pumpkin patch (gentle at first,
   steeper near the bottom), about 15 ft west to the road corner, and rises slightly toward
   the farmhouse.
@@ -66,8 +69,8 @@ the barn's ramp side.
 ## Status
 
 - [x] Step 1: placement (boundary, positions, rough sizes)
-- [ ] Step 2: the look of each landmark. Mostly done; a few small details open.
-- [ ] Step 3: ground and surroundings. Mostly done.
+- [x] Step 2: the look of each landmark
+- [x] Step 3: ground and surroundings
 - [ ] Step 4: blueprint locked as map data
 - Later: race routes
 

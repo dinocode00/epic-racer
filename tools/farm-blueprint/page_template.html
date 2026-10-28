@@ -13,6 +13,7 @@
   --apple: #5f8f45; --fruit: #c4352b; --road: #bfb8a8; --road-edge: #9d9686;
   --barn: #a3302a; --wood: #946437; --house: #fbf9f2; --roof: #6a6f71; --glass: #bfe0ef;
   --glass-edge: #4d8fb0; --rust: #8a4a22; --steel: #b9c0c4; --play: #e9c75a; --trail: #b79c6e;
+  --blacktop: #333437; --arborvitae: #3f7a3a; --ditch: #6f93a6;
   --trim-blue: #7d95ab; --chimney: #c7a46c;
   --meadow: #c7d79a; --flower-a: #9b6fc4; --flower-b: #f0c43a; --flower-c: #ffffff; --woods: #5b7f52; --asphalt: #77767a;
   --shingle: #2b2d2f; --shingle-line: #474a4d; --porch: #c9b48f; --concrete: #c9c6bd; --gourd: #c9b62e; --pear: #c9cf4e;
@@ -32,6 +33,7 @@
     --apple: #4f7d3c; --fruit: #e2584c; --road: #3d3b36; --road-edge: #5a574f;
     --barn: #c2463a; --wood: #aa7a49; --house: #d8d4c8; --roof: #7c8183; --glass: #2b5366;
     --glass-edge: #7ec0df; --rust: #b0612f; --steel: #8d969b; --play: #c9a94a; --trail: #8d7752;
+    --blacktop: #2a2b2e; --arborvitae: #4e9046; --ditch: #7fa8bd;
     --trim-blue: #9db4c9; --chimney: #b08f5c;
     --meadow: #34452a; --flower-a: #b893dc; --flower-b: #e8bd3a; --flower-c: #e8e8e0; --woods: #4a6e44; --asphalt: #55545a;
     --shingle: #1b1c1e; --shingle-line: #3a3c3f; --porch: #8d7a5c; --concrete: #8f8c84; --gourd: #c4ae2a; --pear: #b8c046;
@@ -49,6 +51,7 @@
   --apple: #4f7d3c; --fruit: #e2584c; --road: #3d3b36; --road-edge: #5a574f;
   --barn: #c2463a; --wood: #aa7a49; --house: #d8d4c8; --roof: #7c8183; --glass: #2b5366;
   --glass-edge: #7ec0df; --rust: #b0612f; --steel: #8d969b; --play: #c9a94a; --trail: #8d7752;
+  --blacktop: #2a2b2e; --arborvitae: #4e9046; --ditch: #7fa8bd;
   --trim-blue: #9db4c9; --chimney: #b08f5c;
   --meadow: #34452a; --flower-a: #b893dc; --flower-b: #e8bd3a; --flower-c: #e8e8e0; --woods: #4a6e44; --asphalt: #55545a;
   --shingle: #1b1c1e; --shingle-line: #3a3c3f; --porch: #8d7a5c; --concrete: #8f8c84; --gourd: #c4ae2a; --pear: #b8c046;
@@ -206,6 +209,13 @@ section { margin-top: 48px; display: grid; gap: 16px; }
 .map .chimney { fill: var(--chimney); stroke: var(--ink); stroke-width: .12; }
 .el-blue { fill: none; stroke: var(--trim-blue); stroke-width: 1.2; }
 .el-siding { stroke: var(--rule); stroke-width: .5; }
+.map .blacktop { fill: var(--blacktop); stroke: var(--ink); stroke-width: .25; }
+.map .arborvitae { fill: var(--arborvitae); stroke: var(--conifer); stroke-width: .12; }
+.map .spruce.big { stroke: var(--conifer); stroke-width: .2; }
+.map .ditch { stroke: var(--ditch); stroke-width: .7; stroke-dasharray: 1.4 .8; fill: none; }
+.map .lane { fill: none; stroke: var(--road); stroke-width: 4; }
+.map .vane { fill: var(--ink); }
+.map .vane-arm { stroke: var(--ink); stroke-width: .15; }
 .map g.hl > * { filter: drop-shadow(0 0 .9px var(--accent)) drop-shadow(0 0 .9px var(--accent)); }
 
 /* Facts strip */
@@ -275,6 +285,7 @@ figcaption b { font-family: var(--mono); font-weight: 500; color: var(--accent);
 
 .f-siding, .f-siding.el-thin, .f-siding.el-blue { fill: var(--house); } .f-chimney, .f-chimney.el-thin { fill: var(--chimney); }
 .f-glass.el-blue { fill: var(--glass); }
+.f-blacktop { fill: var(--blacktop); } .f-arborvitae { fill: var(--arborvitae); } .f-spruce { fill: var(--douglas); }
 /* Steps */
 .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; counter-reset: s; }
 .step { border-left: 2px solid var(--rule); padding: 2px 0 2px 14px; display: grid; gap: 4px; min-width: 0; }
@@ -294,7 +305,7 @@ figcaption b { font-family: var(--mono); font-weight: 500; color: var(--accent);
 
 <div class="wrap">
   <header>
-    <div class="eyebrow">Epic Racer · new map · blueprint v4</div>
+    <div class="eyebrow">Epic Racer · new map · blueprint v5</div>
     <h1>Grandparents' Farm Blueprint</h1>
     <p class="lede">Every landmark from your hand sketch, placed on the property's real outline, now updated with your first round of answers: the barn's foundation and doors, the centred ramp, the four kinds of Christmas trees and the slope of the land. Still only the land. Race routes come later.</p>
   </header>
@@ -309,7 +320,7 @@ figcaption b { font-family: var(--mono); font-weight: 500; color: var(--accent);
 
   <section>
     <div class="section-head">
-      <h2>What changed in v4</h2>
+      <h2>What changed in v5</h2>
       <p>Your answers, and where they show up on the map.</p>
     </div>
     <dl class="then-now">{{CHANGES}}</dl>

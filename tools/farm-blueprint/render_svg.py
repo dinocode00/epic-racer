@@ -104,7 +104,7 @@ def render():
     bd = np.array(b.blueprint()['boundary'])
     out = []
     minx, miny = bd.min(0) - 18
-    maxx, maxy = bd.max(0) + 16
+    maxx, maxy = bd.max(0) + np.array([26.0, 16.0])
     W, H = maxx - minx, maxy - miny
     vb = f'{minx:.1f} {-maxy:.1f} {W:.1f} {H:.1f}'
     out.append(f'<svg class="map" viewBox="{vb}" xmlns="http://www.w3.org/2000/svg" role="img" '
@@ -132,12 +132,16 @@ def render():
     hill = [(hill[0][0] - 10, hill[0][1])] + hill + [(hill[-1][0] + 14, hill[-1][1]), (hill[-1][0] + 14, miny), (hill[0][0] - 10, miny)]
     out.append(f'<g id="lm-outside"><path class="meadow" d="{poly_d(hill)}"/>')
     out.append(tag((np.mean([p[0] for p in hill[:-2]]), miny + 5), 'RISING HILL OF GRASS, WILDFLOWERS AND WEEDS'))
-    for c, label, anchor in (((ne[0] + 4, ne[1] - 24), 'neighbouring farm behind trees', 'middle'),
+    for c, label, anchor in (((ne[0] + 13, ne[1] - 24), 'neighbouring farm behind trees', 'middle'),
                              ((west[0] + 4, west[1] - 52), 'neighbouring farm behind trees', 'end')):
         for _ in range(9):
             q = np.array(c) + rng.normal(0, 4.5, 2)
             out.append(f'<circle class="woods" cx="{q[0]:.1f}" cy="{-q[1]:.1f}" r="{rng.uniform(2.2, 3.6):.1f}"/>')
-        out.append(tag((c[0] + (0 if anchor == 'middle' else -7), c[1] - 10), label, anchor))
+        if anchor == 'middle':
+            out.append(tag((c[0], c[1] - 10), 'neighbouring farm', anchor))
+            out.append(tag((c[0], c[1] - 12.8), 'behind trees', anchor))
+        else:
+            out.append(tag((c[0] - 7, c[1] - 10), label, anchor))
     out.append('</g>')
 
     # The paved country road along the NW edge, with aged cracks, and the lane seen today on the NE.
@@ -155,12 +159,17 @@ def render():
         out.append(f'<path class="crack" d="{poly_d(pts, False)}"/>')
     out.append(f'<text class="road-label" transform="translate({svgpt((tip + west) / 2 + nrm * 11.5)}) '
                f'rotate({-math.degrees(math.atan2(west[1] - tip[1], west[0] - tip[0])) + 180:.1f})">PAVED COUNTRY ROAD</text>')
+    ent_t = float((P([(757, 290)])[0] - tip) @ nw_dir)
+    L_nw = float(np.linalg.norm(west - tip))
+    for t0, t1 in ((0.6, ent_t - 4.5), (ent_t + 4.5, L_nw - 0.6)):
+        out.append(seg(tip + nw_dir * t0 + nrm * 0.9, tip + nw_dir * t1 + nrm * 0.9, 'ditch'))
+    out.append(tag(tip + nw_dir * (L_nw * 0.72) - nrm * 2.8, 'light ditch along the road'))
     ne_dir = (ne - tip) / np.linalg.norm(ne - tip)
     nrm2 = np.array([-ne_dir[1], ne_dir[0]])  # outward (to the NE)
     lane = [tip + nrm2 * 7 - ne_dir * 8, ne + nrm2 * 7 + ne_dir * 18]
-    out.append(f'<path class="lane-today" d="{poly_d(lane, False)}"/>')
+    out.append(f'<path class="lane" d="{poly_d(lane, False)}"/>')
     out.append(f'<text class="road-label faint" transform="translate({svgpt((tip + ne) / 2 + nrm2 * 13)}) '
-               f'rotate({-math.degrees(math.atan2(ne[1] - tip[1], ne[0] - tip[0])):.1f})">LANE SEEN TODAY · WAS IT THERE?</text>')
+               f'rotate({-math.degrees(math.atan2(ne[1] - tip[1], ne[0] - tip[0])):.1f})">GRAVEL LANE</text>')
 
     # Ground: mowed lawn, then contour lines every 2 ft relative to the barnyard
     out.append(f'<path class="lawn" d="{poly_d(bd)}"/>')
@@ -262,7 +271,10 @@ def render():
         out.append(f'<circle class="{"big-pine" if r > 6 else "big-pine-tuft"}" cx="{bt[0] + dx:.1f}" cy="{-(bt[1] + dy):.1f}" r="{r:.1f}"/>')
     out.append('</g><g id="lm-conifers">')
     for p in P(F['nw_conifers']['pts']):
-        out.append(conifer(p, 3.0))
+        out.append(conifer(p, 4.2, 'spruce big'))
+    out.append('</g><g id="lm-arborvitae">')
+    for p in along(P(F['arborvitae']['line']), 1.15):
+        out.append(f'<circle class="arborvitae" cx="{p[0]:.1f}" cy="{-p[1]:.1f}" r=".62"/>')
     out.append('</g><g id="lm-treerow">')
     for p in along(P(F['ne_tree_row']['line']), 6.5)[1:-1]:
         out.append(conifer(p + rng.normal(0, 0.4, 2), 2.7, 'spruce'))
@@ -272,15 +284,15 @@ def render():
     bcen = b.barn_centre()
     out.append('<g id="lm-4">')
     ramp = [bcen + V * 5.75 - U * 4.6, bcen + V * 5.75 + U * 4.6, bcen + V * 16 + U * 5.4, bcen + V * 16 - U * 5.4]
-    out.append(f'<path class="paved" d="{poly_d(ramp)}"/>')
+    out.append(f'<path class="blacktop" d="{poly_d(ramp)}"/>')
     out.append(f'<path class="slope" d="M{svgpt(bcen + V * 13.5)} L{svgpt(bcen + V * 8)} M{svgpt(bcen + V * 9.5 + U * 1.2)} '
                f'L{svgpt(bcen + V * 8)} L{svgpt(bcen + V * 9.5 - U * 1.2)}"/>')
     out.append('</g>')
     well = bcen + V * 8.2 + U * 8.6
-    out.append(f'<g id="lm-well"><circle class="well" cx="{well[0]:.1f}" cy="{-well[1]:.1f}" r=".95"/>'
-               f'<circle class="well-in" cx="{well[0]:.1f}" cy="{-well[1]:.1f}" r=".45"/></g>')
+    out.append(f'<g id="lm-well"><circle class="well" cx="{well[0]:.1f}" cy="{-well[1]:.1f}" r="1.22"/>'
+               f'<circle class="well-in" cx="{well[0]:.1f}" cy="{-well[1]:.1f}" r=".92"/></g>')
     sand = bcen + V * 8.0 - U * 8.4
-    out.append(f'<g id="lm-sandbox"><path class="sandbox" d="{poly_d(rect(sand, 1.9, 1.9, GRID))}"/></g>')
+    out.append(f'<g id="lm-sandbox"><path class="sandbox" d="{poly_d(rect(sand, 2.44, 1.22, GRID))}"/></g>')
 
     # Buildings, snapped to the farm grid
     house_c = P([F['farmhouse']['centre']])[0]
@@ -320,9 +332,9 @@ def render():
     out.append(f'<path class="stone" d="{poly_d(rect(bcen, 23.3, 12.3, GRID))}"/>')
     out.append(f'<path class="bld roof-black wall-red" d="{poly_d(rect(bcen, 22.5, 11.5, GRID))}"/>')
     out.append(seg(bcen - U * 11.25, bcen + U * 11.25, 'ridge light'))
-    apex, base = bcen + V * 0.7, bcen + V * 5.1
-    out.append(f'<path class="painted-tree" d="M{svgpt(apex)} L{svgpt(base + U * 3.2)} L{svgpt(base - U * 3.2)} Z"/>')
-    out.append(f'<path class="painted-trunk" d="{poly_d(rect(base + V * 0.3, 1.0, 0.6, GRID))}"/>')
+    apex, base = bcen + V * 0.35, bcen + V * 5.25
+    out.append(f'<path class="painted-tree" d="M{svgpt(apex)} L{svgpt(base + U * 4.2)} L{svgpt(base - U * 4.2)} Z"/>')
+    out.append(f'<path class="painted-trunk" d="{poly_d(rect(base + V * 0.25, 1.0, 0.5, GRID))}"/>')
     out.append(conifer(apex, 0.75, 'painted-star'))
     # Upper floor: two tractor-size doors at the top of the ramp, sliding left and right (white trim)
     wpt = bcen + V * 6.15
@@ -356,6 +368,8 @@ def render():
     out.append(f'<g id="lm-9"><path class="bld roof-black wall-red" d="{poly_d(rect(g9c, 11, 7, ang9))}"/>')
     out.append(seg(g9c - u9 * 5.5, g9c + u9 * 5.5, 'ridge light'))
     out.append(seg(g9c + u9 * 5.8 + v9 * 2.4, g9c + u9 * 5.8 - v9 * 2.4, 'door'))
+    out.append(f'<circle class="vane" cx="{g9c[0]:.1f}" cy="{-g9c[1]:.1f}" r=".5"/>'
+               f'{seg(g9c - np.array([0.0, 1.0]), g9c + np.array([0.0, 1.0]), "vane-arm")}{seg(g9c - np.array([1.0, 0.0]), g9c + np.array([1.0, 0.0]), "vane-arm")}')
     out.append('</g>')
 
     # Corn crib (8 ft wire crib) with the garden-tool shed right beside it
@@ -363,14 +377,14 @@ def render():
     out.append(f'<g id="lm-10"><circle class="crib" cx="{bc[0]:.1f}" cy="{-bc[1]:.1f}" r="1.4"/>'
                f'<circle class="crib-cap" cx="{bc[0]:.1f}" cy="{-bc[1]:.1f}" r=".45"/></g>')
     sh = bc - U * (1.4 + 0.3 + 3.0)
-    out.append(f'<g id="lm-11"><path class="bld redbld" d="{poly_d(rect(sh, 6, 3.6, GRID))}"/>'
+    out.append(f'<g id="lm-11"><path class="bld roof-black wall-red" d="{poly_d(rect(sh, 6, 3.6, GRID))}"/>'
                f'{seg(sh - U * 3, sh + U * 3, "ridge")}</g>')
     gh = P([(1248, 835)])[0]
-    out.append(f'<g id="lm-12"><path class="bld glass" d="{poly_d(rect(gh, 10, 4.5, GRID - 80))}"/>'
-               f'{seg(*[gh + np.array([math.cos(math.radians(GRID - 80)), math.sin(math.radians(GRID - 80))]) * s * 5 for s in (-1, 1)], "ridge")}</g>')
+    out.append(f'<g id="lm-12"><path class="bld glass" d="{poly_d(rect(gh, 3.05, 1.83, GRID - 80))}"/>'
+               f'{seg(*[gh + np.array([math.cos(math.radians(GRID - 80)), math.sin(math.radians(GRID - 80))]) * s * 1.52 for s in (-1, 1)], "ridge")}</g>')
     pl = P([F['playhouse']['centre']])[0]
-    out.append(f'<g id="lm-17"><path class="bld roof-black wall-red" d="{poly_d(rect(pl, 2.6, 2.6, GRID))}"/>'
-               f'{seg(pl - U * 1.3, pl + U * 1.3, "ridge light")}</g>')
+    out.append(f'<g id="lm-17"><path class="bld roof-black wall-red" d="{poly_d(rect(pl, 2.44, 2.44, GRID))}"/>'
+               f'{seg(pl - U * 1.22, pl + U * 1.22, "ridge light")}</g>')
 
     # Windmill
     wm = P([F['windmill']['centre']])[0]
@@ -434,6 +448,8 @@ def render():
     out.append(tag(sand + V * 1.7 - U * 0.6, 'sandbox'))
     out.append(tag(gc + np.array([-4.5, 0.5]), 'garden', 'end'))
     out.append(tag(ent + nrm * 2.4, 'mailbox'))
+    out.append(tag(P([(866, 296)])[0] + V * 2.6 + U * 1, 'arborvitae'))
+    out.append(tag(g9c + np.array([1.5, -6.0]), 'rooster vane'))
     out.append(tag(P([(1385, 560)])[0], 'weeds, grass'))
     out.append(tag(P([(1385, 560)])[0] - (0, 2.8), 'and wildflowers'))
 
@@ -444,7 +460,7 @@ def render():
     spots = {
         1: house_c + U * 9.5, 2: g2 + U * 6, 3: bcen - V * 2.8 - U * 4, 4: bcen + V * 19.5, 5: K * np.array([34, 146]),
         6: wm + (-5.5, 1.5), 7: K * np.array([14, 117]), 8: P([(912, 770)])[0] + (-3, -3.5), 9: g9c + (7.5, -1),
-        10: bc + (4.2, 1.8), 11: sh + (-4.5, -1.5), 12: gh + (2, -6),
+        10: bc + (4.2, 1.8), 11: sh + (-4.5, -1.5), 12: gh + (3.5, -3.0),
         13: K * np.array([49, 50]), 14: K * np.array([39, 6]), 15: wb + (0, 4.6), 16: (e0 + e1) / 2 + n_ * 4.2, 17: pl + (4.5, -1.5),
     }
     for n, p in spots.items():
