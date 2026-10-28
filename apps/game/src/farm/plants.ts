@@ -47,6 +47,7 @@ class TreeBatch {
   constructor(
     private t: Normalised,
     count: number,
+    private tintSolid = false,
   ) {
     this.solid = new THREE.InstancedMesh(t.geo.solid, barkMaterial(), count);
     this.solid.castShadow = this.solid.receiveShadow = true;
@@ -81,11 +82,14 @@ class TreeBatch {
       this.leaves.setMatrixAt(this.n, this.m);
       if (tint) this.leaves.setColorAt(this.n, tint);
     }
+    // Pines carry most of their green in the solid layered body, so tint that too.
+    if (tint && this.tintSolid) this.solid.setColorAt(this.n, tint);
     this.n++;
   }
 
   done(): THREE.Group {
     this.solid.count = this.n;
+    if (this.solid.instanceColor) this.solid.instanceColor.needsUpdate = true;
     if (this.leaves) {
       this.leaves.count = this.n;
       if (this.leaves.instanceColor) this.leaves.instanceColor.needsUpdate = true;
@@ -108,7 +112,7 @@ export function buildPlants(): THREE.Group {
   const broad = normalise(TREES.broad);
 
   // ---- Christmas trees: an orderly grid, four kinds west to east, random sizes.
-  const xmas = new TreeBatch(pine, FARM.christmas_trees.length);
+  const xmas = new TreeBatch(pine, FARM.christmas_trees.length, true);
   for (const t of FARM.christmas_trees) {
     const v = 0.9 + rnd() * 0.2;
     const c = TINT[t.species];
@@ -123,7 +127,7 @@ export function buildPlants(): THREE.Group {
   root.add(xmas.done());
 
   // ---- Big spruces by the road (10-20 ft over the house), the spruce row, the giant Scotch pine.
-  const big = new TreeBatch(pine, 30);
+  const big = new TreeBatch(pine, 30, true);
   for (const p of FARM.big_spruces)
     big.add(p[0], p[1], 12 + rnd() * 3, 1.05, new THREE.Color(0.66, 0.84, 0.74));
   for (const p of FARM.spruce_row)
