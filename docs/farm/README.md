@@ -7,8 +7,8 @@ routes are deliberately not designed yet.
 | File | What it is |
 | --- | --- |
 | `sketch.jpg` | The hand-drawn master sketch with the 17 numbered landmarks. It wins every disagreement. |
-| `blueprint-v1.png` | Blueprint v1: the sketch's landmarks placed on the real property outline. |
-| `blueprint.json` | The same blueprint as data, in metres (x east, y north, origin at the SW property corner). |
+| `blueprint.png` | The current blueprint (v2): landmarks on the real outline, with contours for the slopes. |
+| `blueprint.json` | The same blueprint as data, in metres (x east, y north, origin at the SW property corner), including confirmed facts, the terrain model and all 569 Christmas trees. |
 
 ## Landmarks
 
@@ -22,7 +22,25 @@ Unnumbered scenery from the sketch: a big shade tree by the wood burner, five ev
 between the road and the house, a tree row along the northeast line, dashed paths around
 the Christmas trees, and a lane between the Christmas trees and the pumpkin patch.
 
-## How v1 was made
+## Confirmed so far
+
+- Farmhouse and barn stood where today's house and barn stand.
+- Barn: stone foundation about 8 ft high. The second floor is reached by an earth ramp
+  centred on the west wall, ending at two tractor-size sliding doors that open left and
+  right. Ground floor on the south side: a small door and a large sliding door with a
+  basketball hoop (no net).
+- The driveway (5) is all open gravel, graded for driving and parking. No grass inside it.
+- Corn bin (10) is a round wire-mesh corn crib. Wood burner (15) is a barrel stove on legs
+  with a tall stovepipe.
+- Christmas trees (13): Scotch pine, Douglas fir, white pine, blue spruce in bands from west
+  to east, in neat south-north lines. Sizes: 15% knee high or below, 50% about 6 ft,
+  35% 8 to 10 ft.
+- Ground: south of an east-west line through the north tip of the Christmas trees, the land
+  falls gradually to the pumpkin patch, the lowest point. West of a line from the
+  orchard's west side to the farmhouse, the land slopes down to the west. How far each
+  slope drops is not confirmed yet (placeholders: 13 ft and 10 ft).
+
+## How it was made
 
 - The property outline was traced from a present-day satellite photo (not committed). Area
   ≈ 4.6 acres, about 133 m × 209 m. Scale is provisional (≈ 0.19 m per satellite pixel,
@@ -39,12 +57,13 @@ the Christmas trees, and a lane between the Christmas trees and the pumpkin patc
 
 ## Status
 
-- [ ] Step 1: placement confirmed (boundary, positions, rough sizes)
-- [ ] Step 2: the look of each landmark (shapes, colours, materials, heights)
-- [ ] Step 3: ground and surroundings (slopes, surfaces, tree types, what lies beyond)
+- [ ] Step 1: placement confirmed (boundary, positions, rough sizes). Nearly done.
+- [ ] Step 2: the look of each landmark (shapes, colours, materials, heights). Started.
+- [ ] Step 3: ground and surroundings (slopes, surfaces, tree types, what lies beyond). Started.
 - [ ] Step 4: blueprint locked as map data
 - Later: race routes
 
 Rebuild with `tools/farm-blueprint/` (Python 3 + numpy + Pillow). It needs the sketch and
 the satellite photo, saved as `2.jpg` and `1.webp` in one folder:
-`python3 blueprint.py <image-folder> <out-folder>`, then `python3 build_page.py <out>.html`.
+`python3 blueprint.py <image-folder> <out-folder>`, then `python3 build_page.py <out>.html`. `terrain.py` holds the slope model and the
+Christmas tree layout.

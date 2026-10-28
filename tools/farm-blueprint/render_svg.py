@@ -2,6 +2,7 @@
 import math
 import numpy as np
 import blueprint as b
+import terrain
 
 rng = np.random.default_rng(7)
 GRID = 50.0  # farm grid: long axis of barn, perpendicular to the NE property line (deg)
@@ -109,6 +110,8 @@ def render():
                '<pattern id="gravel" width="3" height="3" patternUnits="userSpaceOnUse">'
                '<rect width="3" height="3" class="gravel-bg"/><circle cx=".7" cy=".8" r=".22" class="grit"/>'
                '<circle cx="2.2" cy="2.1" r=".18" class="grit"/><circle cx="2.4" cy=".5" r=".14" class="grit"/></pattern>'
+               '<pattern id="mesh" width=".6" height=".6" patternUnits="userSpaceOnUse">'
+               '<rect width=".6" height=".6" class="corn"/><path d="M0 0 H.6 M0 0 V.6" class="mesh-line"/></pattern>'
                f'<clipPath id="prop"><path d="{poly_d(bd)}"/></clipPath>'
                '</defs>')
 
@@ -127,9 +130,17 @@ def render():
     out.append(f'<text class="road-label faint" transform="translate({svgpt((tip + ne) / 2 + nrm2 * 13)}) '
                f'rotate({-math.degrees(math.atan2(ne[1] - tip[1], ne[0] - tip[0])):.1f})">LANE SEEN TODAY · WAS IT THERE?</text>')
 
-    # Ground
+    # Ground, with contour lines every 2 ft below the barnyard
     out.append(f'<path class="lawn" d="{poly_d(bd)}"/>')
     out.append('<g clip-path="url(#prop)">')
+    g = terrain.Ground()
+    cs = terrain.contours(g, bd[:, 0].min() - 2, bd[:, 0].max() + 2, bd[:, 1].min() - 2, bd[:, 1].max() + 2)
+    out.append('<g id="lm-ground">')
+    for i, (lvl, segs) in enumerate(sorted(cs.items(), reverse=True)):
+        d = ' '.join(f'M{svgpt(p)} L{svgpt(q)}' for p, q in segs)
+        cls = 'contour major' if (i + 1) % 2 == 0 else 'contour'
+        out.append(f'<path class="{cls}" d="{d}"/>')
+    out.append('</g>')
 
     # Pumpkin patch
     pp = P(F['pumpkin_patch']['poly'])
@@ -148,14 +159,16 @@ def render():
     # Christmas tree block
     ct = P(F['christmas_trees']['poly'])
     out.append(f'<g id="lm-13"><path class="tree-block" d="{poly_d(ct)}"/>')
-    for y in np.arange(ct[:, 1].min() + 3, ct[:, 1].max(), 3.6):
-        for x in np.arange(ct[:, 0].min() + 2.5, ct[:, 0].max(), 3.2):
-            q = (x + rng.normal(0, 0.25), y + rng.normal(0, 0.25))
-            if inside(q, ct):
-                out.append(conifer(q, rng.uniform(1.0, 1.5), 'xmas'))
+    trees, _ = terrain.christmas_trees()
     mt = P([F['christmas_trees']['marked_tree']])[0]
-    out.append(conifer(mt, 2.0, 'xmas marked'))
-    out.append(f'<circle class="ring" cx="{mt[0]:.1f}" cy="{-mt[1]:.1f}" r="3.6"/>')
+    marked = min(trees, key=lambda t: (t['x'] - mt[0]) ** 2 + (t['y'] - mt[1]) ** 2)
+    for t in trees:
+        r = terrain.SIZES[t['size']][2]
+        if t['species'] in ('scotch', 'white'):  # pines: soft round tufts
+            out.append(f'<circle class="xm-{t["species"]}" cx="{t["x"]:.1f}" cy="{-t["y"]:.1f}" r="{r:.2f}"/>')
+        else:  # fir and spruce: pointed stars
+            out.append(conifer((t['x'], t['y']), r * 1.15, f'xm-{t["species"]}'))
+    out.append(f'<circle class="ring" cx="{marked["x"]:.1f}" cy="{-marked["y"]:.1f}" r="2.2"/>')
     for p in P(F['christmas_corner_trees']['pts']):
         out.append(conifer(p, 2.4, 'conifer'))
     out.append('</g>')
@@ -215,12 +228,18 @@ def render():
     out.append('<g id="lm-4">')
     bcen = np.array([66.2, 131.4])
     u = np.array([math.cos(math.radians(GRID)), math.sin(math.radians(GRID))])
-    v = np.array([-u[1], u[0]])  # points away from the barn's yard-side wall
-    ramp = [bcen + v * 5.75 + u * 1.5, bcen + v * 5.75 + u * 10, bcen + v * 15 + u * 8, bcen + v * 15 + u * 3]
+    v = np.array([-u[1], u[0]])  # points away from the barn's yard-side (west) wall
+    # Earth ramp centred on the west wall, climbing 8 ft to the big sliding doors.
+    ramp = [bcen + v * 5.75 - u * 4.6, bcen + v * 5.75 + u * 4.6, bcen + v * 16 + u * 5.4, bcen + v * 16 - u * 5.4]
     out.append(f'<path class="ramp" d="{poly_d(ramp)}"/>')
+    out.append(f'<path class="ramp-edge" d="M{svgpt(ramp[0])} L{svgpt(ramp[3])} M{svgpt(ramp[1])} L{svgpt(ramp[2])}"/>')
+    up = bcen + v * 13.5
+    out.append(f'<path class="slope" d="M{svgpt(up)} L{svgpt(bcen + v * 8)} M{svgpt(bcen + v * 9.5 + u * 1.2)} '
+               f'L{svgpt(bcen + v * 8)} L{svgpt(bcen + v * 9.5 - u * 1.2)}"/>')
     isl = P(gh['island'])
-    out.append(f'<path class="island" d="{smooth_d(np.vstack([isl.mean(0) + (isl - isl.mean(0)) * 1.45]))}"/>')
     out.append(f'<path class="pad" d="{poly_d(isl)}"/>')
+    pc = isl.mean(0)
+    out.append(f'<text class="unknown" x="{pc[0]:.1f}" y="{-pc[1] + 1.1:.1f}">?</text>')
     out.append('</g>')
 
     # Buildings, snapped to the farm grid
@@ -236,13 +255,31 @@ def render():
     }
     for n, (cls, q) in blds.items():
         q = np.array(q)
-        out.append(f'<g id="lm-{n}"><path class="bld {cls}" d="{poly_d(q)}"/>')
+        out.append(f'<g id="lm-{n}">')
+        if n == 3:  # 8 ft stone foundation shows as a stone rim around the barn
+            out.append(f'<path class="stone" d="{poly_d(rect((66.2, 131.4), 23.3, 12.3, GRID))}"/>')
+        out.append(f'<path class="bld {cls}" d="{poly_d(q)}"/>')
         mid_a, mid_b = (q[0] + q[3]) / 2, (q[1] + q[2]) / 2
-        out.append(f'<path class="ridge" d="M{svgpt(mid_a)} L{svgpt(mid_b)}"/></g>')
-    # Grain bin
+        out.append(f'<path class="ridge" d="M{svgpt(mid_a)} L{svgpt(mid_b)}"/>')
+        if n == 3:
+            # Upper floor: two tractor-size sliding doors at the top of the ramp, opening left and right.
+            w = bcen + v * 6.25
+            for s in (-1, 1):
+                out.append(f'<path class="door" d="M{svgpt(w)} L{svgpt(w + u * 3.7 * s)}"/>')
+                tipp = w + u * (5.6 * s)
+                out.append(f'<path class="door-arrow" d="M{svgpt(w + u * 4.2 * s)} L{svgpt(tipp)} '
+                           f'M{svgpt(tipp - u * 0.8 * s + v * 0.6)} L{svgpt(tipp)} L{svgpt(tipp - u * 0.8 * s - v * 0.6)}"/>')
+            # Ground floor, south end: small door and a big sliding door with a basketball hoop (no net).
+            se = bcen - u * 12.05
+            out.append(f'<path class="door" d="M{svgpt(se + v * 3.6)} L{svgpt(se - v * 0.4)}"/>')
+            out.append(f'<path class="door small" d="M{svgpt(se - v * 2.4)} L{svgpt(se - v * 3.5)}"/>')
+            hoop = se - u * 0.9 + v * 1.6
+            out.append(f'<circle class="hoop" cx="{hoop[0]:.1f}" cy="{-hoop[1]:.1f}" r=".45"/>')
+        out.append('</g>')
+    # Corn crib: round wire mesh with a cone cap
     bc = P([F['grain_bin']['centre']])[0]
-    out.append(f'<g id="lm-10"><circle class="bin" cx="{bc[0]:.1f}" cy="{-bc[1]:.1f}" r="2.6"/>'
-               f'<circle class="bin-cap" cx="{bc[0]:.1f}" cy="{-bc[1]:.1f}" r=".6"/></g>')
+    out.append(f'<g id="lm-10"><circle class="crib" cx="{bc[0]:.1f}" cy="{-bc[1]:.1f}" r="2.2"/>'
+               f'<circle class="crib-cap" cx="{bc[0]:.1f}" cy="{-bc[1]:.1f}" r=".7"/></g>')
     # Windmill
     wm = P([F['windmill']['centre']])[0]
     tk = wm + np.array([-1.8, -2.6])
@@ -252,8 +289,8 @@ def render():
                f'<circle class="tank" cx="{tk[0]:.1f}" cy="{-tk[1]:.1f}" r=".9"/></g>')
     # Wood burner
     wb = P([F['wood_burner']['centre']])[0]
-    out.append(f'<g id="lm-15"><path class="rust" d="{poly_d(rect(wb, 2.6, 1.6, GRID))}"/>'
-               f'<circle class="stack" cx="{wb[0] + 1.0:.1f}" cy="{-(wb[1] + 0.9):.1f}" r=".45"/></g>')
+    out.append(f'<g id="lm-15"><rect class="rust" x="{wb[0] - 1.1:.1f}" y="{-wb[1] - .45:.1f}" width="2.2" height=".9" rx=".45"/>'
+               f'<circle class="stack" cx="{wb[0] + 0.7:.1f}" cy="{-wb[1]:.1f}" r=".3"/></g>')
     # Clothes lines: two T-posts, four lines
     e0, e1 = P(F['clothes_lines']['ends'])
     d = (e1 - e0) / np.linalg.norm(e1 - e0)
@@ -266,12 +303,40 @@ def render():
     out.append('</g>')
     out.append('</g>')  # end clip
 
+    # Downhill arrows and spot heights (relative to the barnyard)
+    out.append('<g id="lm-slopes">')
+
+    def downhill(p, q):
+        p, q = np.asarray(p, float), np.asarray(q, float)
+        d = (q - p) / np.linalg.norm(q - p)
+        nn = np.array([-d[1], d[0]])
+        return (f'<path class="slope" d="M{svgpt(p)} L{svgpt(q)} M{svgpt(q - d * 2 + nn * 1.3)} '
+                f'L{svgpt(q)} L{svgpt(q - d * 2 - nn * 1.3)}"/>')
+
+    for x in (20, 88):
+        out.append(downhill((x, g.y_top - 6), (x, g.y_low + 22)))
+    wmid = g.A + (g.H - g.A) * 0.45
+    out.append(downhill(wmid - g.n * 3, wmid + g.n * 17))
+    out.append(downhill(g.A + (g.H - g.A) * 0.15 - g.n * 2, g.A + (g.H - g.A) * 0.15 + g.n * 12))
+    out.append(f'<path class="slope-line" d="M{svgpt(g.A)} L{svgpt(g.H)}"/>')
+    out.append(f'<path class="slope-line" d="M{svgpt((bd[:, 0].min(), g.y_top))} L{svgpt((bd[:, 0].max(), g.y_top))}"/>')
+
+    def spot(p, text, anchor='middle'):
+        return f'<text class="spot" text-anchor="{anchor}" x="{p[0]:.1f}" y="{-p[1]:.1f}">{text}</text>'
+
+    out.append(spot((88, g.y_top + 2.2), 'slope starts · 0 ft'))
+    out.append(spot((89, 17), 'lowest · ≈ −13 ft?'))
+    west_pt = bd[np.argmin(bd[:, 0])]
+    out.append(spot(west_pt + (9, 1), '≈ −10 ft?', 'start'))
+    out.append(spot((50, 117), 'barnyard · 0 ft'))
+    out.append('</g>')
+
     # Property line on top
     out.append(f'<path class="propline" d="{poly_d(bd)}"/>')
 
     # Badges (placed beside each landmark)
     spots = {
-        1: house_c + (-1, 9.5), 2: (77, 145.5), 3: (61, 128), 4: (49.5, 124), 5: (40, 140),
+        1: house_c + (-1, 9.5), 2: (77, 145.5), 3: (66.2, 131.4) - (u * 5), 4: bcen + v * 19.5, 5: (34, 146),
         6: wm + (-5.5, 1.5), 7: (14, 117), 8: P([(912, 770)])[0] + (-3, -3.5), 9: P([(1027, 776)])[0] + (7.5, -1),
         10: bc + (5.2, 1.5), 11: P([(1182, 793)])[0] + (5.2, 1.0), 12: P([(1248, 835)])[0] + (2, -6),
         13: (49, 50), 14: (39, 6), 15: wb + (0, 4.6), 16: (e0 + e1) / 2 + n_ * 4.2, 17: P([F['playhouse']['centre']])[0] + (4.5, -1.5),
