@@ -112,15 +112,20 @@ F['orchard'] = dict(
     poly=[(845, 488), (955, 475), (985, 560), (998, 640), (950, 690), (885, 738), (800, 733), (762, 672),
           (730, 622), (735, 585), (768, 535)],
 )
+ORCHARD_SHIFT = (22, 42)
+VINES_SHIFT = (9, 9)
 F['grape_vines'] = dict(n=8, kind='vines', rows=[[(912, 770), (990, 668)], [(924, 778), (1002, 678)],
                                                [(936, 786), (1013, 689)], [(948, 794), (1024, 700)]])
+# v6: the orchard sat closer to the red garage, with the grape rows squeezed in between
+F['orchard']['poly'] = [(x + ORCHARD_SHIFT[0], y + ORCHARD_SHIFT[1]) for x, y in F['orchard']['poly']]
+F['grape_vines']['rows'] = [[(x + VINES_SHIFT[0], y + VINES_SHIFT[1]) for x, y in row] for row in F['grape_vines']['rows']]
 F['red_garage'] = dict(n=9, kind='building', poly=[(1023, 727), (1068, 746), (1030, 826), (985, 806)], door='sw')
 F['grain_bin'] = dict(n=10, kind='bin', centre=(1192, 735), r=18)
 F['red_shed'] = dict(n=11, kind='building', poly=[(1180, 765), (1202, 775), (1185, 822), (1162, 812)])
 F['greenhouse'] = dict(n=12, kind='greenhouse', poly=[(1213, 805), (1293, 832), (1282, 865), (1203, 838)])
 # Extended west toward the property line (v5): the slanted top edge continues west until it
 # nearly meets the orchard, leaving only a mowed path along the west line.
-F['christmas_trees'] = dict(n=13, kind='tree_block', poly=[(747, 742), (1305, 988), (1315, 1175), (685, 1132)],
+F['christmas_trees'] = dict(n=13, kind='tree_block', poly=[(747, 742), (1192, 914), (1200, 850), (1222, 792), (1315, 780), (1315, 1175), (685, 1132)],
                             marked_tree=(1005, 960))
 F['pumpkin_patch'] = dict(n=14, kind='patch', poly=[(726, 1242), (1340, 1246), (1342, 1366), (630, 1362)])
 F['wood_burner'] = dict(n=15, kind='burner', centre=(730, 450))
@@ -135,13 +140,12 @@ F['nw_conifers'] = dict(kind='trees', pts=[(890, 210), (865, 255), (850, 295), (
 F['ne_tree_row'] = dict(kind='tree_row', line=[(905, 150), (1180, 270), (1455, 392)])
 F['west_trail'] = dict(kind='trail', line=[(740, 705), (729, 760), (700, 940), (668, 1168)])
 F['south_lane'] = dict(kind='lane', line=[(640, 1196), (778, 1172), (1060, 1190), (1346, 1210)])
-F['east_trail'] = dict(kind='trail', line=[(1150, 905), (1230, 940), (1305, 980), (1346, 1012), (1349, 1200), (1342, 1366)])
+F['east_trail'] = dict(kind='trail', line=[(1198, 812), (1228, 776), (1300, 766), (1342, 792), (1349, 1000), (1349, 1200), (1342, 1366)])
 F['christmas_corner_trees'] = dict(kind='trees', pts=[(805, 760), (800, 1132), (1305, 985), (1315, 1172)])
 F['christmas_inner_trees'] = dict(kind='trees', pts=[(870, 930), (1120, 985), (1205, 1005), (925, 1075), (1075, 1095), (1178, 1105)])
-F['orchard_edge_tree'] = dict(kind='trees', pts=[(805, 745)])
 # Unmowed field of weeds, grass and wildflowers east of the barn and along the east line
-F['meadow_east'] = dict(kind='meadow', poly=[(1305, 470), (1462, 430), (1462, 1236), (1352, 1232), (1348, 1010),
-                                             (1310, 985), (1240, 948), (1300, 885), (1305, 790), (1300, 700)])
+F['meadow_east'] = dict(kind='meadow', poly=[(1305, 470), (1462, 430), (1462, 1236), (1358, 1232), (1358, 820),
+                                             (1345, 775), (1325, 745), (1300, 700)])
 
 
 def convert(v):

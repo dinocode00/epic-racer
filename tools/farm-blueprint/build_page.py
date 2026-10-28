@@ -82,9 +82,12 @@ def barn_ramp_side():
             '<path class="el-trim thin" d="M57 73 L80 97 M80 73 L57 97 M80 73 L103 97 M103 73 L80 97"/>'
             '<path class="el-line f-none" d="M54 80 H40 M44 77 L40 80 L44 83 M106 80 H120 M116 77 L120 80 L116 83"/>'
             '<path class="f-blacktop el-line" d="M57 97 H103 L110 112 H50 Z"/>'
-            '<rect class="f-stone el-thin" x="20.5" y="106.3" width="15" height="5.7"/>' + stones(20.5, 35.5, 106.3, 112) +
-            '<rect class="f-wood el-line" x="122.5" y="110" width="15" height="2"/><rect class="f-cover el-thin" x="122" y="108.8" width="16" height="1.4"/>'
-            '<text class="el-label" x="28" y="119">well</text><text class="el-label" x="130" y="119">sandbox</text>')
+            '<rect class="f-stone el-thin" x="16" y="106.3" width="15" height="5.7"/>' + stones(16, 31, 106.3, 112) +
+            '<rect class="f-none el-line" x="16" y="106.3" width="15" height="5.7"/><ellipse class="f-roof el-thin" cx="23.5" cy="106.3" rx="7.5" ry="1.3"/>' +
+            '<rect class="f-wood el-line" x="128" y="110" width="15" height="2"/><rect class="f-cover el-thin" x="127.5" y="108.8" width="16" height="1.4"/>'
+            + ''.join(f'<circle class="f-orchard el-thin" cx="{x + dx}" cy="{y}" r="{r}"/>' for x in (49, 111) for dx, y, r in ((0, 100, 7), (-5, 104, 5.5), (5, 104, 5.5)))
+            + ''.join(f'<circle class="f-lilac" cx="{x + dx}" cy="{y}" r="1.6"/>' for x in (49, 111) for dx, y in ((-4, 99), (2, 96), (5, 102), (-2, 104), (0, 101)))
+            + '<text class="el-label" x="23.5" y="119">well</text><text class="el-label" x="135" y="119">sandbox</text>')
 
 
 def barn_south_end():
@@ -304,7 +307,7 @@ def options():
             fig('R', 'Road side: steep front gable with its octagonal vent on the left, wing on the right with the one-storey porch, white posts and railing, lattice skirt. White siding, slate-blue trim, dark shingles, buff brick chimney, fieldstone foundation.', farmhouse()),
         ]),
         ('3 · The barn, as I now picture it', [
-            fig('W', 'West side: black shingle roof slope with the painted green Christmas tree and white star, white trim, two tractor-size doors sliding left and right at the top of the paved ramp. The old well to the north (left) and the sandbox to the south (right).', barn_ramp_side(), ('Bank barns', 'https://en.wikipedia.org/wiki/Bank_barn')),
+            fig('W', 'West side: black shingle roof slope with the painted green Christmas tree and white star, white trim, two tractor-size doors sliding left and right at the top of the black asphalt ramp. A mature lilac at the bottom of the ramp on each side; the old well (left, north) and the sandbox (right, south) sit on grass patches against the barn.', barn_ramp_side(), ('Bank barns', 'https://en.wikipedia.org/wiki/Bank_barn')),
             fig('S', 'South end: one giant sliding door in the fieldstone lower level, a walk-through door cut into it, and the netless hoop.', barn_south_end()),
         ]),
         ('7 · Orchard trees', [

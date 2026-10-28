@@ -86,6 +86,40 @@ def conifer(p, r, cls='conifer'):
     return f'<polygon class="{cls}" points="{" ".join(pts)}"/>'
 
 
+def near(pt, poly, d):
+    """True if pt is inside poly or within d metres of its outline."""
+    if inside(pt, poly):
+        return True
+    pt = np.asarray(pt, float)
+    for i in range(len(poly)):
+        a, c = np.asarray(poly[i], float), np.asarray(poly[(i + 1) % len(poly)], float)
+        t = np.clip((pt - a) @ (c - a) / ((c - a) @ (c - a)), 0, 1)
+        if np.linalg.norm(pt - (a + t * (c - a))) < d:
+            return True
+    return False
+
+
+def wagon(c, ang, load=0):
+    """Old flat wooden hay wagon: plank deck, four wheels, tongue; optional pumpkins on top."""
+    a = math.radians(ang)
+    u = np.array([math.cos(a), math.sin(a)])
+    v = np.array([-u[1], u[0]])
+    c = np.asarray(c, float)
+    out = []
+    for s1 in (-1, 1):
+        for s2 in (-1, 1):
+            out.append(f'<path class="wheel" d="{poly_d(rect(c + u * 1.6 * s1 + v * 1.25 * s2, 0.8, 0.3, ang))}"/>')
+    out.append(seg(c + u * 2.45, c + u * 4.3, 'tongue'))
+    out.append(f'<path class="deck" d="{poly_d(rect(c, 4.9, 2.3, ang))}"/>')
+    for k in np.arange(-2.0, 2.1, 0.5):
+        out.append(seg(c + u * k + v * 1.15, c + u * k - v * 1.15, 'plank'))
+    rng_l = np.random.default_rng(int(abs(c[0] * 10)))
+    for _ in range(load):
+        q = c + u * rng_l.uniform(-1.9, 1.9) + v * rng_l.uniform(-0.8, 0.8)
+        out.append(f'<circle class="pumpkin" cx="{q[0]:.1f}" cy="{-q[1]:.1f}" r="{rng_l.uniform(0.35, 0.5):.2f}"/>')
+    return ''.join(out)
+
+
 def badge(n, p, tag):
     return (f'<g class="badge" data-lm="{tag}"><circle cx="{p[0]:.1f}" cy="{-p[1]:.1f}" r="3.3"/>'
             f'<text x="{p[0]:.1f}" y="{-p[1] + 1.25:.1f}">{n}</text></g>')
@@ -235,7 +269,7 @@ def render():
     for i in range(9):
         for j in range(10):
             q = cen + U * (j - 4.5) * su + V * (i - 4) * sv + V * 1.5 - U * 1.0
-            if not inside(q, oc):
+            if not inside(q, oc) or near(q, dw, 2.2) or near(q, ct, 2.0):
                 continue
             fruit = 'apple' if i < 7 else ('pear' if (j + i) % 2 == 0 else 'cherry')
             out.append(f'<circle class="orchard-tree" cx="{q[0]:.1f}" cy="{-q[1]:.1f}" r="1.75"/>')
@@ -284,7 +318,21 @@ def render():
     bcen = b.barn_centre()
     out.append('<g id="lm-4">')
     ramp = [bcen + V * 5.75 - U * 4.6, bcen + V * 5.75 + U * 4.6, bcen + V * 16 + U * 5.4, bcen + V * 16 - U * 5.4]
+    # Grass patches on both sides of the ramp, touching the barn and the ramp
+    for s in (-1, 1):
+        patch = [bcen + V * 5.75 + U * 4.6 * s, bcen + V * 5.75 + U * 10.8 * s,
+                 bcen + V * 12.3 + U * 10.8 * s, bcen + V * 12.3 + U * 5.11 * s]
+        out.append(f'<path class="grass-patch" d="{poly_d(patch)}"/>')
     out.append(f'<path class="blacktop" d="{poly_d(ramp)}"/>')
+    # A mature lilac at the bottom of the ramp on each side
+    out.append('</g><g id="lm-lilac">')
+    for s in (-1, 1):
+        lc = bcen + V * 16.8 + U * 7.2 * s
+        out.append(f'<circle class="lilac" cx="{lc[0]:.1f}" cy="{-lc[1]:.1f}" r="1.7"/>')
+        for k in range(6):
+            q = lc + np.array([math.cos(k * 1.05 + s), math.sin(k * 1.05 + s)]) * 0.95
+            out.append(f'<circle class="lilac-bloom" cx="{q[0]:.2f}" cy="{-q[1]:.2f}" r=".38"/>')
+    out.append('</g><g>')
     out.append(f'<path class="slope" d="M{svgpt(bcen + V * 13.5)} L{svgpt(bcen + V * 8)} M{svgpt(bcen + V * 9.5 + U * 1.2)} '
                f'L{svgpt(bcen + V * 8)} L{svgpt(bcen + V * 9.5 - U * 1.2)}"/>')
     out.append('</g>')
@@ -379,10 +427,12 @@ def render():
     sh = bc - U * (1.4 + 0.3 + 3.0)
     out.append(f'<g id="lm-11"><path class="bld roof-black wall-red" d="{poly_d(rect(sh, 6, 3.6, GRID))}"/>'
                f'{seg(sh - U * 3, sh + U * 3, "ridge")}</g>')
-    gh = P([(1248, 835)])[0]
-    out.append(f'<g id="lm-12"><path class="bld glass" d="{poly_d(rect(gh, 3.05, 1.83, GRID - 80))}"/>'
-               f'{seg(*[gh + np.array([math.cos(math.radians(GRID - 80)), math.sin(math.radians(GRID - 80))]) * s * 1.52 for s in (-1, 1)], "ridge")}</g>')
-    pl = P([F['playhouse']['centre']])[0]
+    gh = sh - V * 3.9  # right beside the shed, on its east side
+    out.append(f'<g id="lm-12"><path class="bld glass" d="{poly_d(rect(gh, 3.05, 1.83, GRID))}"/>'
+               f'{seg(gh - U * 1.52, gh + U * 1.52, "ridge")}</g>')
+    # Old flat wooden wagons parked in the grass east of the shed, one with pumpkins on it
+    out.append(f'<g id="lm-wagons">{wagon(sh + np.array([9.0, 3.5]), GRID + 14)}{wagon(sh + np.array([13.5, -1.0]), GRID - 20, load=7)}</g>')
+    pl = house_c + np.array([17.5, 3.0])  # close to the farmhouse, just past the clothes lines
     out.append(f'<g id="lm-17"><path class="bld roof-black wall-red" d="{poly_d(rect(pl, 2.44, 2.44, GRID))}"/>'
                f'{seg(pl - U * 1.22, pl + U * 1.22, "ridge light")}</g>')
 
@@ -402,7 +452,8 @@ def render():
         out.append(seg(q - np.array([math.cos(a), math.sin(a)]) * 0.6, q + np.array([math.cos(a), math.sin(a)]) * 0.6, 'scrap'))
     out.append('</g>')
     # Clothes lines: two sets of T-posts, three lines
-    e0, e1 = P(F['clothes_lines']['ends'])
+    e0 = house_c + np.array([8.0, 1.5])  # close to the house's east side, running parallel to the NE line
+    e1 = e0 - V * 9.5
     d = (e1 - e0) / np.linalg.norm(e1 - e0)
     n_ = np.array([-d[1], d[0]])
     out.append('<g id="lm-16">')
@@ -440,7 +491,7 @@ def render():
     out.append(spot((91 * K, 17 * K), 'lowest · ≈ −20 ft'))
     out.append(spot(west + (9, 1), '≈ −15 ft', 'start'))
     out.append(spot(P([(1035, 560)])[0], 'barnyard · 0 ft'))
-    out.append(spot(house_c - V * 11 - U * 4, 'rises ≈ 3 ft to house'))
+    out.append(spot(house_c + np.array([-1.0, -10.5]), 'rises ≈ 3 ft to house'))
     out.append('</g>')
 
     # Small labels for unnumbered things
@@ -450,6 +501,7 @@ def render():
     out.append(tag(ent + nrm * 2.4, 'mailbox'))
     out.append(tag(P([(866, 296)])[0] + V * 2.6 + U * 1, 'arborvitae'))
     out.append(tag(g9c + np.array([1.5, -6.0]), 'rooster vane'))
+    out.append(tag(sh + np.array([17.0, -6.2]), 'old hay wagons'))
     out.append(tag(P([(1385, 560)])[0], 'weeds, grass'))
     out.append(tag(P([(1385, 560)])[0] - (0, 2.8), 'and wildflowers'))
 
@@ -460,8 +512,8 @@ def render():
     spots = {
         1: house_c + U * 9.5, 2: g2 + U * 6, 3: bcen - V * 2.8 - U * 4, 4: bcen + V * 19.5, 5: K * np.array([34, 146]),
         6: wm + (-5.5, 1.5), 7: K * np.array([14, 117]), 8: P([(912, 770)])[0] + (-3, -3.5), 9: g9c + (7.5, -1),
-        10: bc + (4.2, 1.8), 11: sh + (-4.5, -1.5), 12: gh + (3.5, -3.0),
-        13: K * np.array([49, 50]), 14: K * np.array([39, 6]), 15: wb + (0, 4.6), 16: (e0 + e1) / 2 + n_ * 4.2, 17: pl + (4.5, -1.5),
+        10: bc + (-1.0, 4.6), 11: sh + (-5.2, 0.5), 12: gh + (0.5, -4.4),
+        13: K * np.array([49, 50]), 14: K * np.array([39, 6]), 15: wb + (0, 4.6), 16: (e0 + e1) / 2 - n_ * 3.8, 17: pl + (4.6, 1.2),
     }
     for n, p in spots.items():
         out.append(badge(n, np.asarray(p, float), f'lm-{n}'))

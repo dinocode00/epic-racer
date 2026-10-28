@@ -110,7 +110,7 @@ section { margin-top: 48px; display: grid; gap: 16px; }
 .map .lane-band { fill: none; stroke: var(--soil); stroke-width: 4.2; stroke-linecap: round; }
 .map .lane-center { fill: none; stroke: var(--trail); stroke-width: .5; stroke-dasharray: 2 1.6; }
 .map .trail { fill: none; stroke: var(--trail); stroke-width: .9; stroke-dasharray: 2.2 1.6; stroke-linecap: round; }
-.map .orchard-ground { fill: none; stroke: var(--apple); stroke-width: .3; stroke-dasharray: 1 1; }
+.map .orchard-ground { fill: none; stroke: none; }
 .map .apple { fill: var(--apple); }
 .map .apple-fruit { fill: var(--fruit); }
 .map .trellis { stroke: var(--vine); stroke-width: .8; fill: none; }
@@ -216,6 +216,13 @@ section { margin-top: 48px; display: grid; gap: 16px; }
 .map .lane { fill: none; stroke: var(--road); stroke-width: 4; }
 .map .vane { fill: var(--ink); }
 .map .vane-arm { stroke: var(--ink); stroke-width: .15; }
+.map .grass-patch { fill: var(--lawn); stroke: var(--grit); stroke-width: .2; }
+.map .lilac { fill: var(--tree); stroke: var(--conifer); stroke-width: .2; }
+.map .lilac-bloom { fill: var(--flower-a); }
+.map .deck { fill: var(--wood); stroke: var(--ink); stroke-width: .15; }
+.map .plank { stroke: var(--ink); stroke-width: .06; opacity: .5; }
+.map .wheel { fill: var(--ink); }
+.map .tongue { stroke: var(--ink); stroke-width: .2; }
 .map g.hl > * { filter: drop-shadow(0 0 .9px var(--accent)) drop-shadow(0 0 .9px var(--accent)); }
 
 /* Facts strip */
@@ -286,6 +293,7 @@ figcaption b { font-family: var(--mono); font-weight: 500; color: var(--accent);
 .f-siding, .f-siding.el-thin, .f-siding.el-blue { fill: var(--house); } .f-chimney, .f-chimney.el-thin { fill: var(--chimney); }
 .f-glass.el-blue { fill: var(--glass); }
 .f-blacktop { fill: var(--blacktop); } .f-arborvitae { fill: var(--arborvitae); } .f-spruce { fill: var(--douglas); }
+.f-lilac { fill: var(--flower-a); }
 /* Steps */
 .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; counter-reset: s; }
 .step { border-left: 2px solid var(--rule); padding: 2px 0 2px 14px; display: grid; gap: 4px; min-width: 0; }
@@ -305,7 +313,7 @@ figcaption b { font-family: var(--mono); font-weight: 500; color: var(--accent);
 
 <div class="wrap">
   <header>
-    <div class="eyebrow">Epic Racer · new map · blueprint v5</div>
+    <div class="eyebrow">Epic Racer · new map · blueprint v6</div>
     <h1>Grandparents' Farm Blueprint</h1>
     <p class="lede">Every landmark from your hand sketch, placed on the property's real outline, now updated with your first round of answers: the barn's foundation and doors, the centred ramp, the four kinds of Christmas trees and the slope of the land. Still only the land. Race routes come later.</p>
   </header>
@@ -320,7 +328,7 @@ figcaption b { font-family: var(--mono); font-weight: 500; color: var(--accent);
 
   <section>
     <div class="section-head">
-      <h2>What changed in v5</h2>
+      <h2>What changed in v6</h2>
       <p>Your answers, and where they show up on the map.</p>
     </div>
     <dl class="then-now">{{CHANGES}}</dl>
