@@ -240,7 +240,7 @@ def render():
     out.append('</g>')
 
     # Pumpkin and gourd patch
-    pp = P(F['pumpkin_patch']['poly'])
+    pp = np.array(F['pumpkin_patch']['poly_m'])
     out.append(f'<g id="lm-14"><path class="soil" d="{poly_d(pp)}"/>')
     for y in np.arange(pp[:, 1].min() + 2.5, pp[:, 1].max() - 1, 3.2):
         row = [(x, y) for x in np.arange(pp[:, 0].min() + 1, pp[:, 0].max(), 2.6) if inside((x, y), pp)]
@@ -457,8 +457,8 @@ def render():
     out.append(f'<g id="lm-12"><path class="bld glass" d="{poly_d(rect(gh, 3.05, 1.83, GRID))}"/>'
                f'{seg(gh - U * 1.52, gh + U * 1.52, "ridge")}</g>')
     # Old flat wooden wagons parked in the grass east of the shed, one with pumpkins on it
-    out.append(f'<g id="lm-wagons">{wagon(sh + np.array([9.0, 3.5]), GRID + 14)}{wagon(sh + np.array([13.5, -1.0]), GRID - 20, load=7)}</g>')
-    pl = house_c + np.array([17.5, 3.0])  # close to the farmhouse, just past the clothes lines
+    out.append(f'<g id="lm-wagons">{wagon(sh + np.array([9.5, -7.5]), GRID + 14)}{wagon(sh + np.array([15.0, -11.5]), GRID - 20, load=7)}</g>')
+    pl = house_c + np.array([8.0, 1.5]) - V * 9.5 + np.array([3.2, 0.0])  # just east of the clothes lines' east end
     out.append(f'<g id="lm-17"><path class="bld roof-black wall-red" d="{poly_d(rect(pl, 2.44, 2.44, GRID))}"/>'
                f'{seg(pl - U * 1.22, pl + U * 1.22, "ridge light")}</g>')
 
@@ -527,7 +527,7 @@ def render():
     out.append(tag(ent + nrm * 2.4, 'mailbox'))
     out.append(tag(P([(866, 296)])[0] + V * 2.6 + U * 1, 'arborvitae'))
     out.append(tag(g9c + np.array([1.5, -6.0]), 'rooster vane'))
-    out.append(tag(sh + np.array([17.0, -6.2]), 'old hay wagons'))
+    out.append(tag(sh + np.array([20.5, -5.0]), 'old hay wagons'))
 
     # Property line on top
     out.append(f'<path class="propline" d="{poly_d(bd)}"/>')
@@ -536,7 +536,7 @@ def render():
     spots = {
         1: house_c + U * 9.5, 2: g2 + U * 6, 3: bcen - V * 2.8 - U * 4, 4: bcen + V * 19.5, 5: K * np.array([34, 146]),
         6: wm + (-5.5, 1.5), 7: K * np.array([14, 117]), 8: P([(912, 770)])[0] + (-3, -3.5), 9: g9c + (7.5, -1),
-        10: bc + (-1.0, 4.6), 11: sh + (-5.2, 0.5), 12: gh + (0.5, -4.4),
+        10: bc + (-1.0, 4.6), 11: sh + (-5.2, 0.5), 12: gh + (-2.6, -3.6),
         13: K * np.array([49, 50]), 14: K * np.array([39, 6]), 15: wb + (0, 4.6), 16: (e0 + e1) / 2 - n_ * 3.8, 17: pl + (4.6, 1.2),
     }
     for n, p in spots.items():

@@ -630,6 +630,32 @@
      0.9,
      1.3
     ]
+   ],
+   "poly_m": [
+    [
+     1.2,
+     27.6
+    ],
+    [
+     17.6,
+     30.2
+    ],
+    [
+     54.8,
+     24.6
+    ],
+    [
+     90.6,
+     18.9
+    ],
+    [
+     90.8,
+     -4.2
+    ],
+    [
+     0.9,
+     1.3
+    ]
    ]
   },
   "wood_burner": {
@@ -943,6 +969,7 @@
   "Pumpkin patch": [
    "Fills the full width of the south end.",
    "Gourds grew there too.",
+   "The patch hugs the mowed grass lane along its north side.",
    "Past the south line: a rising hill of grass, wildflowers and weeds."
   ],
   "Old rusted barrel stove": [
@@ -957,7 +984,7 @@
    "Coloured to match the barn.",
    "Black shingle roof, nothing on top.",
    "About 8 × 8 ft, with a window on the left side, one on the right side and two in front.",
-   "Much closer to the farmhouse."
+   "Much closer to the farmhouse, just east of the clothes lines."
   ],
   "Trees, paths and fields": [
    "The big tree was a very large Scotch pine.",
@@ -7440,12 +7467,12 @@
   ],
   "hay_wagons": [
    [
-    72.9,
-    114.0
+    73.4,
+    103.0
    ],
    [
-    77.4,
-    109.5
+    78.9,
+    99.0
    ]
   ],
   "clothes_lines": [
@@ -7459,8 +7486,8 @@
    ]
   ],
   "playhouse_centre": [
-   60.6,
-   175.9
+   61.6,
+   168.3
   ],
   "lilacs": [
    [

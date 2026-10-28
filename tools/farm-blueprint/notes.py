@@ -122,7 +122,7 @@ CARDS = [
      []),
     ('·', 'Old hay wagons',
      'Not in the sketch; you remembered them later.',
-     'Two flat wooden wagons on four wheels with a tongue, parked in the grass east of the shed and greenhouse. One carries a few pumpkins.',
+     'Two flat wooden wagons on four wheels with a tongue, parked in the grass east of the shed and greenhouse, close to the mowed path south of them. One carries a few pumpkins.',
      ['One or two old wooden trailers with an open wooden platform, pulled by the tractors.',
       'They stood in the grass east of the shed, sometimes with pumpkins on them.'],
      []),
@@ -146,6 +146,7 @@ CARDS = [
      'Pumpkins and gourds across the full width, on the lowest ground, with the hill rising beyond.',
      ['Fills the full width of the south end.',
       'Gourds grew there too.',
+      'The patch hugs the mowed grass lane along its north side.',
       'Past the south line: a rising hill of grass, wildflowers and weeds.'],
      []),
     ('15', 'Old rusted barrel stove',
@@ -160,10 +161,10 @@ CARDS = [
      []),
     ('17', 'Kids\' small playhouse',
      'A tiny peaked house near the northeast tree row.',
-     'About 8 × 8 ft, painted like the barn (red with white trim), black shingle roof, just past the clothes lines near the house.',
+     'About 8 × 8 ft, painted like the barn (red with white trim), black shingle roof, just east of the clothes lines near the house.',
      ['Coloured to match the barn.', 'Black shingle roof, nothing on top.',
       'About 8 × 8 ft, with a window on the left side, one on the right side and two in front.',
-      'Much closer to the farmhouse.'],
+      'Much closer to the farmhouse, just east of the clothes lines.'],
      []),
     ('·', 'Trees, paths and fields',
      'A big tree beside the stove, five evergreens between the road and the house, the "TREES" row, dashed paths and a lane.',
@@ -193,7 +194,7 @@ CARDS = [
 ]
 
 CHANGES = [
-    ('East property line', 'From where the Christmas trees start, the line now steps in and runs about 8 ft outside the east mowed path, down to the south line. North of that, beside the barn, it is unchanged. The property comes to about 4.8 acres.'),
-    ('Wild field', 'The weeds, grass and wildflowers now lie outside the east line, joining the wildflower hill to the south.'),
-    ('East side', 'Inside the line, the east side is mowed grass, with the mowed path running down to the pumpkins.'),
+    ('Pumpkin patch', 'Its north edge now runs right along the mowed grass lane above it, from the west line to the east path. No more strip of open grass between them.'),
+    ('Playhouse', 'Moved a little south so it sits just east of the clothes lines.'),
+    ('Hay wagons', 'Moved south, closer to the mowed path along the top of the Christmas trees.'),
 ]

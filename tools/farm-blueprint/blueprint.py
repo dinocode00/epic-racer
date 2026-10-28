@@ -146,6 +146,8 @@ F['greenhouse'] = dict(n=12, kind='greenhouse', poly=[(1213, 805), (1293, 832), 
 F['christmas_trees'] = dict(n=13, kind='tree_block', poly=[(747, 742), (1305, 988), (1315, 1175), (685, 1132)],
                             marked_tree=(1005, 960))
 F['pumpkin_patch'] = dict(n=14, kind='patch', poly=[(726, 1242), (1340, 1246), (1342, 1366), (630, 1362)])
+# v10: the patch's north edge hugs the mowed grass lane above it (metres; lane centre minus ~2.4 m)
+F['pumpkin_patch']['poly_m'] = [[1.2, 27.6], [17.6, 30.2], [54.8, 24.6], [90.6, 18.9], [90.8, -4.2], [0.9, 1.3]]
 F['wood_burner'] = dict(n=15, kind='burner', centre=(730, 450))
 F['clothes_lines'] = dict(n=16, kind='clothesline', ends=[(1157, 360), (1240, 392)])
 F['playhouse'] = dict(n=17, kind='playhouse', centre=(1280, 425))
