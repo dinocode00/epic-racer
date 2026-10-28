@@ -13,6 +13,9 @@
   --apple: #5f8f45; --fruit: #c4352b; --road: #bfb8a8; --road-edge: #9d9686;
   --barn: #a3302a; --wood: #946437; --house: #fbf9f2; --roof: #6a6f71; --glass: #bfe0ef;
   --glass-edge: #4d8fb0; --rust: #8a4a22; --steel: #b9c0c4; --play: #e9c75a; --trail: #b79c6e;
+  --meadow: #c7d79a; --flower-a: #9b6fc4; --flower-b: #f0c43a; --flower-c: #ffffff; --woods: #5b7f52; --asphalt: #77767a;
+  --shingle: #2b2d2f; --shingle-line: #474a4d; --porch: #c9b48f; --concrete: #c9c6bd; --gourd: #c9b62e; --pear: #c9cf4e;
+  --cherry: #8e1b2a; --garden: #8a6a45; --cover: #3f7fd0; --mowed: #c2db9c; --tyre: #a9c486; --wall-red: #b0352c;
   --stone: #9c9a90; --corn: #e2b437; --contour: #6f8a55; --slope: #3c5a8a; --douglas: #24543a; --white-pine: #5f9479;
   --scotch: #7a9a3a; --blue-spruce: #6f97a8;
   --display: "Zilla Slab", "Rockwell", "Roboto Slab", Georgia, serif;
@@ -28,6 +31,9 @@
     --apple: #4f7d3c; --fruit: #e2584c; --road: #3d3b36; --road-edge: #5a574f;
     --barn: #c2463a; --wood: #aa7a49; --house: #d8d4c8; --roof: #7c8183; --glass: #2b5366;
     --glass-edge: #7ec0df; --rust: #b0612f; --steel: #8d969b; --play: #c9a94a; --trail: #8d7752;
+    --meadow: #34452a; --flower-a: #b893dc; --flower-b: #e8bd3a; --flower-c: #e8e8e0; --woods: #4a6e44; --asphalt: #55545a;
+    --shingle: #1b1c1e; --shingle-line: #3a3c3f; --porch: #8d7a5c; --concrete: #8f8c84; --gourd: #c4ae2a; --pear: #b8c046;
+    --cherry: #d0485a; --garden: #6e5236; --cover: #5d9be6; --mowed: #2d4325; --tyre: #3d5532; --wall-red: #d0544a;
     --stone: #7c7a72; --corn: #c99d2c; --contour: #6f8f58; --slope: #8fb2e6; --douglas: #3d7a52; --white-pine: #79b095;
     --scotch: #94b54d; --blue-spruce: #8db7c9;
     color-scheme: dark;
@@ -41,6 +47,9 @@
   --apple: #4f7d3c; --fruit: #e2584c; --road: #3d3b36; --road-edge: #5a574f;
   --barn: #c2463a; --wood: #aa7a49; --house: #d8d4c8; --roof: #7c8183; --glass: #2b5366;
   --glass-edge: #7ec0df; --rust: #b0612f; --steel: #8d969b; --play: #c9a94a; --trail: #8d7752;
+  --meadow: #34452a; --flower-a: #b893dc; --flower-b: #e8bd3a; --flower-c: #e8e8e0; --woods: #4a6e44; --asphalt: #55545a;
+  --shingle: #1b1c1e; --shingle-line: #3a3c3f; --porch: #8d7a5c; --concrete: #8f8c84; --gourd: #c4ae2a; --pear: #b8c046;
+  --cherry: #d0485a; --garden: #6e5236; --cover: #5d9be6; --mowed: #2d4325; --tyre: #3d5532; --wall-red: #d0544a;
   --stone: #7c7a72; --corn: #c99d2c; --contour: #6f8f58; --slope: #8fb2e6; --douglas: #3d7a52; --white-pine: #79b095;
   --scotch: #94b54d; --blue-spruce: #8db7c9;
   color-scheme: dark;
@@ -77,7 +86,7 @@ section { margin-top: 48px; display: grid; gap: 16px; }
 /* SVG styling */
 .map .lawn { fill: var(--lawn); }
 .map .propline { fill: none; stroke: var(--ink); stroke-width: .9; stroke-dasharray: 5 1.6 1 1.6; }
-.map .road { fill: none; stroke: var(--road); stroke-width: 6; stroke-linecap: round; }
+.map .road { fill: none; stroke: var(--asphalt); stroke-width: 6; stroke-linecap: round; }
 .map .lane-today { fill: none; stroke: var(--road); stroke-width: 4; stroke-dasharray: 3 2; opacity: .8; }
 .map .road-label { font: 500 3.2px var(--mono); letter-spacing: .25em; fill: var(--muted); text-anchor: middle; }
 .map .road-label.faint { font-size: 2.4px; letter-spacing: .12em; }
@@ -152,6 +161,42 @@ section { margin-top: 48px; display: grid; gap: 16px; }
 .map .slope-line { fill: none; stroke: var(--slope); stroke-width: .3; stroke-dasharray: 2.5 1.5; opacity: .8; }
 .map .spot { fill: var(--slope); font: 500 2.5px var(--mono); }
 .map .unknown { fill: var(--ink); font: 600 2.6px var(--mono); text-anchor: middle; }
+.map .meadow { fill: url(#meadow); }
+.map .meadow-bg { fill: var(--meadow); }
+.map .weed { stroke: var(--woods); stroke-width: .12; fill: none; }
+.map .flower-a { fill: var(--flower-a); } .map .flower-b { fill: var(--flower-b); } .map .flower-c { fill: var(--flower-c); }
+.map .woods { fill: var(--woods); opacity: .85; }
+.map .tag { fill: var(--muted); font: 500 2.2px var(--mono); letter-spacing: .04em; }
+.map .crack { fill: none; stroke: var(--road-edge); stroke-width: .18; }
+.map .mowed { fill: none; stroke: var(--mowed); stroke-linecap: round; }
+.map .tyre { fill: none; stroke: var(--tyre); stroke-width: .25; stroke-dasharray: 3 2; }
+.map .gourd { fill: var(--gourd); }
+.map .mailbox { fill: var(--ink); }
+.map .orchard-tree { fill: var(--apple); }
+.map .fruit-apple { fill: var(--fruit); } .map .fruit-pear { fill: var(--pear); } .map .fruit-cherry { fill: var(--cherry); }
+.map .garden { fill: var(--garden); stroke: var(--ink); stroke-width: .15; }
+.map .big-pine { fill: var(--scotch); stroke: var(--conifer); stroke-width: .3; }
+.map .big-pine-tuft { fill: var(--scotch); stroke: var(--conifer); stroke-width: .2; opacity: .9; }
+.map .spruce { fill: var(--douglas); }
+.map .paved { fill: var(--asphalt); stroke: var(--ink); stroke-width: .25; }
+.map .well { fill: var(--stone); stroke: var(--ink); stroke-width: .2; }
+.map .well-in { fill: var(--ink); }
+.map .sandbox { fill: var(--cover); stroke: var(--wood); stroke-width: .35; }
+.map .porch { fill: var(--porch); stroke: var(--ink); stroke-width: .2; }
+.map .concrete { fill: var(--concrete); stroke: var(--ink); stroke-width: .2; }
+.map .rail { stroke: var(--ink); stroke-width: .2; }
+.map .bench { fill: var(--house); stroke: var(--ink); stroke-width: .12; }
+.map .bld.roof-black { fill: url(#shingle); }
+.map .bld.wall-red { stroke: var(--wall-red); stroke-width: .6; }
+.map .shingle-bg { fill: var(--shingle); }
+.map .shingle-line { stroke: var(--shingle-line); stroke-width: .12; }
+.map .ridge.light { stroke: var(--shingle-line); opacity: 1; stroke-width: .35; }
+.map .painted-tree { fill: var(--douglas); stroke: var(--house); stroke-width: .12; }
+.map .painted-trunk { fill: var(--wood); }
+.map .painted-star { fill: var(--house); }
+.map .door-cut { stroke: var(--ink); stroke-width: .5; }
+.map .roof-fall { fill: none; stroke: var(--shingle-line); stroke-width: .25; }
+.map .scrap { stroke: var(--wood); stroke-width: .3; stroke-linecap: round; }
 .map g.hl > * { filter: drop-shadow(0 0 .9px var(--accent)) drop-shadow(0 0 .9px var(--accent)); }
 
 /* Facts strip */
@@ -209,6 +254,16 @@ figcaption b { font-family: var(--mono); font-weight: 500; color: var(--accent);
 .card ul.confirmed li { display: grid; grid-template-columns: 18px 1fr; gap: 6px; font-size: 14.5px; }
 .card ul.confirmed li::before { content: "✓"; color: var(--vine); font-weight: 600; }
 
+.f-shingle { fill: var(--shingle); } .f-asphalt { fill: var(--asphalt); } .f-cover { fill: var(--cover); } .f-sheet { fill: var(--sheet); }
+.f-orchard { fill: var(--apple); } .f-apple { fill: var(--fruit); } .f-pear { fill: var(--pear); } .f-cherry { fill: var(--cherry); } .f-glass { fill: var(--glass); }
+.el-trim { fill: none; stroke: var(--house); stroke-width: 1.6; }
+.el-trim.thin { stroke-width: 1; }
+.f-barn.el-trim { fill: var(--barn); stroke-width: 1.4; } .f-glass.el-trim { fill: var(--glass); stroke-width: 1.2; }
+.el-roofedge { fill: none; stroke: var(--shingle); stroke-width: 4; stroke-linejoin: round; stroke-linecap: round; }
+.el-scrap { fill: none; stroke: var(--wood); stroke-width: 2; stroke-linecap: round; }
+.el-ghost { fill: none; stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 2; }
+.card .settled { font-size: 14px; color: var(--muted); font-style: italic; }
+
 /* Steps */
 .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; counter-reset: s; }
 .step { border-left: 2px solid var(--rule); padding: 2px 0 2px 14px; display: grid; gap: 4px; min-width: 0; }
@@ -228,7 +283,7 @@ figcaption b { font-family: var(--mono); font-weight: 500; color: var(--accent);
 
 <div class="wrap">
   <header>
-    <div class="eyebrow">Epic Racer · new map · blueprint v2</div>
+    <div class="eyebrow">Epic Racer · new map · blueprint v3</div>
     <h1>Grandparents' Farm Blueprint</h1>
     <p class="lede">Every landmark from your hand sketch, placed on the property's real outline, now updated with your first round of answers: the barn's foundation and doors, the centred ramp, the four kinds of Christmas trees and the slope of the land. Still only the land. Race routes come later.</p>
   </header>
@@ -243,7 +298,7 @@ figcaption b { font-family: var(--mono); font-weight: 500; color: var(--accent);
 
   <section>
     <div class="section-head">
-      <h2>What changed in v2</h2>
+      <h2>What changed in v3</h2>
       <p>Your answers, and where they show up on the map.</p>
     </div>
     <dl class="then-now">{{CHANGES}}</dl>
@@ -263,7 +318,7 @@ figcaption b { font-family: var(--mono); font-weight: 500; color: var(--accent);
       <p>Your sketch is the master for what was where. The satellite photo only supplies the true shape and size of the land.</p>
     </div>
     <div class="facts">
-      <div class="fact"><b>≈ 4.6 acres</b><span>About 133 m (440 ft) across at the widest and 209 m (690 ft) from the road corner to the south line. The scale comes from today's buildings and road, so it can be off by 15%. Your real acreage would fix it.</span></div>
+      <div class="fact"><b>≈ 5 acres</b><span>About 139 m (455 ft) across at the widest and 218 m (715 ft) from the road corner to the south line, scaled to your 5-acre estimate. Today's buildings and road gave 4.6 acres, so the two agree closely.</span></div>
       <div class="fact"><b>7 matched points</b><span>Your outline and the satellite outline agree point for point: the corner at the road, the west corner, the notch, both south corners, the northeast corner and where the driveway meets the road. I stretched your sketch onto the real shape at those points.</span></div>
       <div class="fact"><b>House and barn confirmed</b><span>You confirmed the farmhouse and the big barn stood where today's house and barn stand, so everything else is placed around them.</span></div>
       <div class="fact"><b>Squared to one grid</b><span>Today's barn sits square to the northeast property line, and your buildings are drawn square to each other. So every building is snapped to that same grid.</span></div>
@@ -309,9 +364,9 @@ figcaption b { font-family: var(--mono); font-weight: 500; color: var(--accent);
       <p>We only move to the next step when you're happy with the current one.</p>
     </div>
     <div class="steps">
-      <div class="step now"><span class="label">Step 1 · nearly done</span><h3>Placement</h3><p>Boundary, positions and rough sizes of all 17 landmarks, trees, paths and yard. House, barn, ramp, yard and Christmas tree layout are confirmed.</p></div>
-      <div class="step now"><span class="label">Step 2 · started</span><h3>The look of each landmark</h3><p>Shapes, colours, materials, roof styles and heights. Old family photos help more than anything else here.</p></div>
-      <div class="step now"><span class="label">Step 3 · started</span><h3>Ground and surroundings</h3><p>Hills and slopes, grass, gravel and dirt, tree types, fences, and what lay beyond the property line.</p></div>
+      <div class="step now"><span class="label">Step 1 · done</span><h3>Placement</h3><p>Boundary, positions and rough sizes of all 17 landmarks, trees, paths and yard, plus the well, sandbox, garden and mailbox.</p></div>
+      <div class="step now"><span class="label">Step 2 · mostly done</span><h3>The look of each landmark</h3><p>Shapes, colours, materials, roof styles and heights. Old family photos help more than anything else here.</p></div>
+      <div class="step now"><span class="label">Step 3 · mostly done</span><h3>Ground and surroundings</h3><p>Hills and slopes, grass, gravel and dirt, tree types, fences, and what lay beyond the property line.</p></div>
       <div class="step"><span class="label">Step 4</span><h3>Lock the blueprint</h3><p>Save the final blueprint as map data in the game project. Only after this do we start on race routes.</p></div>
     </div>
   </section>

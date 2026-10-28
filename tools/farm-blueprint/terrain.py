@@ -4,16 +4,18 @@ Ground, as described:
 - South slope: from an east-west line through the northernmost point of the Christmas tree
   block, the land falls gradually south to the pumpkin patch, the lowest ground.
 - West slope: everything west of a line from the orchard's west side to the farmhouse
-  falls away to the west.
-Heights are relative to the barnyard (0). The drop sizes are placeholders until confirmed.
+  falls away to the west, down toward the road.
+- The yard rises slightly as you drive toward the farmhouse.
+Heights are relative to the barnyard (0).
 """
 import math
 import numpy as np
 import blueprint as b
 
-SOUTH_DROP_M = 4.0  # barnyard to pumpkin patch (placeholder, ~13 ft)
-WEST_DROP_M = 3.0  # line to the west corner by the road (placeholder, ~10 ft)
 FT = 0.3048
+SOUTH_DROP_M = 20 * FT  # barnyard to pumpkin patch: about 20 ft, slight at first, steeper near the bottom
+WEST_DROP_M = 15 * FT  # orchard-house line down to the west road corner: about 15 ft
+HOUSE_RISE_M = 3 * FT  # slight incline up toward the farmhouse (amount is a guess)
 
 
 def _P(pts):
@@ -35,6 +37,7 @@ class Ground:
         orch = _P(F['orchard']['poly'])
         self.A = orch[np.argmin(orch[:, 0])]  # orchard's west side
         self.H = _P([F['farmhouse']['centre']])[0]
+        self.y_barn = b.barn_centre()[1]
         e = (self.H - self.A) / np.linalg.norm(self.H - self.A)
         n = np.array([-e[1], e[0]])
         self.n = n if n[0] < 0 else -n  # unit normal pointing to the west side
@@ -43,11 +46,13 @@ class Ground:
 
     def h(self, x, y):
         x, y = np.asarray(x, float), np.asarray(y, float)
-        south = -SOUTH_DROP_M * _smooth((self.y_top - y) / (self.y_top - self.y_low))
+        t = np.clip((self.y_top - y) / (self.y_top - self.y_low), 0, 1)
+        south = -SOUTH_DROP_M * _smooth(t ** 1.7)  # gentle on the north side, steeper near the pumpkins
+        rise = HOUSE_RISE_M * _smooth((y - self.y_barn) / (self.H[1] - self.y_barn))
         d = (x - self.A[0]) * self.n[0] + (y - self.A[1]) * self.n[1]
         fade = np.clip((y - self.y_top) / max(self.A[1] - self.y_top, 1.0), 0, 1)
         west = -WEST_DROP_M * _smooth(d / self.L_w) * fade
-        return south + west
+        return south + west + rise
 
 
 def contours(g, x0, x1, y0, y1, step=2 * FT, res=1.0):
@@ -58,8 +63,11 @@ def contours(g, x0, x1, y0, y1, step=2 * FT, res=1.0):
     Z = g.h(X, Y)
     out = {}
     lo = Z.min()
-    level = -step
+    level = math.floor(Z.max() / step) * step
     while level > lo:
+        if abs(level) < 1e-9:  # the barnyard itself gets no line
+            level -= step
+            continue
         segs = []
         for j in range(len(ys) - 1):
             for i in range(len(xs) - 1):

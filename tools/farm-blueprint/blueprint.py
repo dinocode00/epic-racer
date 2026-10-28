@@ -12,7 +12,9 @@ from warp import SKETCH_POLY, AERIAL_POLY, mvc
 IMG = sys.argv[1] if len(sys.argv) > 1 else '../images'
 OUT = sys.argv[2] if len(sys.argv) > 2 else 'out'
 
-M_PER_PX = 0.19  # provisional, from today's barn, houses and road widths
+# Scale: 0.19 m/px judged from today's buildings gave 4.61 acres; the owner's estimate is
+# about 5 acres, so the scale is set to match 5 acres.
+M_PER_PX = 0.19 * (5.0 / 4.6127) ** 0.5
 ORIGIN = np.array([505.0, 1122.0])  # SW corner in aerial px
 
 # Interior anchors: sketch position -> today's footprint (assumes same buildings/sites).
@@ -61,6 +63,10 @@ def to_aerial(pts):
 def to_m(aerial_pts):
     p = np.atleast_2d(aerial_pts) - ORIGIN
     return np.column_stack([p[:, 0], -p[:, 1]]) * M_PER_PX
+
+
+def barn_centre():
+    return to_m(np.array([ANCHORS[1][1]], float))[0]
 
 
 def sk(pts):
@@ -129,6 +135,9 @@ F['east_trail'] = dict(kind='trail', line=[(1150, 905), (1230, 940), (1305, 980)
 F['christmas_corner_trees'] = dict(kind='trees', pts=[(805, 760), (800, 1132), (1305, 985), (1315, 1172)])
 F['christmas_inner_trees'] = dict(kind='trees', pts=[(870, 930), (1120, 985), (1205, 1005), (925, 1075), (1075, 1095), (1178, 1105)])
 F['orchard_edge_tree'] = dict(kind='trees', pts=[(805, 745)])
+# Unmowed field of weeds, grass and wildflowers east of the barn and along the east line
+F['meadow_east'] = dict(kind='meadow', poly=[(1305, 470), (1462, 430), (1462, 1236), (1352, 1232), (1348, 1010),
+                                             (1310, 985), (1240, 948), (1300, 885), (1305, 790), (1300, 700)])
 
 
 def convert(v):

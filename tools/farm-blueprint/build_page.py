@@ -9,190 +9,7 @@ import terrain
 
 OUT = sys.argv[1] if len(sys.argv) > 1 else 'out/farm-blueprint.html'
 
-LEGEND = [
-    ('lm-1', '1', 'Farmhouse', 'Same spot as today\'s house'),
-    ('lm-2', '2', 'Wooden garage', 'Northeast end of the barn'),
-    ('lm-3', '3', 'Large red barn', '≈ 22 × 11 m on an 8 ft stone foundation'),
-    ('lm-4', '4', 'Earth ramp up to barn', 'Centred on the barn\'s west wall'),
-    ('lm-5', '5', 'Gravel driveway', 'All gravel, graded for parking'),
-    ('lm-6', '6', 'Tall aluminum windmill', 'West corner of the house'),
-    ('lm-7', '7', 'Apple tree orchard', 'The west wing'),
-    ('lm-8', '8', 'Grape vines', 'Four trellis rows'),
-    ('lm-9', '9', 'Red wooden garage', 'Bottom of the yard'),
-    ('lm-10', '10', 'Wire corn crib', 'Below the barn'),
-    ('lm-11', '11', 'Red wooden shed', 'Beside the corn crib'),
-    ('lm-12', '12', 'Clear plexiglass greenhouse', 'East of the shed'),
-    ('lm-13', '13', 'Christmas tree rows', 'Scotch pine, Douglas fir, white pine, blue spruce, west to east'),
-    ('lm-14', '14', 'Pumpkin patch', 'Lowest ground on the farm'),
-    ('lm-15', '15', 'Rusted barrel stove', 'Near the west road corner'),
-    ('lm-16', '16', 'Clothes lines', 'East of the house'),
-    ('lm-17', '17', 'Kids\' playhouse', 'By the northeast trees'),
-    ('lm-ground', '·', 'Contour lines', 'Each line is 2 ft lower'),
-    ('lm-slopes', '·', 'Slopes', 'Arrows point downhill'),
-    ('lm-bigtree', '·', 'Big shade tree', 'Unnumbered in your sketch'),
-    ('lm-conifers', '·', 'Evergreens by the road', 'Unnumbered'),
-    ('lm-treerow', '·', 'Northeast tree row', '"TREES" in your sketch'),
-    ('lm-paths', '·', 'Dashed paths and south lane', 'Unnumbered'),
-]
-
-# (number, name, in your sketch, how I'd build it, [confirmed], [(qid, question)])
-CARDS = [
-    ('1', 'Farmhouse',
-     'A gable-roofed house with its door on the southwest side, facing the end of the driveway. Windmill at its west corner, evergreens toward the road, clothes lines to the east.',
-     'On today\'s house site, about 11 × 13 m, square to the barn.',
-     ['Stood in the same place as today\'s house.'],
-     [('1b', 'One storey or two? Siding colour and roof colour?'),
-      ('1c', 'Front porch? Which side was the door you actually used?'),
-      ('1d', 'Chimney, attached garage, or anything else on the house?')]),
-    ('2', 'Wooden garage',
-     'A small square building at the northeast end of the barn, drawn as its own box touching the barn.',
-     'A wing across the barn\'s northeast end, the end facing the house drive. Today that end has a separate red roof.',
-     [],
-     [('2a', 'Attached to the barn, or a separate building right next to it?'),
-      ('2b', 'Which way did its door face: toward the house, or somewhere else?'),
-      ('2c', 'Weathered bare wood, or painted?')]),
-    ('3', 'Large red barn',
-     'A long rectangle with its ridge line down the middle, running from the garage (2) down toward the corn crib (10).',
-     'About 22 × 11 m, red walls on an 8 ft stone foundation. Side views are drawn further down.',
-     ['Same barn, same place as today.',
-      'Stone foundation about 8 ft high, so the second floor is reached by the earth ramp.',
-      'Two very large sliding doors at the top of the ramp, opening left and right, big enough for tractors.',
-      'Ground floor on the south side: a small door and a large sliding door with a basketball hoop (no net).'],
-     [('3b', 'Roof shape: plain peak (gable) or the bent barn roof (gambrel)? Roof colour?'),
-      ('3c', 'White trim? A hay loft door, cupola or weathervane?'),
-      ('3e', 'The "south side" doors: on the short end facing the corn crib (as drawn), or on the long wall facing east?'),
-      ('3f', 'The stone: rounded grey and brown fieldstones, or squared cut stone?')]),
-    ('4', 'Earth ramp up to the barn',
-     'Two hatched slopes on the barn\'s west side, and a loop of gravel around a small rectangle.',
-     'An earth ramp about 9 m wide and 10 m long, centred on the barn\'s west wall, climbing 8 ft to the sliding doors.',
-     ['An earth ramp up to the second-floor doors.',
-      'Centred on the barn (it was too far north in v1).'],
-     [('4a', 'What was the small rectangle you drew beside the ramp: a concrete pad, an old foundation, a trough, something parked?'),
-      ('4c', 'The loop you drew around it: could you drive all the way around?'),
-      ('4d', 'Was the ramp grass-covered or gravel on top? Stone walls along its sides?')]),
-    ('5', 'Gravel driveway',
-     'Enters from the road about halfway along, runs to the house, then opens into a big gravel area down past the barn to the red garage (9).',
-     'One continuous gravel yard with no grass inside it.',
-     ['All open gravel, graded into a very large area for driving and parking cars. No grass inside it.'],
-     [('5b', 'Any gate, mailbox, sign or culvert at the entrance?'),
-      ('5c', 'Any parked equipment that was always there (tractor, truck, trailer)?'),
-      ('5d', 'Does the outline of the gravel on the map match your memory, for example reaching up to the house and around the south end of the barn?')]),
-    ('6', 'Tall aluminum windmill',
-     'A spoked wheel on a tall tower right at the house\'s west corner, with a solid black dot at its foot.',
-     'A classic water-pumping windmill: many-bladed wheel, tail vane, galvanized lattice tower.',
-     [],
-     [('6a', 'How tall: above the house roof, or about twice the house?'),
-      ('6b', 'What was the black dot: a well cap, a water tank, a pump, a concrete pad?'),
-      ('6c', 'Did it still spin? Any writing on the tail vane?')]),
-    ('7', 'Apple tree orchard',
-     'About 50 apple trees filling the west wing between the big tree and the grape vines, with a wavy line along its west edge.',
-     'Loose rows about 6 m apart. Its west half sits on the west slope.',
-     [],
-     [('7a', 'Roughly how many trees? Neat rows or scattered?'),
-      ('7b', 'How big: could you climb them, or were they small?'),
-      ('7c', 'The wavy line on the orchard\'s west side: hedge, brush, fence, or the edge of the mowed grass?')]),
-    ('8', 'Grape vines',
-     'Four straight parallel lines between the orchard and the red garage.',
-     'Four trellis rows of wire between wooden posts, about 15 m long.',
-     [],
-     [('8a', 'Four rows? About how long?'),
-      ('8b', 'Wood or metal posts? Any arbor you could walk under?')]),
-    ('9', 'Red wooden garage',
-     'A long building at the bottom-left of the yard with a small box at its southwest end (where the 9 is).',
-     'About 11 × 7 m, red, gable roof, beside the gravel.',
-     [],
-     [('9a', 'Which way did its big door face?'),
-      ('9b', 'Is the small box at its end a door, a lean-to, or just where you wrote the number?'),
-      ('9c', 'Roof colour?')]),
-    ('10', 'Wire corn crib',
-     'A circle with a dot in the middle, seen from above, just below the barn.',
-     'A round wire-mesh crib about 4.4 m (14 ft) across with a metal cone cap.',
-     ['A round wire-mesh corn crib (option B).'],
-     [('10b', 'How tall compared with the barn?'),
-      ('10c', 'Full of yellow corn ears, half full, or empty?')]),
-    ('11', 'Red wooden shed',
-     'A small rectangle beside the crib, with a little circle at its bottom corner.',
-     'About 6 × 3.5 m, red, gable roof.',
-     [],
-     [('11a', 'What was the circle at its corner: a barrel, a stump, a well, a door?'),
-      ('11b', 'What was kept in it?')]),
-    ('12', 'Clear plexiglass greenhouse',
-     'A long rectangle with a double line on one side, east of the shed.',
-     'About 10 × 4.5 m of clear panels on a frame.',
-     [],
-     [('12a', 'Peaked roof, or a curved hoop roof?'),
-      ('12b', 'Wood frame or metal? Did it sit on a low wall?')]),
-    ('13', 'Christmas tree rows',
-     'A block of evergreens with a slanted top edge, bigger trees on all four corners and one tree drawn dark with an X through it.',
-     'Neat north–south lines 8 ft apart, trees about 6.5 ft apart along each line. 29 lines, about 570 trees.',
-     ['Four kinds in bands from west to east: Scotch pine, Douglas fir, white pine, blue spruce.',
-      'Very neat, tidy lines running south to north.',
-      'Sizes: 15% knee high or below, 50% about 6 ft, 35% 8 to 10 ft.'],
-     [('13c', 'What is the tree with the X: a special tree, a dead one, one you cut? (Circled on the map.)'),
-      ('13e', 'Were the sizes mixed tree by tree, or did whole lines or patches share one size?'),
-      ('13f', 'Did each kind get about the same number of lines? (The map gives each about 7.)'),
-      ('13g', 'Were the four corner trees bigger than the rest, as your sketch shows? What kind?')]),
-    ('14', 'Pumpkin patch',
-     'Two rows of P\'s across the whole south end, below a lane, running to the south property line.',
-     'Rows of sprawling vines and pumpkins filling the south strip, the lowest ground on the farm.',
-     ['The lowest point of the property.'],
-     [('14a', 'Did it really fill the whole width of the south end?'),
-      ('14b', 'Anything else grown there, like sweet corn or a garden?'),
-      ('14c', 'What was just past the south line: a field, woods, a fence?')]),
-    ('15', 'Old rusted barrel stove',
-     'A box on short legs with a tall pipe, out near the west road corner, far from the house.',
-     'A rusty barrel stove on four legs with a tall stovepipe.',
-     ['A barrel or box stove on short legs with a tall stovepipe (option B).'],
-     [('15b', 'Was there a woodpile or chopping block next to it?'),
-      ('15c', 'Was it still used, or just old junk left in the yard?')]),
-    ('16', 'Clothes lines',
-     'Two posts with lines strung between them, east of the house.',
-     'Two T-shaped posts about 15 m apart with four lines.',
-     [],
-     [('16a', 'How many lines? Metal or wood posts?')]),
-    ('17', 'Kids\' small playhouse',
-     'A tiny peaked house east of the clothes lines, near the northeast tree row. Something small sits on its roof.',
-     'About 2.5 × 2.5 m with a door and windows.',
-     [],
-     [('17a', 'Colour? Door, windows, little porch?'),
-      ('17b', 'What is on the roof in your drawing: a chimney, a bell, a little tower?')]),
-    ('·', 'Trees, paths and blank areas',
-     'Unnumbered in your sketch: a big tree beside the stove, five evergreens between the road and the house, the "TREES" row along the northeast line, dashed paths, and a lane between the Christmas trees and the pumpkins.',
-     'Drawn as you sketched them. The blank areas are lawn for now.',
-     [],
-     [('S1', 'The big tree by the stove: what kind (oak, maple, willow)? Any rope swing or treehouse?'),
-      ('S2', 'The "TREES" row along the northeast line: evergreens or leafy trees? A solid windbreak or spaced out?'),
-      ('S3', 'The dashed lines: mowed paths, tractor tracks, or fences?'),
-      ('S4', 'The lane between the Christmas trees and the pumpkins: a dirt two-track you drove on?'),
-      ('S5', 'The blank areas east of the barn and along the east line: lawn, hay field or crops?')]),
-    ('·', 'The land as a whole',
-     'Your sketch shows the layout. These answers decide the ground under it.',
-     'Contours on the map follow the two slopes you described. The drop sizes are my guesses.',
-     ['From an east–west line at the north tip of the Christmas trees, the land falls gradually south to the pumpkin patch, the lowest point.',
-      'Everything west of a line from the orchard\'s west side to the farmhouse slopes down to the west.'],
-     [('T1', 'How much lower was the pumpkin patch than the barnyard: a few feet, about one storey (10 ft), or more? I guessed 13 ft.'),
-      ('T2', 'How much lower was the west road corner than the orchard? I guessed 10 ft.'),
-      ('T3', 'North of the house, did the ground between the house and the road also fall toward the road, or stay level?'),
-      ('T4', 'Was everything east of the barn (clothes lines, playhouse, east lawn) level with the barnyard?'),
-      ('T5', 'Any steep banks or ditches besides the barn ramp, for example along the road?'),
-      ('G2', 'Do you know the acreage? It fixes the scale (my estimate is about 4.6 acres).'),
-      ('G3', 'Was the property line back then the same as the red line today?'),
-      ('G4', 'Was the road along the northwest side gravel or paved?'),
-      ('G5', 'What surrounded the farm: neighbours\' houses, cornfields, woods? Was the lane outside the northeast line there?'),
-      ('G6', 'Any fences, gates, a creek or a pond back then?'),
-      ('G7', 'Roughly which years are you picturing, and which season?')]),
-]
-
-CHANGES = [
-    ('House and barn', 'Confirmed on the same spots as today\'s house and barn.'),
-    ('Barn', 'Now sits on an 8 ft stone foundation (grey rim on the map). Two tractor-size sliding doors at the top of the ramp, and a small door plus a big sliding door with a netless basketball hoop on the south end.'),
-    ('Earth ramp', 'Moved to the centre of the barn\'s west wall and widened to suit the double doors. The gravel loop\'s grass island is gone.'),
-    ('Gravel yard', 'Marked as solid gravel with no grass anywhere inside it.'),
-    ('Corn crib', 'Drawn as a round wire-mesh crib with a cone cap.'),
-    ('Wood burner', 'Drawn as a barrel stove on legs with a stovepipe.'),
-    ('Christmas trees', '569 trees in 29 neat south-to-north lines. Scotch pine, Douglas fir, white pine and blue spruce from west to east, each with your mix of sizes.'),
-    ('Ground', 'Contour lines every 2 ft and downhill arrows for the south slope to the pumpkin patch and the west slope beyond the orchard–house line.'),
-]
+from notes import CARDS, CHANGES, LEGEND
 
 
 def legend():
@@ -216,7 +33,9 @@ def cards():
                    f'<div class="read"><span class="label">In your sketch</span><p>{html.escape(read)}</p></div>'
                    f'<div class="read"><span class="label">How I\'m building it</span><p>{html.escape(build)}</p></div>'
                    f'{chtml}'
-                   f'<div class="read"><span class="label">Still open</span><ol>{qhtml}</ol></div></article>')
+                   + (f'<div class="read"><span class="label">Still open</span><ol>{qhtml}</ol></div>' if qs
+                      else '<p class="settled">Nothing open. This landmark is settled.</p>')
+                   + '</article>')
     return ''.join(out)
 
 
@@ -251,33 +70,67 @@ def stones(x0, x1, y0, y1):
     return ''.join(out)
 
 
-def barn_ramp_side(roof):
-    # 22.5 m barn at ~6.2 px/m: stone 97-112, walls 69-97, doors 57-103 at the top of the ramp.
-    if roof == 'gable':
-        roof_d = 'M6 70 L80 30 L154 70 Z'
-    else:
-        roof_d = 'M6 70 L20 46 L80 30 L140 46 L154 70 Z'
+def barn_ramp_side():
+    """West (ramp) side: black roof slope with the painted tree, white trim, paved ramp, well and sandbox."""
+    star = render_svg.conifer((80, -36.5), 3.2, 'f-house').replace('class="f-house"', 'class="f-house el-thin"')
     return ('<rect class="f-stone" x="10" y="97" width="140" height="15"/>' + stones(10, 150, 97, 112) +
-            '<rect class="f-barn el-line" x="10" y="69" width="140" height="28"/>'
-            f'<path class="f-roof el-line" d="{roof_d}"/>'
-            '<rect class="f-barn el-line" x="57" y="72" width="23" height="25"/><rect class="f-barn el-line" x="80" y="72" width="23" height="25"/>'
-            '<path class="el-thin" d="M57 72 L80 97 M80 72 L57 97 M80 72 L103 97 M103 72 L80 97"/>'
-            '<path class="el-thin" d="M30 71 H130"/>'
-            '<path class="el-line f-none" d="M57 64 H38 M43 61 L38 64 L43 67 M103 64 H122 M117 61 L122 64 L117 67"/>'
-            '<path class="f-gravel el-line" d="M57 97 H103 L110 112 H50 Z"/>'
-            '<path class="el-thin" d="M60 101 H100 M57 105 H103 M54 109 H106" opacity=".6"/>')
+            '<path class="f-shingle el-line" d="M4 70 L156 70 L148 34 L12 34 Z"/>'
+            '<path class="f-douglas el-thin" d="M80 38 L99 67 H61 Z"/><rect class="f-wood" x="78" y="66" width="4" height="3"/>' + star +
+            '<rect class="f-barn el-line" x="10" y="70" width="140" height="27"/>'
+            '<path class="el-trim" d="M11 71 V96 M149 71 V96 M10 70.5 H150"/>'
+            '<rect class="f-barn el-trim" x="57" y="73" width="23" height="24"/><rect class="f-barn el-trim" x="80" y="73" width="23" height="24"/>'
+            '<path class="el-trim thin" d="M57 73 L80 97 M80 73 L57 97 M80 73 L103 97 M103 73 L80 97"/>'
+            '<path class="el-line f-none" d="M54 80 H40 M44 77 L40 80 L44 83 M106 80 H120 M116 77 L120 80 L116 83"/>'
+            '<path class="f-asphalt el-line" d="M57 97 H103 L110 112 H50 Z"/>'
+            '<ellipse class="f-stone el-line" cx="28" cy="109" rx="8" ry="3.5"/><ellipse class="f-roof" cx="28" cy="108.5" rx="4.5" ry="1.6"/>'
+            '<rect class="f-wood el-line" x="122" y="106" width="16" height="6"/><rect class="f-cover el-thin" x="121" y="104.5" width="18" height="2"/>'
+            '<text class="el-label" x="28" y="119">well</text><text class="el-label" x="130" y="119">sandbox</text>')
 
 
 def barn_south_end():
-    # 11.5 m end at ~8 px/m: stone lower level 92-112 (8 ft), walls 56-92, roof to 24.
+    """South gable end: fieldstone lower level with the giant sliding door, walk-through door and hoop."""
     return ('<rect class="f-stone" x="34" y="92" width="92" height="20"/>' + stones(34, 126, 92, 112) +
-            '<rect class="f-barn el-line" x="34" y="56" width="92" height="36"/>'
-            '<path class="f-roof el-line" d="M28 58 L80 22 L132 58 Z"/>'
-            '<rect class="f-wood el-line" x="42" y="96" width="8" height="16"/>'
-            '<rect class="f-barn el-line" x="68" y="90" width="34" height="22"/><path class="el-thin" d="M68 90 L102 112 M102 90 L68 112"/>'
-            '<path class="el-thin" d="M60 89 H112"/>'
-            '<rect class="f-house el-line" x="78" y="91" width="14" height="9"/><rect class="f-none el-thin" x="82" y="95" width="6" height="4"/>'
-            '<ellipse class="f-none el-hoop" cx="85" cy="101.5" rx="4" ry="1.4"/>')
+            '<path class="f-barn el-line" d="M34 92 V56 L80 24 L126 56 V92 Z"/>'
+            '<path class="el-trim" d="M35 91 V57 M125 91 V57 M36 56.5 L80 25.5 L124 56.5"/>'
+            '<path class="el-roofedge" d="M26 61.5 L80 20 L134 61.5"/>'
+            '<path class="el-thin" d="M50 91.5 H116"/>'
+            '<rect class="f-barn el-trim" x="58" y="93" width="46" height="19"/>'
+            '<path class="el-trim thin" d="M58 93 L104 112 M104 93 L58 112"/>'
+            '<rect class="f-barn el-trim" x="64" y="99" width="8" height="13"/>'
+            '<rect class="f-house el-line" x="84" y="93.5" width="13" height="7"/><rect class="f-none el-thin" x="88" y="96.5" width="5" height="3"/>'
+            '<ellipse class="f-none el-hoop" cx="90.5" cy="101.3" rx="3.4" ry="1.1"/>')
+
+
+def orchard_tree(kind):
+    """Side view at ~7 px per ft: apple ~13 ft with branches trained so fruit hangs ~5 ft up."""
+    out = '<rect class="f-wood" x="77" y="62" width="6" height="50"/>'
+    five_ft = 112 - 5 * 7
+    if kind == 'apple':
+        out += ''.join(f'<path class="el-thin f-none" d="M80 {y0} Q{80 + dx} {y0 - 8} {80 + dx * 1.5} {five_ft}"/>'
+                       for y0, dx in ((52, -26), (52, 26), (44, -18), (44, 18), (40, -34), (40, 34)))
+        out += ''.join(f'<circle class="f-orchard el-thin" cx="{x}" cy="{y}" r="{r}"/>'
+                       for x, y, r in ((80, 34, 15), (62, 44, 13), (98, 44, 13), (47, 56, 10), (113, 56, 10), (80, 50, 12)))
+        out += ''.join(f'<circle class="f-apple" cx="{80 + dx * 1.5}" cy="{five_ft + 2}" r="2.6"/>' for dx in (-34, -26, -18, 18, 26, 34))
+        out += f'<path class="el-zero" d="M8 {five_ft} H30"/><text class="el-label start" x="8" y="{five_ft - 3}">5 ft</text>'
+    elif kind == 'pear':
+        out += ''.join(f'<ellipse class="f-orchard el-thin" cx="{x}" cy="{y}" rx="{rx}" ry="{ry}"/>'
+                       for x, y, rx, ry in ((80, 40, 16, 26), (70, 52, 11, 15), (90, 52, 11, 15)))
+        out += ''.join(f'<path class="f-pear el-thin" d="M{x} {y} q2.4 0 2.4 3 q0 2.8 -2.4 2.8 q-2.4 0 -2.4 -2.8 q0 -3 2.4 -3 z"/>'
+                       for x, y in ((70, 52), (90, 48), (80, 62), (74, 36), (88, 32)))
+    else:
+        out += ''.join(f'<circle class="f-orchard el-thin" cx="{x}" cy="{y}" r="{r}"/>'
+                       for x, y, r in ((80, 46, 20), (64, 56, 12), (96, 56, 12)))
+        out += ''.join(f'<circle class="f-cherry" cx="{x}" cy="{y}" r="1.8"/><circle class="f-cherry" cx="{x + 3}" cy="{y + 1}" r="1.8"/>'
+                       for x, y in ((66, 58), (88, 40), (96, 60), (76, 52), (84, 64)))
+    return out
+
+
+def playhouse():
+    return ('<path class="f-barn el-line" d="M54 112 V78 L80 58 L106 78 V112 Z"/>'
+            '<path class="el-trim" d="M55 111 V79 M105 111 V79"/>'
+            '<path class="el-roofedge" d="M48 82 L80 56 L112 82"/>'
+            '<rect class="f-barn el-trim" x="73" y="90" width="14" height="22"/>'
+            '<rect class="f-glass el-trim" x="58" y="86" width="10" height="10"/><rect class="f-glass el-trim" x="92" y="86" width="10" height="10"/>')
 
 
 def tree(species, cx, h_ft, ppf=8.2):
@@ -364,14 +217,15 @@ def profiles():
     F = b.F
     P = lambda q: np.array(b.sk(q))
     bd = np.array(b.blueprint()['boundary'])
-    x_ns = 52.0
-    ys = [y for y in np.arange(0, 215, 0.5) if render_svg.inside((x_ns, y), bd)]
+    K = render_svg.K
+    x_ns = 52.0 * K
+    ys = [y for y in np.arange(0, 230, 0.5) if render_svg.inside((x_ns, y), bd)]
     ns = profile('North to south, through the yard, the Christmas trees and the pumpkin patch',
                  (x_ns, max(ys)), (x_ns, min(ys)),
-                 [('house side', (x_ns, 160)), ('gravel yard', (x_ns, 138)), ('Christmas trees begin', (x_ns, g.y_top)),
-                  ('pumpkin patch', (x_ns, 8))], g, f'{max(ys) - min(ys):.0f} m long')
+                 [('house side', (x_ns, 160 * K)), ('gravel yard', (x_ns, 138 * K)), ('Christmas trees begin', (x_ns, g.y_top)),
+                  ('pumpkin patch', (x_ns, 8 * K))], g, f'{max(ys) - min(ys):.0f} m long')
     west = bd[np.argmin(bd[:, 0])]
-    barn = np.array([66.2, 131.4])
+    barn = b.barn_centre()
     we = profile('West to east, from the road corner to the barn',
                  west + (1, 0), barn,
                  [('road corner', west + (3, 0)), ('stove', P([F['wood_burner']['centre']])[0]),
@@ -383,21 +237,27 @@ def profiles():
 def options():
     mesh = ''.join(f'<line class="el-thin" x1="{x}" y1="46" x2="{x}" y2="112" opacity=".6"/>' for x in range(56, 106, 6)) + \
            ''.join(f'<line class="el-thin" x1="52" y1="{y}" x2="108" y2="{y}" opacity=".6"/>' for y in range(50, 112, 6))
-    crib = ('<rect class="f-corn" x="52" y="46" width="56" height="66"/>' + mesh +
-            '<rect class="f-none el-line" x="52" y="46" width="56" height="66"/><path class="f-steel el-line" d="M48 46 L80 24 L112 46 Z"/>')
+    crib = ('<rect class="f-sheet" x="52" y="46" width="56" height="66"/><rect class="f-corn" x="52" y="80" width="56" height="32"/>' + mesh +
+            '<rect class="f-none el-line" x="52" y="46" width="56" height="66"/><path class="f-steel el-line" d="M48 46 L80 24 L112 46 Z"/>'
+            '<path class="el-zero" d="M118 24 V112"/><text class="el-label start" x="121" y="70">8 ft</text>')
     stove = ('<path class="el-line" d="M54 112 L58 92 M106 112 L102 92 M64 112 L66 94 M96 112 L94 94"/>'
              '<rect class="f-rust el-line" x="48" y="62" width="64" height="32" rx="14"/><circle class="f-roof el-line" cx="60" cy="78" r="7"/>'
-             '<rect class="f-rust el-line" x="98" y="24" width="6" height="38"/>')
+             '<rect class="f-rust el-line" x="98" y="24" width="6" height="38"/>'
+             '<path class="el-scrap" d="M116 111 L142 107 M118 108 L140 111 M122 105 L138 109 M126 103 L134 108"/>')
     windmill = ('<path class="el-line f-none" d="M66 112 L76 30 M94 112 L84 30 M68 96 H92 M70 78 H90 M72 60 H88 M74 44 H86 M66 112 L90 78 M94 112 L70 78 M68 96 L88 60 M92 96 L72 60"/>'
                 '<circle class="f-steel el-line" cx="80" cy="22" r="17"/>' +
                 ''.join(f'<line class="el-thin" x1="80" y1="22" x2="{80 + 17 * math.cos(a * 0.3927):.1f}" y2="{22 + 17 * math.sin(a * 0.3927):.1f}"/>' for a in range(16)) +
                 '<path class="f-steel el-line" d="M88 22 H128 L136 12 V32 L128 26 H88"/><circle class="f-roof" cx="80" cy="22" r="3"/>'
-                '<circle class="f-roof el-line" cx="46" cy="106" r="6"/>')
+                '<path class="el-ghost" d="M8 112 V60 L28 42 L48 60 V112 Z"/><text class="el-label" x="28" y="119">house</text>')
     sets = [
         ('3 · The barn, as I now picture it', [
-            fig('A', 'Ramp side with a gable roof: two tractor-size doors sliding left and right at the top of the earth ramp, on the 8 ft stone foundation.', barn_ramp_side('gable')),
-            fig('B', 'Ramp side with a gambrel roof. Which roof is right (3b)?', barn_ramp_side('gambrel'), ('Gambrel roofs', 'https://en.wikipedia.org/wiki/Gambrel')),
-            fig('S', 'South end: ground floor in the stone, with the small door and the big sliding door with its netless hoop.', barn_south_end(), ('Bank barns', 'https://en.wikipedia.org/wiki/Bank_barn')),
+            fig('W', 'West side: black shingle roof slope with the painted green Christmas tree and white star, white trim, two tractor-size doors sliding left and right at the top of the paved ramp. The old well to the north (left) and the sandbox to the south (right).', barn_ramp_side(), ('Bank barns', 'https://en.wikipedia.org/wiki/Bank_barn')),
+            fig('S', 'South end: one giant sliding door in the fieldstone lower level, a walk-through door cut into it, and the netless hoop.', barn_south_end()),
+        ]),
+        ('7 · Orchard trees', [
+            fig('A', 'Grafted apple, about 13 ft tall, branches trained so the apples hang about 5 ft up. Seven lines of these.', orchard_tree('apple')),
+            fig('P', 'Pear, mixed with cherries in the two west lines.', orchard_tree('pear')),
+            fig('C', 'Cherry, mixed with pears in the two west lines.', orchard_tree('cherry')),
         ]),
         ('13 · The four kinds, west to east', [
             fig('1', 'Scotch pine: dense yellow-green tufts sheared into a full cone, orange-brown bark. Westernmost lines.', species_fig('scotch', 'Scotch pine')),
@@ -405,10 +265,11 @@ def options():
             fig('3', 'White pine: softer, more open blue-green tiers of long needles.', species_fig('white', 'White pine')),
             fig('4', 'Blue spruce: stiff, sharp silver-blue cone. Easternmost lines.', species_fig('blue', 'Blue spruce')),
         ]),
-        ('Your picks', [
-            fig('10', 'Wire-mesh corn crib with a cone cap.', crib, ('Corn crib photos', 'https://en.wikipedia.org/wiki/Corn_crib'), picked=True),
-            fig('15', 'Rusty barrel stove on short legs with a tall stovepipe.', stove, ('Barrel stove', 'https://en.wikipedia.org/wiki/Barrel_stove'), picked=True),
-            fig('6', 'Windmill as I picture it: many-bladed wheel, tail vane, lattice tower, the black dot at its foot (6a–6c still open).', windmill, ('Water-pumping windmills', 'https://en.wikipedia.org/wiki/Windpump')),
+        ('Smaller landmarks', [
+            fig('10', 'Wire-mesh corn crib about 8 ft tall, half full of yellow ears.', crib, ('Corn crib photos', 'https://en.wikipedia.org/wiki/Corn_crib')),
+            fig('15', 'Rusty barrel stove for burning garbage, with its small pile of scrap wood.', stove, ('Barrel stove', 'https://en.wikipedia.org/wiki/Barrel_stove')),
+            fig('6', 'Windmill about 15 ft taller than the two-storey house (dashed outline until your photo arrives). Still turning.', windmill, ('Water-pumping windmills', 'https://en.wikipedia.org/wiki/Windpump')),
+            fig('17', 'Playhouse painted like the barn, red with white trim, black shingle roof.', playhouse()),
         ]),
     ]
     return ''.join(f'<div class="optset"><h3>{t}</h3><div class="optrow">{"".join(figs)}</div></div>' for t, figs in sets)
