@@ -7,7 +7,7 @@ routes are deliberately not designed yet.
 | File | What it is |
 | --- | --- |
 | `sketch.jpg` | The hand-drawn master sketch with the 17 numbered landmarks. It wins every disagreement. |
-| `blueprint.png` | The current blueprint (v3): landmarks on the real outline, contours every 2 ft. |
+| `blueprint.png` | The current blueprint (v4): landmarks on the real outline, contours every 2 ft. |
 | `blueprint.json` | The same blueprint as data, in metres (x east, y north, origin at the SW property corner): every confirmed fact, the open questions, the terrain model and all 623 Christmas trees. |
 
 ## Landmarks
@@ -29,8 +29,11 @@ rising hill of grass and wildflowers past the pumpkin patch.
 
 ## Key facts (full list in `blueprint.json` under `confirmed`)
 
-- Farmhouse and barn stood where today's house and barn stand. The farmhouse has two
-  storeys, a west porch, and south-facing front steps with railings and a white bench.
+- Farmhouse and barn stood where today's house and barn stand. The farmhouse (from the
+  owner's photo) is an L-shaped two-storey house: white siding, slate-blue trim, dark
+  shingles, buff brick chimney, fieldstone foundation, a steep front gable with an octagonal
+  vent, a west porch with white railings and lattice, and south-facing front steps with
+  railings and a white bench.
 - Barn: rounded fieldstone foundation about 8 ft high, red with white trim, black shingle
   gable roof with a large green Christmas tree and white star painted on the west slope.
   A paved ramp leads up to two tractor-size sliding doors. On the south end, one giant
@@ -63,7 +66,7 @@ the barn's ramp side.
 ## Status
 
 - [x] Step 1: placement (boundary, positions, rough sizes)
-- [ ] Step 2: the look of each landmark. Mostly done; waiting on a photo of the farmhouse.
+- [ ] Step 2: the look of each landmark. Mostly done; a few small details open.
 - [ ] Step 3: ground and surroundings. Mostly done.
 - [ ] Step 4: blueprint locked as map data
 - Later: race routes

@@ -101,6 +101,29 @@ def barn_south_end():
             '<ellipse class="f-none el-hoop" cx="90.5" cy="101.3" rx="3.4" ry="1.1"/>')
 
 
+def farmhouse():
+    """Road-side view from the photo at ~3 px per ft: front gable on the left, wing with porch on the right."""
+    siding = ''.join(f'<path class="el-siding" d="M{x0} {y} H{x1}"/>' for y in range(56, 104, 3)
+                     for x0, x1 in ((21, 73), (75, 118)))
+    return ('<path class="f-shingle el-line" d="M70 52 L124 52 L119 31 L74 31 Z"/>'
+            '<rect class="f-chimney el-thin" x="86" y="19" width="7" height="13"/>'
+            '<rect class="f-stone" x="20" y="104" width="99" height="8"/>' + stones(20, 119, 104, 112) +
+            '<rect class="f-siding" x="74" y="52" width="45" height="52"/>'
+            '<path class="f-siding" d="M20 104 V54 L47 22 L74 54 V104 Z"/>' + siding +
+            '<path class="el-roofedge" d="M14 59 L47 19 L80 59"/>'
+            '<path class="el-blue" d="M21 55 V104 M73 56 V104 M118 53 V104 M74 52.5 H120"/>'
+            '<path class="el-blue f-siding" d="M44 36 l3 -3 l3 3 l0 3 l-3 3 l-3 -3 z"/>'
+            '<rect class="el-blue f-glass" x="37" y="60" width="9" height="15"/><rect class="el-blue f-glass" x="48" y="60" width="9" height="15"/>'
+            '<rect class="el-blue f-glass" x="32" y="82" width="9" height="16"/><rect class="el-blue f-glass" x="42" y="82" width="9" height="16"/><rect class="el-blue f-glass" x="52" y="82" width="9" height="16"/>'
+            '<rect class="el-blue f-glass" x="94" y="58" width="9" height="13"/>'
+            '<path class="f-shingle el-thin" d="M73 74 L131 74 L133 79 L73 79 Z"/>'
+            '<rect class="el-blue f-glass" x="82" y="83" width="7" height="17"/><rect class="el-blue f-glass" x="98" y="83" width="8" height="15"/>'
+            '<path class="el-trim thin" d="M78 79 V104 M129 79 V104 M75 92 H131 M75 104 H131"/>' +
+            ''.join(f'<path class="el-trim thin" d="M{x} 92 V104"/>' for x in range(81, 129, 4)) +
+            '<rect class="f-siding el-thin" x="75" y="104" width="56" height="7"/>' +
+            ''.join(f'<path class="el-thin" d="M{x} 104 l6 7 M{x + 6} 104 l-6 7"/>' for x in range(75, 129, 6)))
+
+
 def orchard_tree(kind):
     """Side view at ~7 px per ft: apple ~13 ft with branches trained so fruit hangs ~5 ft up."""
     out = '<rect class="f-wood" x="77" y="62" width="6" height="50"/>'
@@ -248,8 +271,12 @@ def options():
                 '<circle class="f-steel el-line" cx="80" cy="22" r="17"/>' +
                 ''.join(f'<line class="el-thin" x1="80" y1="22" x2="{80 + 17 * math.cos(a * 0.3927):.1f}" y2="{22 + 17 * math.sin(a * 0.3927):.1f}"/>' for a in range(16)) +
                 '<path class="f-steel el-line" d="M88 22 H128 L136 12 V32 L128 26 H88"/><circle class="f-roof" cx="80" cy="22" r="3"/>'
-                '<path class="el-ghost" d="M8 112 V60 L28 42 L48 60 V112 Z"/><text class="el-label" x="28" y="119">house</text>')
+                '<path class="f-siding el-thin" d="M8 112 V62 L28 40 L48 62 V112 Z"/><path class="el-roofedge" d="M5 65 L28 39 L51 65"/>'
+                '<text class="el-label" x="28" y="119">house</text>')
     sets = [
+        ('1 · The farmhouse, from your photo', [
+            fig('R', 'Road side: steep front gable with its octagonal vent on the left, wing on the right with the one-storey porch, white posts and railing, lattice skirt. White siding, slate-blue trim, dark shingles, buff brick chimney, fieldstone foundation.', farmhouse()),
+        ]),
         ('3 · The barn, as I now picture it', [
             fig('W', 'West side: black shingle roof slope with the painted green Christmas tree and white star, white trim, two tractor-size doors sliding left and right at the top of the paved ramp. The old well to the north (left) and the sandbox to the south (right).', barn_ramp_side(), ('Bank barns', 'https://en.wikipedia.org/wiki/Bank_barn')),
             fig('S', 'South end: one giant sliding door in the fieldstone lower level, a walk-through door cut into it, and the netless hoop.', barn_south_end()),
@@ -268,7 +295,7 @@ def options():
         ('Smaller landmarks', [
             fig('10', 'Wire-mesh corn crib about 8 ft tall, half full of yellow ears.', crib, ('Corn crib photos', 'https://en.wikipedia.org/wiki/Corn_crib')),
             fig('15', 'Rusty barrel stove for burning garbage, with its small pile of scrap wood.', stove, ('Barrel stove', 'https://en.wikipedia.org/wiki/Barrel_stove')),
-            fig('6', 'Windmill about 15 ft taller than the two-storey house (dashed outline until your photo arrives). Still turning.', windmill, ('Water-pumping windmills', 'https://en.wikipedia.org/wiki/Windpump')),
+            fig('6', 'Windmill about 15 ft taller than the two-storey house. Still turning.', windmill, ('Water-pumping windmills', 'https://en.wikipedia.org/wiki/Windpump')),
             fig('17', 'Playhouse painted like the barn, red with white trim, black shingle roof.', playhouse()),
         ]),
     ]

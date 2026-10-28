@@ -78,7 +78,13 @@
    "centre": [
     43.1,
     172.9
-   ]
+   ],
+   "plan": {
+    "shape": "L: main block ~10 x 6.4 m along the barn grid, front gable wing ~5.4 x 2.5 m toward the road on its north half, one-storey porch ~4.6 x 2.1 m in the corner on its south half",
+    "front_door": "south end, concrete steps with black outdoor carpet, railings both sides, white metal bench right of the door",
+    "materials": "white horizontal siding, slate-blue trim, dark charcoal shingles, buff brick chimney, rounded fieldstone foundation",
+    "reference": "owner photo of the house (not committed)"
+   }
   },
   "wooden_garage": {
    "n": 2,
@@ -847,7 +853,9 @@
   "Farmhouse": [
    "Same place as today's house. Two storeys.",
    "Porch on the west side with a door, but everyone used the south-facing front door.",
-   "Front door: up a few concrete steps covered in black outdoor carpet, railings on both sides. The door is slightly left of the middle of the steps, with a white metal bench to its right."
+   "Front door: up a few concrete steps covered in black outdoor carpet, railings on both sides. The door is slightly left of the middle of the steps, with a white metal bench to its right.",
+   "From the photo: white horizontal siding, slate-blue window trim, corner boards and roof edges, dark charcoal shingles, a buff brick chimney at the ridge, and a rounded fieldstone foundation like the barn's.",
+   "From the photo: a steep front gable with an octagonal vent near the peak, and a one-storey porch with white posts, white railings, a white lattice skirt and a gooseneck light by its door."
   ],
   "Wooden garage": [
    "Attached to the barn. Roof slants down toward the north.",
@@ -938,8 +946,6 @@
   ]
  },
  "open_questions": {
-  "1p": "Your photo of the house did not come through. Could you send it again?",
-  "1e": "Siding colour, trim colour and roof colour (the photo may answer this).",
   "2d": "Was its roof black shingles like the barn's?",
   "3g": "How big was the painted Christmas tree: most of the roof slope, or a smaller emblem? Could you see it from the road?",
   "4e": "Was the ramp black asphalt or light grey concrete?",

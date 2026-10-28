@@ -285,16 +285,34 @@ def render():
     # Buildings, snapped to the farm grid
     house_c = P([F['farmhouse']['centre']])[0]
     out.append('<g id="lm-1">')
-    # West porch with its door, and the south front steps (door a little left of centre, bench to its right)
-    out.append(f'<path class="porch" d="{poly_d(rect(house_c + V * 7.7, 6.0, 2.4, GRID))}"/>')
-    out.append(f'<path class="concrete" d="{poly_d(rect(house_c - U * 6.3, 1.6, 2.6, GRID))}"/>')
+    # From the photo: an L-shaped two-storey house. Main block with its ridge along the farm grid,
+    # a steep front gable projecting toward the road on its north half, and a one-storey porch in
+    # the corner on the south half. Front steps on the south end (door a little left of centre,
+    # white bench to its right). White siding, slate-blue trim, dark shingles, fieldstone base.
+    hc = house_c
+    main = rect(hc, 10.0, 6.4, GRID)
+    wing = rect(hc + U * 2.2 + V * 4.45, 5.4, 2.5, GRID)
+    porch = rect(hc - U * 2.6 + V * 4.25, 4.6, 2.1, GRID)
+    for q in (main, wing):
+        out.append(f'<path class="stone" d="{poly_d(rect(np.mean(q, axis=0), np.linalg.norm(q[1] - q[0]) + .5, np.linalg.norm(q[3] - q[0]) + .5, GRID))}"/>')
+    out.append(f'<path class="porch-floor" d="{poly_d(porch)}"/>')
+    out.append(f'<path class="bld roof-black wall-white" d="{poly_d(porch)}"/>')
+    for s in (-1, 1):  # the two outer porch posts
+        post = hc - U * (2.6 + 2.15 * s) + V * 5.15
+        out.append(f'<circle class="post-white" cx="{post[0]:.1f}" cy="{-post[1]:.1f}" r=".2"/>')
+    out.append(f'<path class="bld roof-black wall-white" d="{poly_d(main)}"/>')
+    out.append(f'<path class="bld roof-black wall-white" d="{poly_d(wing)}"/>')
+    out.append(seg(hc - U * 5.0, hc + U * 5.0, 'ridge light'))
+    out.append(seg(hc + U * 2.2, hc + U * 2.2 + V * 5.7, 'ridge light'))
+    ch = hc + U * 0.9
+    out.append(f'<path class="chimney" d="{poly_d(rect(ch, 0.7, 0.7, GRID))}"/>')
+    # Front steps on the south end, railings both sides, door slightly left, bench to the right
+    out.append(f'<path class="concrete" d="{poly_d(rect(hc - U * 5.8, 1.6, 2.6, GRID))}"/>')
     for s in (-1, 1):
-        out.append(seg(house_c - U * 5.5 + V * 1.3 * s, house_c - U * 7.1 + V * 1.3 * s, 'rail'))
-    out.append(f'<path class="bld house" d="{poly_d(rect(house_c, 11, 13, GRID))}"/>')
-    out.append(seg(house_c - U * 5.5 + V * 0.85, house_c - U * 5.5 - V * 0.25, 'door'))
-    out.append(seg(house_c + V * 6.5 + U * 0.5, house_c + V * 6.5 - U * 0.5, 'door'))
-    out.append(f'<path class="bench" d="{poly_d(rect(house_c - U * 6.0 - V * 1.0, 0.35, 1.0, GRID))}"/>')
-    out.append(seg(house_c - V * 6.5, house_c + V * 6.5, 'ridge'))
+        out.append(seg(hc - U * 5.0 + V * 1.3 * s, hc - U * 6.6 + V * 1.3 * s, 'rail'))
+    out.append(seg(hc - U * 5.0 + V * 0.85, hc - U * 5.0 - V * 0.25, 'door'))
+    out.append(f'<path class="bench" d="{poly_d(rect(hc - U * 5.45 - V * 0.95, 0.35, 0.95, GRID))}"/>')
+    out.append(seg(hc + V * 3.2 - U * 2.0, hc + V * 3.2 - U * 3.0, 'door'))
     out.append('</g>')
 
     # Barn: stone foundation rim, black shingle roof with the painted Christmas tree on the west slope

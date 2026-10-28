@@ -1,7 +1,7 @@
 """Page text for the farm blueprint: legend, landmark cards and what changed this round."""
 
 LEGEND = [
-    ('lm-1', '1', 'Farmhouse', 'Two storeys, front door facing south'),
+    ('lm-1', '1', 'Farmhouse', 'Two storeys, white with blue trim'),
     ('lm-2', '2', 'Wooden garage', 'Red, on the barn\'s north end'),
     ('lm-3', '3', 'Large red barn', 'Black roof with a painted Christmas tree'),
     ('lm-4', '4', 'Paved ramp up to barn', 'Centred on the barn\'s west wall'),
@@ -36,12 +36,13 @@ LEGEND = [
 CARDS = [
     ('1', 'Farmhouse',
      'A gable-roofed house with its door facing the yard. Windmill at its west corner, evergreens toward the road, clothes lines to the east.',
-     'Two storeys on today\'s house site. Front steps on the south side facing the yard, porch on the west side.',
+     'From your photo: an L-shaped house about 33 × 21 ft with a front gable wing toward the road, the porch in the corner on its south half, and the front steps on the south end.',
      ['Same place as today\'s house. Two storeys.',
       'Porch on the west side with a door, but everyone used the south-facing front door.',
-      'Front door: up a few concrete steps covered in black outdoor carpet, railings on both sides. The door is slightly left of the middle of the steps, with a white metal bench to its right.'],
-     [('1p', 'Your photo of the house did not come through. Could you send it again?'),
-      ('1e', 'Siding colour, trim colour and roof colour (the photo may answer this).')]),
+      'Front door: up a few concrete steps covered in black outdoor carpet, railings on both sides. The door is slightly left of the middle of the steps, with a white metal bench to its right.',
+      'From the photo: white horizontal siding, slate-blue window trim, corner boards and roof edges, dark charcoal shingles, a buff brick chimney at the ridge, and a rounded fieldstone foundation like the barn\'s.',
+      'From the photo: a steep front gable with an octagonal vent near the peak, and a one-storey porch with white posts, white railings, a white lattice skirt and a gooseneck light by its door.'],
+     []),
     ('2', 'Wooden garage',
      'A small square building at the north end of the barn.',
      'Attached to the barn\'s north end, painted barn red, roof falling toward the north, door facing west toward the house drive.',
@@ -168,15 +169,7 @@ CARDS = [
 ]
 
 CHANGES = [
-    ('Scale', 'Resized to your 5-acre estimate: about 139 × 218 m (455 × 715 ft).'),
-    ('Ground', 'South slope deepened to about 20 ft, gentle at first and steeper near the pumpkins. West slope 15 ft, also falling toward the road north of the house. A slight rise up to the farmhouse.'),
-    ('Farmhouse', 'Front steps with railings, door and white bench on the south side. Porch and door on the west side.'),
-    ('Barn', 'Black shingle roof with the painted Christmas tree and white star on the west slope. White trim. The south end now has one giant sliding door with a walk-through door cut in.'),
-    ('Ramp area', 'Ramp paved. Old stone well to the north, blue-covered sandbox to the south. The loop is gone.'),
-    ('Orchard', '9 lines along the barn\'s length, about 10 trees each, the two west lines pear and cherry.'),
-    ('Garden', 'Grape rows cut 20% at the north end, with a 10 × 7 ft vegetable and flower garden there.'),
-    ('Small buildings', 'Wooden garage red with a north-falling roof and a west door. Red garage door faces north. Shed moved right next to the corn crib. Playhouse red with a black roof.'),
-    ('Christmas trees', 'Corner trees and the X marker removed. Sizes stay random tree by tree.'),
-    ('Paths and fields', 'Paths and the south lane are mowed grass with tyre marks. Wild field east of the barn. Hill of wildflowers past the south line. Neighbours behind trees to the NE and SW.'),
-    ('Road', 'Moved to the correct side of the property line (it was hidden under the lawn before) and drawn as a cracked paved country road. Mailbox at the entrance.'),
+    ('Farmhouse', 'Rebuilt from your photo: an L-shaped two-storey house with a steep front gable toward the road and the porch in the corner beside it. White siding, slate-blue trim, dark shingles, buff brick chimney, fieldstone foundation.'),
+    ('Side view', 'A new drawing of the road side of the house, and the house now stands beside the windmill at true height.'),
+    ('Left out', 'The gazebo, the small shed with a cupola, the trampoline and the power tower in the photo look recent, so they are not on the map.'),
 ]
