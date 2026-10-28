@@ -365,7 +365,8 @@
      -0.2,
      168.0
     ]
-   ]
+   ],
+   "cut_south_of_y_m": 93.6
   },
   "windmill": {
    "n": 6,
@@ -565,20 +566,8 @@
      107.1
     ],
     [
-     70.5,
-     73.6
-    ],
-    [
-     70.6,
-     86.8
-    ],
-    [
-     72.4,
-     100.1
-    ],
-    [
-     85.5,
-     100.1
+     86.3,
+     58.7
     ],
     [
      88.0,
@@ -592,7 +581,26 @@
    "marked_tree": [
     45.8,
     66.2
-   ]
+   ],
+   "poly_m": [
+    [
+     5.34,
+     91.0
+    ],
+    [
+     84.55,
+     91.0
+    ],
+    [
+     88.0,
+     27.3
+    ],
+    [
+     4.2,
+     40.6
+    ]
+   ],
+   "note": "poly_m is the outline in metres; its top is a straight west-east line"
   },
   "pumpkin_patch": {
    "n": 14,
@@ -745,22 +753,6 @@
    "kind": "trail",
    "line": [
     [
-     69.5,
-     95.4
-    ],
-    [
-     72.8,
-     103.9
-    ],
-    [
-     83.0,
-     104.0
-    ],
-    [
-     89.7,
-     96.1
-    ],
-    [
      92.3,
      56.1
     ],
@@ -907,7 +899,8 @@
    "South of the ramp: an open sandbox of plain wood, about 8 × 4 ft, with a blue plastic cover.",
    "No drive-around loop.",
    "The sandbox sat on a small grass patch touching both the barn and the ramp, and the well had a matching grassy patch on the other side.",
-   "Grass on each side of the ramp, with a mature lilac bush on each side at the bottom."
+   "Grass on each side of the ramp, with a mature bush on each side at the bottom.",
+   "The bushes grew out of the grass at the very bottom of the ramp sides and did not extend past the end of the ramp."
   ],
   "Gravel driveway": [
    "All open gravel, graded for driving and parking. No grass inside it.",
@@ -960,7 +953,7 @@
    "Sizes random throughout (15% knee high, 50% about 6 ft, 35% 8 to 10 ft), because each cut tree was replaced by a baby the next year.",
    "The X tree was nothing special, and the corner trees were just where the block ended.",
    "The block reached farther west, toward the property line, and sat closer to the orchard. Its top edge now runs west until it nearly meets the orchard.",
-   "On the east side the block reached farther north, leaving much less open grass between the shed and the trees."
+   "The top of the block is one straight line from west to east. Its east end comes up to just south of the back of the red garage."
   ],
   "Pumpkin patch": [
    "Fills the full width of the south end.",
@@ -1003,14 +996,15 @@
   ]
  },
  "open_questions": {
-  "4h": "Lilacs flower in spring. For the summer-into-fall scene, should they show purple blooms anyway, or just green leaves?",
+  "4h": "You first called the two bushes at the bottom of the ramp lilacs, then arborvitaes. Which were they? (The separate arborvitae row along the driveway stays either way.)",
+  "4i": "If they were lilacs: they flower in spring. For the summer-into-fall scene, purple blooms anyway, or just green leaves?",
   "A1": "Check on the map: I put the arborvitae along the north edge of the driveway, from the road to the windmill. Is that the right side?",
   "L1": "Check on the map: I drew the lane as gravel, as it is today. Was it gravel back then too?"
  },
  "terrain": {
   "reference": "heights in metres relative to the barnyard (0)",
   "south_slope": {
-   "starts_y": 107.1,
+   "starts_y": 91.0,
    "lowest_y": 8.4,
    "drop_m": 6.1,
    "shape": "gentle at the north, steeper near the pumpkin patch"
@@ -1334,55 +1328,6 @@
     "line": 1
    },
    {
-    "x": 8.2,
-    "y": 90.9,
-    "species": "Scotch pine",
-    "height_ft": 1.5,
-    "line": 1
-   },
-   {
-    "x": 8.2,
-    "y": 92.9,
-    "species": "Scotch pine",
-    "height_ft": 6.0,
-    "line": 1
-   },
-   {
-    "x": 8.2,
-    "y": 94.9,
-    "species": "Scotch pine",
-    "height_ft": 6.0,
-    "line": 1
-   },
-   {
-    "x": 8.2,
-    "y": 96.9,
-    "species": "Scotch pine",
-    "height_ft": 6.0,
-    "line": 1
-   },
-   {
-    "x": 8.2,
-    "y": 98.9,
-    "species": "Scotch pine",
-    "height_ft": 9.0,
-    "line": 1
-   },
-   {
-    "x": 8.2,
-    "y": 100.9,
-    "species": "Scotch pine",
-    "height_ft": 9.0,
-    "line": 1
-   },
-   {
-    "x": 8.2,
-    "y": 102.9,
-    "species": "Scotch pine",
-    "height_ft": 6.0,
-    "line": 1
-   },
-   {
     "x": 10.6,
     "y": 40.9,
     "species": "Scotch pine",
@@ -1400,7 +1345,7 @@
     "x": 10.6,
     "y": 44.9,
     "species": "Scotch pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 2
    },
    {
@@ -1421,21 +1366,21 @@
     "x": 10.6,
     "y": 50.9,
     "species": "Scotch pine",
-    "height_ft": 1.5,
+    "height_ft": 9.0,
     "line": 2
    },
    {
     "x": 10.6,
     "y": 52.9,
     "species": "Scotch pine",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 2
    },
    {
     "x": 10.6,
     "y": 54.9,
     "species": "Scotch pine",
-    "height_ft": 9.0,
+    "height_ft": 1.5,
     "line": 2
    },
    {
@@ -1449,7 +1394,7 @@
     "x": 10.6,
     "y": 58.9,
     "species": "Scotch pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 2
    },
    {
@@ -1463,14 +1408,14 @@
     "x": 10.6,
     "y": 62.9,
     "species": "Scotch pine",
-    "height_ft": 1.5,
+    "height_ft": 9.0,
     "line": 2
    },
    {
     "x": 10.6,
     "y": 64.9,
     "species": "Scotch pine",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 2
    },
    {
@@ -1498,35 +1443,35 @@
     "x": 10.6,
     "y": 72.9,
     "species": "Scotch pine",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 2
    },
    {
     "x": 10.6,
     "y": 74.9,
     "species": "Scotch pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 2
    },
    {
     "x": 10.6,
     "y": 76.9,
     "species": "Scotch pine",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 2
    },
    {
     "x": 10.6,
     "y": 78.9,
     "species": "Scotch pine",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 2
    },
    {
     "x": 10.6,
     "y": 80.9,
     "species": "Scotch pine",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 2
    },
    {
@@ -1540,70 +1485,21 @@
     "x": 10.6,
     "y": 84.9,
     "species": "Scotch pine",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 2
    },
    {
     "x": 10.6,
     "y": 86.9,
     "species": "Scotch pine",
-    "height_ft": 9.0,
+    "height_ft": 1.5,
     "line": 2
    },
    {
     "x": 10.6,
     "y": 88.9,
     "species": "Scotch pine",
-    "height_ft": 6.0,
-    "line": 2
-   },
-   {
-    "x": 10.6,
-    "y": 90.9,
-    "species": "Scotch pine",
-    "height_ft": 1.5,
-    "line": 2
-   },
-   {
-    "x": 10.6,
-    "y": 92.9,
-    "species": "Scotch pine",
-    "height_ft": 1.5,
-    "line": 2
-   },
-   {
-    "x": 10.6,
-    "y": 94.9,
-    "species": "Scotch pine",
-    "height_ft": 6.0,
-    "line": 2
-   },
-   {
-    "x": 10.6,
-    "y": 96.9,
-    "species": "Scotch pine",
     "height_ft": 9.0,
-    "line": 2
-   },
-   {
-    "x": 10.6,
-    "y": 98.9,
-    "species": "Scotch pine",
-    "height_ft": 6.0,
-    "line": 2
-   },
-   {
-    "x": 10.6,
-    "y": 100.9,
-    "species": "Scotch pine",
-    "height_ft": 9.0,
-    "line": 2
-   },
-   {
-    "x": 10.6,
-    "y": 102.9,
-    "species": "Scotch pine",
-    "height_ft": 6.0,
     "line": 2
    },
    {
@@ -1617,14 +1513,14 @@
     "x": 13.0,
     "y": 42.9,
     "species": "Scotch pine",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 3
    },
    {
     "x": 13.0,
     "y": 44.9,
     "species": "Scotch pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 3
    },
    {
@@ -1638,14 +1534,14 @@
     "x": 13.0,
     "y": 48.9,
     "species": "Scotch pine",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 3
    },
    {
     "x": 13.0,
     "y": 50.9,
     "species": "Scotch pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 3
    },
    {
@@ -1659,7 +1555,7 @@
     "x": 13.0,
     "y": 54.9,
     "species": "Scotch pine",
-    "height_ft": 9.0,
+    "height_ft": 1.5,
     "line": 3
    },
    {
@@ -1673,14 +1569,14 @@
     "x": 13.0,
     "y": 58.9,
     "species": "Scotch pine",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 3
    },
    {
     "x": 13.0,
     "y": 60.9,
     "species": "Scotch pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 3
    },
    {
@@ -1701,7 +1597,7 @@
     "x": 13.0,
     "y": 66.9,
     "species": "Scotch pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 3
    },
    {
@@ -1715,7 +1611,7 @@
     "x": 13.0,
     "y": 70.9,
     "species": "Scotch pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 3
    },
    {
@@ -1736,14 +1632,14 @@
     "x": 13.0,
     "y": 76.9,
     "species": "Scotch pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 3
    },
    {
     "x": 13.0,
     "y": 78.9,
     "species": "Scotch pine",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 3
    },
    {
@@ -1757,70 +1653,28 @@
     "x": 13.0,
     "y": 82.9,
     "species": "Scotch pine",
-    "height_ft": 1.5,
+    "height_ft": 9.0,
     "line": 3
    },
    {
     "x": 13.0,
     "y": 84.9,
     "species": "Scotch pine",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 3
    },
    {
     "x": 13.0,
     "y": 86.9,
     "species": "Scotch pine",
-    "height_ft": 9.0,
+    "height_ft": 1.5,
     "line": 3
    },
    {
     "x": 13.0,
     "y": 88.9,
     "species": "Scotch pine",
-    "height_ft": 9.0,
-    "line": 3
-   },
-   {
-    "x": 13.0,
-    "y": 90.9,
-    "species": "Scotch pine",
-    "height_ft": 9.0,
-    "line": 3
-   },
-   {
-    "x": 13.0,
-    "y": 92.9,
-    "species": "Scotch pine",
-    "height_ft": 1.5,
-    "line": 3
-   },
-   {
-    "x": 13.0,
-    "y": 94.9,
-    "species": "Scotch pine",
     "height_ft": 6.0,
-    "line": 3
-   },
-   {
-    "x": 13.0,
-    "y": 96.9,
-    "species": "Scotch pine",
-    "height_ft": 6.0,
-    "line": 3
-   },
-   {
-    "x": 13.0,
-    "y": 98.9,
-    "species": "Scotch pine",
-    "height_ft": 9.0,
-    "line": 3
-   },
-   {
-    "x": 13.0,
-    "y": 100.9,
-    "species": "Scotch pine",
-    "height_ft": 1.5,
     "line": 3
    },
    {
@@ -1834,56 +1688,56 @@
     "x": 15.4,
     "y": 42.9,
     "species": "Scotch pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 4
    },
    {
     "x": 15.4,
     "y": 44.9,
     "species": "Scotch pine",
-    "height_ft": 1.5,
+    "height_ft": 9.0,
     "line": 4
    },
    {
     "x": 15.4,
     "y": 46.9,
     "species": "Scotch pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 4
    },
    {
     "x": 15.4,
     "y": 48.9,
     "species": "Scotch pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 4
    },
    {
     "x": 15.4,
     "y": 50.9,
     "species": "Scotch pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 4
    },
    {
     "x": 15.4,
     "y": 52.9,
     "species": "Scotch pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 4
    },
    {
     "x": 15.4,
     "y": 54.9,
     "species": "Scotch pine",
-    "height_ft": 1.5,
+    "height_ft": 9.0,
     "line": 4
    },
    {
     "x": 15.4,
     "y": 56.9,
     "species": "Scotch pine",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 4
    },
    {
@@ -1904,35 +1758,35 @@
     "x": 15.4,
     "y": 62.9,
     "species": "Scotch pine",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 4
    },
    {
     "x": 15.4,
     "y": 64.9,
     "species": "Scotch pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 4
    },
    {
     "x": 15.4,
     "y": 66.9,
     "species": "Scotch pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 4
    },
    {
     "x": 15.4,
     "y": 68.9,
     "species": "Scotch pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 4
    },
    {
     "x": 15.4,
     "y": 70.9,
     "species": "Scotch pine",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 4
    },
    {
@@ -1946,35 +1800,35 @@
     "x": 15.4,
     "y": 74.9,
     "species": "Scotch pine",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 4
    },
    {
     "x": 15.4,
     "y": 76.9,
     "species": "Scotch pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 4
    },
    {
     "x": 15.4,
     "y": 78.9,
     "species": "Scotch pine",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 4
    },
    {
     "x": 15.4,
     "y": 80.9,
     "species": "Scotch pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 4
    },
    {
     "x": 15.4,
     "y": 82.9,
     "species": "Scotch pine",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 4
    },
    {
@@ -1988,56 +1842,14 @@
     "x": 15.4,
     "y": 86.9,
     "species": "Scotch pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 4
    },
    {
     "x": 15.4,
     "y": 88.9,
     "species": "Scotch pine",
-    "height_ft": 9.0,
-    "line": 4
-   },
-   {
-    "x": 15.4,
-    "y": 90.9,
-    "species": "Scotch pine",
-    "height_ft": 9.0,
-    "line": 4
-   },
-   {
-    "x": 15.4,
-    "y": 92.9,
-    "species": "Scotch pine",
-    "height_ft": 9.0,
-    "line": 4
-   },
-   {
-    "x": 15.4,
-    "y": 94.9,
-    "species": "Scotch pine",
-    "height_ft": 1.5,
-    "line": 4
-   },
-   {
-    "x": 15.4,
-    "y": 96.9,
-    "species": "Scotch pine",
-    "height_ft": 9.0,
-    "line": 4
-   },
-   {
-    "x": 15.4,
-    "y": 98.9,
-    "species": "Scotch pine",
-    "height_ft": 9.0,
-    "line": 4
-   },
-   {
-    "x": 15.4,
-    "y": 100.9,
-    "species": "Scotch pine",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 4
    },
    {
@@ -2051,49 +1863,49 @@
     "x": 17.8,
     "y": 42.9,
     "species": "Scotch pine",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 5
    },
    {
     "x": 17.8,
     "y": 44.9,
     "species": "Scotch pine",
-    "height_ft": 9.0,
+    "height_ft": 1.5,
     "line": 5
    },
    {
     "x": 17.8,
     "y": 46.9,
     "species": "Scotch pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 5
    },
    {
     "x": 17.8,
     "y": 48.9,
     "species": "Scotch pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 5
    },
    {
     "x": 17.8,
     "y": 50.9,
     "species": "Scotch pine",
-    "height_ft": 9.0,
+    "height_ft": 1.5,
     "line": 5
    },
    {
     "x": 17.8,
     "y": 52.9,
     "species": "Scotch pine",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 5
    },
    {
     "x": 17.8,
     "y": 54.9,
     "species": "Scotch pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 5
    },
    {
@@ -2107,7 +1919,7 @@
     "x": 17.8,
     "y": 58.9,
     "species": "Scotch pine",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 5
    },
    {
@@ -2128,7 +1940,7 @@
     "x": 17.8,
     "y": 64.9,
     "species": "Scotch pine",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 5
    },
    {
@@ -2149,35 +1961,35 @@
     "x": 17.8,
     "y": 70.9,
     "species": "Scotch pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 5
    },
    {
     "x": 17.8,
     "y": 72.9,
     "species": "Scotch pine",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 5
    },
    {
     "x": 17.8,
     "y": 74.9,
     "species": "Scotch pine",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 5
    },
    {
     "x": 17.8,
     "y": 76.9,
     "species": "Scotch pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 5
    },
    {
     "x": 17.8,
     "y": 78.9,
     "species": "Scotch pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 5
    },
    {
@@ -2191,14 +2003,14 @@
     "x": 17.8,
     "y": 82.9,
     "species": "Scotch pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 5
    },
    {
     "x": 17.8,
     "y": 84.9,
     "species": "Scotch pine",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 5
    },
    {
@@ -2212,42 +2024,7 @@
     "x": 17.8,
     "y": 88.9,
     "species": "Scotch pine",
-    "height_ft": 6.0,
-    "line": 5
-   },
-   {
-    "x": 17.8,
-    "y": 90.9,
-    "species": "Scotch pine",
-    "height_ft": 6.0,
-    "line": 5
-   },
-   {
-    "x": 17.8,
-    "y": 92.9,
-    "species": "Scotch pine",
     "height_ft": 9.0,
-    "line": 5
-   },
-   {
-    "x": 17.8,
-    "y": 94.9,
-    "species": "Scotch pine",
-    "height_ft": 1.5,
-    "line": 5
-   },
-   {
-    "x": 17.8,
-    "y": 96.9,
-    "species": "Scotch pine",
-    "height_ft": 6.0,
-    "line": 5
-   },
-   {
-    "x": 17.8,
-    "y": 98.9,
-    "species": "Scotch pine",
-    "height_ft": 6.0,
     "line": 5
    },
    {
@@ -2268,7 +2045,7 @@
     "x": 20.2,
     "y": 44.9,
     "species": "Scotch pine",
-    "height_ft": 9.0,
+    "height_ft": 1.5,
     "line": 6
    },
    {
@@ -2282,7 +2059,7 @@
     "x": 20.2,
     "y": 48.9,
     "species": "Scotch pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 6
    },
    {
@@ -2310,7 +2087,7 @@
     "x": 20.2,
     "y": 56.9,
     "species": "Scotch pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 6
    },
    {
@@ -2324,7 +2101,7 @@
     "x": 20.2,
     "y": 60.9,
     "species": "Scotch pine",
-    "height_ft": 9.0,
+    "height_ft": 1.5,
     "line": 6
    },
    {
@@ -2345,21 +2122,21 @@
     "x": 20.2,
     "y": 66.9,
     "species": "Scotch pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 6
    },
    {
     "x": 20.2,
     "y": 68.9,
     "species": "Scotch pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 6
    },
    {
     "x": 20.2,
     "y": 70.9,
     "species": "Scotch pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 6
    },
    {
@@ -2373,7 +2150,7 @@
     "x": 20.2,
     "y": 74.9,
     "species": "Scotch pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 6
    },
    {
@@ -2387,68 +2164,40 @@
     "x": 20.2,
     "y": 78.9,
     "species": "Scotch pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 6
    },
    {
     "x": 20.2,
     "y": 80.9,
     "species": "Scotch pine",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 6
    },
    {
     "x": 20.2,
     "y": 82.9,
     "species": "Scotch pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 6
    },
    {
     "x": 20.2,
     "y": 84.9,
     "species": "Scotch pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 6
    },
    {
     "x": 20.2,
     "y": 86.9,
     "species": "Scotch pine",
-    "height_ft": 9.0,
-    "line": 6
-   },
-   {
-    "x": 20.2,
-    "y": 88.9,
-    "species": "Scotch pine",
-    "height_ft": 9.0,
-    "line": 6
-   },
-   {
-    "x": 20.2,
-    "y": 90.9,
-    "species": "Scotch pine",
     "height_ft": 6.0,
     "line": 6
    },
    {
     "x": 20.2,
-    "y": 92.9,
-    "species": "Scotch pine",
-    "height_ft": 9.0,
-    "line": 6
-   },
-   {
-    "x": 20.2,
-    "y": 94.9,
-    "species": "Scotch pine",
-    "height_ft": 1.5,
-    "line": 6
-   },
-   {
-    "x": 20.2,
-    "y": 96.9,
+    "y": 88.9,
     "species": "Scotch pine",
     "height_ft": 9.0,
     "line": 6
@@ -2464,21 +2213,21 @@
     "x": 22.6,
     "y": 40.9,
     "species": "Scotch pine",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 7
    },
    {
     "x": 22.6,
     "y": 42.9,
     "species": "Scotch pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 7
    },
    {
     "x": 22.6,
     "y": 44.9,
     "species": "Scotch pine",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 7
    },
    {
@@ -2492,7 +2241,7 @@
     "x": 22.6,
     "y": 48.9,
     "species": "Scotch pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 7
    },
    {
@@ -2513,14 +2262,14 @@
     "x": 22.6,
     "y": 54.9,
     "species": "Scotch pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 7
    },
    {
     "x": 22.6,
     "y": 56.9,
     "species": "Scotch pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 7
    },
    {
@@ -2534,21 +2283,21 @@
     "x": 22.6,
     "y": 60.9,
     "species": "Scotch pine",
-    "height_ft": 1.5,
+    "height_ft": 9.0,
     "line": 7
    },
    {
     "x": 22.6,
     "y": 62.9,
     "species": "Scotch pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 7
    },
    {
     "x": 22.6,
     "y": 64.9,
     "species": "Scotch pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 7
    },
    {
@@ -2562,14 +2311,14 @@
     "x": 22.6,
     "y": 68.9,
     "species": "Scotch pine",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 7
    },
    {
     "x": 22.6,
     "y": 70.9,
     "species": "Scotch pine",
-    "height_ft": 1.5,
+    "height_ft": 9.0,
     "line": 7
    },
    {
@@ -2583,14 +2332,14 @@
     "x": 22.6,
     "y": 74.9,
     "species": "Scotch pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 7
    },
    {
     "x": 22.6,
     "y": 76.9,
     "species": "Scotch pine",
-    "height_ft": 1.5,
+    "height_ft": 9.0,
     "line": 7
    },
    {
@@ -2604,21 +2353,21 @@
     "x": 22.6,
     "y": 80.9,
     "species": "Scotch pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 7
    },
    {
     "x": 22.6,
     "y": 82.9,
     "species": "Scotch pine",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 7
    },
    {
     "x": 22.6,
     "y": 84.9,
     "species": "Scotch pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 7
    },
    {
@@ -2632,42 +2381,14 @@
     "x": 22.6,
     "y": 88.9,
     "species": "Scotch pine",
-    "height_ft": 9.0,
-    "line": 7
-   },
-   {
-    "x": 22.6,
-    "y": 90.9,
-    "species": "Scotch pine",
     "height_ft": 6.0,
-    "line": 7
-   },
-   {
-    "x": 22.6,
-    "y": 92.9,
-    "species": "Scotch pine",
-    "height_ft": 6.0,
-    "line": 7
-   },
-   {
-    "x": 22.6,
-    "y": 94.9,
-    "species": "Scotch pine",
-    "height_ft": 6.0,
-    "line": 7
-   },
-   {
-    "x": 22.6,
-    "y": 96.9,
-    "species": "Scotch pine",
-    "height_ft": 9.0,
     "line": 7
    },
    {
     "x": 25.0,
     "y": 38.9,
     "species": "Scotch pine",
-    "height_ft": 9.0,
+    "height_ft": 1.5,
     "line": 8
    },
    {
@@ -2681,7 +2402,7 @@
     "x": 25.0,
     "y": 42.9,
     "species": "Scotch pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 8
    },
    {
@@ -2702,35 +2423,35 @@
     "x": 25.0,
     "y": 48.9,
     "species": "Scotch pine",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 8
    },
    {
     "x": 25.0,
     "y": 50.9,
     "species": "Scotch pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 8
    },
    {
     "x": 25.0,
     "y": 52.9,
     "species": "Scotch pine",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 8
    },
    {
     "x": 25.0,
     "y": 54.9,
     "species": "Scotch pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 8
    },
    {
     "x": 25.0,
     "y": 56.9,
     "species": "Scotch pine",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 8
    },
    {
@@ -2758,14 +2479,14 @@
     "x": 25.0,
     "y": 64.9,
     "species": "Scotch pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 8
    },
    {
     "x": 25.0,
     "y": 66.9,
     "species": "Scotch pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 8
    },
    {
@@ -2779,7 +2500,7 @@
     "x": 25.0,
     "y": 70.9,
     "species": "Scotch pine",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 8
    },
    {
@@ -2793,28 +2514,28 @@
     "x": 25.0,
     "y": 74.9,
     "species": "Scotch pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 8
    },
    {
     "x": 25.0,
     "y": 76.9,
     "species": "Scotch pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 8
    },
    {
     "x": 25.0,
     "y": 78.9,
     "species": "Scotch pine",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 8
    },
    {
     "x": 25.0,
     "y": 80.9,
     "species": "Scotch pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 8
    },
    {
@@ -2835,33 +2556,12 @@
     "x": 25.0,
     "y": 86.9,
     "species": "Scotch pine",
-    "height_ft": 9.0,
+    "height_ft": 1.5,
     "line": 8
    },
    {
     "x": 25.0,
     "y": 88.9,
-    "species": "Scotch pine",
-    "height_ft": 6.0,
-    "line": 8
-   },
-   {
-    "x": 25.0,
-    "y": 90.9,
-    "species": "Scotch pine",
-    "height_ft": 6.0,
-    "line": 8
-   },
-   {
-    "x": 25.0,
-    "y": 92.9,
-    "species": "Scotch pine",
-    "height_ft": 6.0,
-    "line": 8
-   },
-   {
-    "x": 25.0,
-    "y": 94.9,
     "species": "Scotch pine",
     "height_ft": 1.5,
     "line": 8
@@ -2870,7 +2570,7 @@
     "x": 27.4,
     "y": 38.9,
     "species": "Douglas fir",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 9
    },
    {
@@ -2884,56 +2584,56 @@
     "x": 27.4,
     "y": 42.9,
     "species": "Douglas fir",
-    "height_ft": 9.0,
+    "height_ft": 1.5,
     "line": 9
    },
    {
     "x": 27.4,
     "y": 44.9,
     "species": "Douglas fir",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 9
    },
    {
     "x": 27.4,
     "y": 46.9,
     "species": "Douglas fir",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 9
    },
    {
     "x": 27.4,
     "y": 48.9,
     "species": "Douglas fir",
-    "height_ft": 9.0,
+    "height_ft": 1.5,
     "line": 9
    },
    {
     "x": 27.4,
     "y": 50.9,
     "species": "Douglas fir",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 9
    },
    {
     "x": 27.4,
     "y": 52.9,
     "species": "Douglas fir",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 9
    },
    {
     "x": 27.4,
     "y": 54.9,
     "species": "Douglas fir",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 9
    },
    {
     "x": 27.4,
     "y": 56.9,
     "species": "Douglas fir",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 9
    },
    {
@@ -2954,7 +2654,7 @@
     "x": 27.4,
     "y": 62.9,
     "species": "Douglas fir",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 9
    },
    {
@@ -2975,28 +2675,28 @@
     "x": 27.4,
     "y": 68.9,
     "species": "Douglas fir",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 9
    },
    {
     "x": 27.4,
     "y": 70.9,
     "species": "Douglas fir",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 9
    },
    {
     "x": 27.4,
     "y": 72.9,
     "species": "Douglas fir",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 9
    },
    {
     "x": 27.4,
     "y": 74.9,
     "species": "Douglas fir",
-    "height_ft": 9.0,
+    "height_ft": 1.5,
     "line": 9
    },
    {
@@ -3024,14 +2724,14 @@
     "x": 27.4,
     "y": 82.9,
     "species": "Douglas fir",
-    "height_ft": 9.0,
+    "height_ft": 1.5,
     "line": 9
    },
    {
     "x": 27.4,
     "y": 84.9,
     "species": "Douglas fir",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 9
    },
    {
@@ -3044,20 +2744,6 @@
    {
     "x": 27.4,
     "y": 88.9,
-    "species": "Douglas fir",
-    "height_ft": 6.0,
-    "line": 9
-   },
-   {
-    "x": 27.4,
-    "y": 90.9,
-    "species": "Douglas fir",
-    "height_ft": 6.0,
-    "line": 9
-   },
-   {
-    "x": 27.4,
-    "y": 92.9,
     "species": "Douglas fir",
     "height_ft": 6.0,
     "line": 9
@@ -3066,28 +2752,28 @@
     "x": 29.8,
     "y": 38.9,
     "species": "Douglas fir",
-    "height_ft": 1.5,
+    "height_ft": 9.0,
     "line": 10
    },
    {
     "x": 29.8,
     "y": 40.9,
     "species": "Douglas fir",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 10
    },
    {
     "x": 29.8,
     "y": 42.9,
     "species": "Douglas fir",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 10
    },
    {
     "x": 29.8,
     "y": 44.9,
     "species": "Douglas fir",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 10
    },
    {
@@ -3115,7 +2801,7 @@
     "x": 29.8,
     "y": 52.9,
     "species": "Douglas fir",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 10
    },
    {
@@ -3129,7 +2815,7 @@
     "x": 29.8,
     "y": 56.9,
     "species": "Douglas fir",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 10
    },
    {
@@ -3143,7 +2829,7 @@
     "x": 29.8,
     "y": 60.9,
     "species": "Douglas fir",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 10
    },
    {
@@ -3157,35 +2843,35 @@
     "x": 29.8,
     "y": 64.9,
     "species": "Douglas fir",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 10
    },
    {
     "x": 29.8,
     "y": 66.9,
     "species": "Douglas fir",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 10
    },
    {
     "x": 29.8,
     "y": 68.9,
     "species": "Douglas fir",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 10
    },
    {
     "x": 29.8,
     "y": 70.9,
     "species": "Douglas fir",
-    "height_ft": 1.5,
+    "height_ft": 9.0,
     "line": 10
    },
    {
     "x": 29.8,
     "y": 72.9,
     "species": "Douglas fir",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 10
    },
    {
@@ -3206,7 +2892,7 @@
     "x": 29.8,
     "y": 78.9,
     "species": "Douglas fir",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 10
    },
    {
@@ -3220,14 +2906,14 @@
     "x": 29.8,
     "y": 82.9,
     "species": "Douglas fir",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 10
    },
    {
     "x": 29.8,
     "y": 84.9,
     "species": "Douglas fir",
-    "height_ft": 1.5,
+    "height_ft": 9.0,
     "line": 10
    },
    {
@@ -3241,49 +2927,35 @@
     "x": 29.8,
     "y": 88.9,
     "species": "Douglas fir",
-    "height_ft": 6.0,
-    "line": 10
-   },
-   {
-    "x": 29.8,
-    "y": 90.9,
-    "species": "Douglas fir",
     "height_ft": 9.0,
-    "line": 10
-   },
-   {
-    "x": 29.8,
-    "y": 92.9,
-    "species": "Douglas fir",
-    "height_ft": 6.0,
     "line": 10
    },
    {
     "x": 32.2,
     "y": 38.9,
     "species": "Douglas fir",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 11
    },
    {
     "x": 32.2,
     "y": 40.9,
     "species": "Douglas fir",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 11
    },
    {
     "x": 32.2,
     "y": 42.9,
     "species": "Douglas fir",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 11
    },
    {
     "x": 32.2,
     "y": 44.9,
     "species": "Douglas fir",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 11
    },
    {
@@ -3297,14 +2969,14 @@
     "x": 32.2,
     "y": 48.9,
     "species": "Douglas fir",
-    "height_ft": 1.5,
+    "height_ft": 9.0,
     "line": 11
    },
    {
     "x": 32.2,
     "y": 50.9,
     "species": "Douglas fir",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 11
    },
    {
@@ -3318,7 +2990,7 @@
     "x": 32.2,
     "y": 54.9,
     "species": "Douglas fir",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 11
    },
    {
@@ -3332,7 +3004,7 @@
     "x": 32.2,
     "y": 58.9,
     "species": "Douglas fir",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 11
    },
    {
@@ -3346,7 +3018,7 @@
     "x": 32.2,
     "y": 62.9,
     "species": "Douglas fir",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 11
    },
    {
@@ -3360,7 +3032,7 @@
     "x": 32.2,
     "y": 66.9,
     "species": "Douglas fir",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 11
    },
    {
@@ -3395,7 +3067,7 @@
     "x": 32.2,
     "y": 76.9,
     "species": "Douglas fir",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 11
    },
    {
@@ -3409,21 +3081,21 @@
     "x": 32.2,
     "y": 80.9,
     "species": "Douglas fir",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 11
    },
    {
     "x": 32.2,
     "y": 82.9,
     "species": "Douglas fir",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 11
    },
    {
     "x": 32.2,
     "y": 84.9,
     "species": "Douglas fir",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 11
    },
    {
@@ -3437,14 +3109,7 @@
     "x": 32.2,
     "y": 88.9,
     "species": "Douglas fir",
-    "height_ft": 6.0,
-    "line": 11
-   },
-   {
-    "x": 32.2,
-    "y": 90.9,
-    "species": "Douglas fir",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 11
    },
    {
@@ -3458,28 +3123,28 @@
     "x": 34.6,
     "y": 38.9,
     "species": "Douglas fir",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 12
    },
    {
     "x": 34.6,
     "y": 40.9,
     "species": "Douglas fir",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 12
    },
    {
     "x": 34.6,
     "y": 42.9,
     "species": "Douglas fir",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 12
    },
    {
     "x": 34.6,
     "y": 44.9,
     "species": "Douglas fir",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 12
    },
    {
@@ -3493,7 +3158,7 @@
     "x": 34.6,
     "y": 48.9,
     "species": "Douglas fir",
-    "height_ft": 1.5,
+    "height_ft": 9.0,
     "line": 12
    },
    {
@@ -3507,21 +3172,21 @@
     "x": 34.6,
     "y": 52.9,
     "species": "Douglas fir",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 12
    },
    {
     "x": 34.6,
     "y": 54.9,
     "species": "Douglas fir",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 12
    },
    {
     "x": 34.6,
     "y": 56.9,
     "species": "Douglas fir",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 12
    },
    {
@@ -3535,21 +3200,21 @@
     "x": 34.6,
     "y": 60.9,
     "species": "Douglas fir",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 12
    },
    {
     "x": 34.6,
     "y": 62.9,
     "species": "Douglas fir",
-    "height_ft": 1.5,
+    "height_ft": 9.0,
     "line": 12
    },
    {
     "x": 34.6,
     "y": 64.9,
     "species": "Douglas fir",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 12
    },
    {
@@ -3570,7 +3235,7 @@
     "x": 34.6,
     "y": 70.9,
     "species": "Douglas fir",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 12
    },
    {
@@ -3591,28 +3256,28 @@
     "x": 34.6,
     "y": 76.9,
     "species": "Douglas fir",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 12
    },
    {
     "x": 34.6,
     "y": 78.9,
     "species": "Douglas fir",
-    "height_ft": 9.0,
+    "height_ft": 1.5,
     "line": 12
    },
    {
     "x": 34.6,
     "y": 80.9,
     "species": "Douglas fir",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 12
    },
    {
     "x": 34.6,
     "y": 82.9,
     "species": "Douglas fir",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 12
    },
    {
@@ -3633,13 +3298,6 @@
     "x": 34.6,
     "y": 88.9,
     "species": "Douglas fir",
-    "height_ft": 9.0,
-    "line": 12
-   },
-   {
-    "x": 34.6,
-    "y": 90.9,
-    "species": "Douglas fir",
     "height_ft": 1.5,
     "line": 12
    },
@@ -3647,7 +3305,7 @@
     "x": 37.0,
     "y": 36.9,
     "species": "Douglas fir",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 13
    },
    {
@@ -3668,7 +3326,7 @@
     "x": 37.0,
     "y": 42.9,
     "species": "Douglas fir",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 13
    },
    {
@@ -3689,21 +3347,21 @@
     "x": 37.0,
     "y": 48.9,
     "species": "Douglas fir",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 13
    },
    {
     "x": 37.0,
     "y": 50.9,
     "species": "Douglas fir",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 13
    },
    {
     "x": 37.0,
     "y": 52.9,
     "species": "Douglas fir",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 13
    },
    {
@@ -3717,14 +3375,14 @@
     "x": 37.0,
     "y": 56.9,
     "species": "Douglas fir",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 13
    },
    {
     "x": 37.0,
     "y": 58.9,
     "species": "Douglas fir",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 13
    },
    {
@@ -3738,7 +3396,7 @@
     "x": 37.0,
     "y": 62.9,
     "species": "Douglas fir",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 13
    },
    {
@@ -3752,7 +3410,7 @@
     "x": 37.0,
     "y": 66.9,
     "species": "Douglas fir",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 13
    },
    {
@@ -3773,7 +3431,7 @@
     "x": 37.0,
     "y": 72.9,
     "species": "Douglas fir",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 13
    },
    {
@@ -3787,14 +3445,14 @@
     "x": 37.0,
     "y": 76.9,
     "species": "Douglas fir",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 13
    },
    {
     "x": 37.0,
     "y": 78.9,
     "species": "Douglas fir",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 13
    },
    {
@@ -3822,28 +3480,28 @@
     "x": 37.0,
     "y": 86.9,
     "species": "Douglas fir",
-    "height_ft": 9.0,
+    "height_ft": 1.5,
     "line": 13
    },
    {
     "x": 37.0,
     "y": 88.9,
     "species": "Douglas fir",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 13
    },
    {
     "x": 39.4,
     "y": 36.9,
     "species": "Douglas fir",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 14
    },
    {
     "x": 39.4,
     "y": 38.9,
     "species": "Douglas fir",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 14
    },
    {
@@ -3864,42 +3522,42 @@
     "x": 39.4,
     "y": 44.9,
     "species": "Douglas fir",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 14
    },
    {
     "x": 39.4,
     "y": 46.9,
     "species": "Douglas fir",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 14
    },
    {
     "x": 39.4,
     "y": 48.9,
     "species": "Douglas fir",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 14
    },
    {
     "x": 39.4,
     "y": 50.9,
     "species": "Douglas fir",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 14
    },
    {
     "x": 39.4,
     "y": 52.9,
     "species": "Douglas fir",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 14
    },
    {
     "x": 39.4,
     "y": 54.9,
     "species": "Douglas fir",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 14
    },
    {
@@ -3948,35 +3606,35 @@
     "x": 39.4,
     "y": 68.9,
     "species": "Douglas fir",
-    "height_ft": 9.0,
+    "height_ft": 1.5,
     "line": 14
    },
    {
     "x": 39.4,
     "y": 70.9,
     "species": "Douglas fir",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 14
    },
    {
     "x": 39.4,
     "y": 72.9,
     "species": "Douglas fir",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 14
    },
    {
     "x": 39.4,
     "y": 74.9,
     "species": "Douglas fir",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 14
    },
    {
     "x": 39.4,
     "y": 76.9,
     "species": "Douglas fir",
-    "height_ft": 9.0,
+    "height_ft": 1.5,
     "line": 14
    },
    {
@@ -4015,10 +3673,17 @@
     "line": 14
    },
    {
+    "x": 39.4,
+    "y": 88.9,
+    "species": "Douglas fir",
+    "height_ft": 6.0,
+    "line": 14
+   },
+   {
     "x": 41.8,
     "y": 36.9,
     "species": "Douglas fir",
-    "height_ft": 9.0,
+    "height_ft": 1.5,
     "line": 15
    },
    {
@@ -4032,7 +3697,7 @@
     "x": 41.8,
     "y": 40.9,
     "species": "Douglas fir",
-    "height_ft": 9.0,
+    "height_ft": 1.5,
     "line": 15
    },
    {
@@ -4046,7 +3711,7 @@
     "x": 41.8,
     "y": 44.9,
     "species": "Douglas fir",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 15
    },
    {
@@ -4067,14 +3732,14 @@
     "x": 41.8,
     "y": 50.9,
     "species": "Douglas fir",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 15
    },
    {
     "x": 41.8,
     "y": 52.9,
     "species": "Douglas fir",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 15
    },
    {
@@ -4095,7 +3760,7 @@
     "x": 41.8,
     "y": 58.9,
     "species": "Douglas fir",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 15
    },
    {
@@ -4130,7 +3795,7 @@
     "x": 41.8,
     "y": 68.9,
     "species": "Douglas fir",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 15
    },
    {
@@ -4144,7 +3809,7 @@
     "x": 41.8,
     "y": 72.9,
     "species": "Douglas fir",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 15
    },
    {
@@ -4165,14 +3830,14 @@
     "x": 41.8,
     "y": 78.9,
     "species": "Douglas fir",
-    "height_ft": 9.0,
+    "height_ft": 1.5,
     "line": 15
    },
    {
     "x": 41.8,
     "y": 80.9,
     "species": "Douglas fir",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 15
    },
    {
@@ -4186,13 +3851,20 @@
     "x": 41.8,
     "y": 84.9,
     "species": "Douglas fir",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 15
    },
    {
     "x": 41.8,
     "y": 86.9,
     "species": "Douglas fir",
+    "height_ft": 9.0,
+    "line": 15
+   },
+   {
+    "x": 41.8,
+    "y": 88.9,
+    "species": "Douglas fir",
     "height_ft": 6.0,
     "line": 15
    },
@@ -4200,14 +3872,14 @@
     "x": 44.2,
     "y": 36.9,
     "species": "Douglas fir",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 16
    },
    {
     "x": 44.2,
     "y": 38.9,
     "species": "Douglas fir",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 16
    },
    {
@@ -4221,28 +3893,28 @@
     "x": 44.2,
     "y": 42.9,
     "species": "Douglas fir",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 16
    },
    {
     "x": 44.2,
     "y": 44.9,
     "species": "Douglas fir",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 16
    },
    {
     "x": 44.2,
     "y": 46.9,
     "species": "Douglas fir",
-    "height_ft": 1.5,
+    "height_ft": 9.0,
     "line": 16
    },
    {
     "x": 44.2,
     "y": 48.9,
     "species": "Douglas fir",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 16
    },
    {
@@ -4277,35 +3949,35 @@
     "x": 44.2,
     "y": 58.9,
     "species": "Douglas fir",
-    "height_ft": 9.0,
+    "height_ft": 1.5,
     "line": 16
    },
    {
     "x": 44.2,
     "y": 60.9,
     "species": "Douglas fir",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 16
    },
    {
     "x": 44.2,
     "y": 62.9,
     "species": "Douglas fir",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 16
    },
    {
     "x": 44.2,
     "y": 64.9,
     "species": "Douglas fir",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 16
    },
    {
     "x": 44.2,
     "y": 66.9,
     "species": "Douglas fir",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 16
    },
    {
@@ -4326,7 +3998,7 @@
     "x": 44.2,
     "y": 72.9,
     "species": "Douglas fir",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 16
    },
    {
@@ -4340,21 +4012,21 @@
     "x": 44.2,
     "y": 76.9,
     "species": "Douglas fir",
-    "height_ft": 1.5,
+    "height_ft": 9.0,
     "line": 16
    },
    {
     "x": 44.2,
     "y": 78.9,
     "species": "Douglas fir",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 16
    },
    {
     "x": 44.2,
     "y": 80.9,
     "species": "Douglas fir",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 16
    },
    {
@@ -4367,6 +4039,20 @@
    {
     "x": 44.2,
     "y": 84.9,
+    "species": "Douglas fir",
+    "height_ft": 6.0,
+    "line": 16
+   },
+   {
+    "x": 44.2,
+    "y": 86.9,
+    "species": "Douglas fir",
+    "height_ft": 6.0,
+    "line": 16
+   },
+   {
+    "x": 44.2,
+    "y": 88.9,
     "species": "Douglas fir",
     "height_ft": 6.0,
     "line": 16
@@ -4375,14 +4061,14 @@
     "x": 46.6,
     "y": 34.9,
     "species": "White pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 17
    },
    {
     "x": 46.6,
     "y": 36.9,
     "species": "White pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 17
    },
    {
@@ -4403,14 +4089,14 @@
     "x": 46.6,
     "y": 42.9,
     "species": "White pine",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 17
    },
    {
     "x": 46.6,
     "y": 44.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 17
    },
    {
@@ -4445,7 +4131,7 @@
     "x": 46.6,
     "y": 54.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 17
    },
    {
@@ -4466,21 +4152,21 @@
     "x": 46.6,
     "y": 60.9,
     "species": "White pine",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 17
    },
    {
     "x": 46.6,
     "y": 62.9,
     "species": "White pine",
-    "height_ft": 1.5,
+    "height_ft": 9.0,
     "line": 17
    },
    {
     "x": 46.6,
     "y": 64.9,
     "species": "White pine",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 17
    },
    {
@@ -4494,14 +4180,14 @@
     "x": 46.6,
     "y": 68.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 17
    },
    {
     "x": 46.6,
     "y": 70.9,
     "species": "White pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 17
    },
    {
@@ -4515,14 +4201,14 @@
     "x": 46.6,
     "y": 74.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 17
    },
    {
     "x": 46.6,
     "y": 76.9,
     "species": "White pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 17
    },
    {
@@ -4543,12 +4229,26 @@
     "x": 46.6,
     "y": 82.9,
     "species": "White pine",
-    "height_ft": 9.0,
+    "height_ft": 1.5,
     "line": 17
    },
    {
     "x": 46.6,
     "y": 84.9,
+    "species": "White pine",
+    "height_ft": 9.0,
+    "line": 17
+   },
+   {
+    "x": 46.6,
+    "y": 86.9,
+    "species": "White pine",
+    "height_ft": 6.0,
+    "line": 17
+   },
+   {
+    "x": 46.6,
+    "y": 88.9,
     "species": "White pine",
     "height_ft": 9.0,
     "line": 17
@@ -4564,21 +4264,21 @@
     "x": 49.0,
     "y": 36.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 18
    },
    {
     "x": 49.0,
     "y": 38.9,
     "species": "White pine",
-    "height_ft": 1.5,
+    "height_ft": 9.0,
     "line": 18
    },
    {
     "x": 49.0,
     "y": 40.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 18
    },
    {
@@ -4592,7 +4292,7 @@
     "x": 49.0,
     "y": 44.9,
     "species": "White pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 18
    },
    {
@@ -4606,42 +4306,42 @@
     "x": 49.0,
     "y": 48.9,
     "species": "White pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 18
    },
    {
     "x": 49.0,
     "y": 50.9,
     "species": "White pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 18
    },
    {
     "x": 49.0,
     "y": 52.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 18
    },
    {
     "x": 49.0,
     "y": 54.9,
     "species": "White pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 18
    },
    {
     "x": 49.0,
     "y": 56.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 18
    },
    {
     "x": 49.0,
     "y": 58.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 18
    },
    {
@@ -4662,7 +4362,7 @@
     "x": 49.0,
     "y": 64.9,
     "species": "White pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 18
    },
    {
@@ -4676,7 +4376,7 @@
     "x": 49.0,
     "y": 68.9,
     "species": "White pine",
-    "height_ft": 1.5,
+    "height_ft": 9.0,
     "line": 18
    },
    {
@@ -4690,21 +4390,21 @@
     "x": 49.0,
     "y": 72.9,
     "species": "White pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 18
    },
    {
     "x": 49.0,
     "y": 74.9,
     "species": "White pine",
-    "height_ft": 9.0,
+    "height_ft": 1.5,
     "line": 18
    },
    {
     "x": 49.0,
     "y": 76.9,
     "species": "White pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 18
    },
    {
@@ -4718,14 +4418,35 @@
     "x": 49.0,
     "y": 80.9,
     "species": "White pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 18
    },
    {
     "x": 49.0,
     "y": 82.9,
     "species": "White pine",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
+    "line": 18
+   },
+   {
+    "x": 49.0,
+    "y": 84.9,
+    "species": "White pine",
+    "height_ft": 6.0,
+    "line": 18
+   },
+   {
+    "x": 49.0,
+    "y": 86.9,
+    "species": "White pine",
+    "height_ft": 6.0,
+    "line": 18
+   },
+   {
+    "x": 49.0,
+    "y": 88.9,
+    "species": "White pine",
+    "height_ft": 6.0,
     "line": 18
    },
    {
@@ -4739,35 +4460,35 @@
     "x": 51.4,
     "y": 36.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 19
    },
    {
     "x": 51.4,
     "y": 38.9,
     "species": "White pine",
-    "height_ft": 9.0,
+    "height_ft": 1.5,
     "line": 19
    },
    {
     "x": 51.4,
     "y": 40.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 19
    },
    {
     "x": 51.4,
     "y": 42.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 19
    },
    {
     "x": 51.4,
     "y": 44.9,
     "species": "White pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 19
    },
    {
@@ -4781,28 +4502,28 @@
     "x": 51.4,
     "y": 48.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 19
    },
    {
     "x": 51.4,
     "y": 50.9,
     "species": "White pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 19
    },
    {
     "x": 51.4,
     "y": 52.9,
     "species": "White pine",
-    "height_ft": 1.5,
+    "height_ft": 9.0,
     "line": 19
    },
    {
     "x": 51.4,
     "y": 54.9,
     "species": "White pine",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 19
    },
    {
@@ -4837,14 +4558,14 @@
     "x": 51.4,
     "y": 64.9,
     "species": "White pine",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 19
    },
    {
     "x": 51.4,
     "y": 66.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 19
    },
    {
@@ -4858,14 +4579,14 @@
     "x": 51.4,
     "y": 70.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 19
    },
    {
     "x": 51.4,
     "y": 72.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 19
    },
    {
@@ -4886,14 +4607,42 @@
     "x": 51.4,
     "y": 78.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 19
    },
    {
     "x": 51.4,
     "y": 80.9,
     "species": "White pine",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
+    "line": 19
+   },
+   {
+    "x": 51.4,
+    "y": 82.9,
+    "species": "White pine",
+    "height_ft": 9.0,
+    "line": 19
+   },
+   {
+    "x": 51.4,
+    "y": 84.9,
+    "species": "White pine",
+    "height_ft": 6.0,
+    "line": 19
+   },
+   {
+    "x": 51.4,
+    "y": 86.9,
+    "species": "White pine",
+    "height_ft": 6.0,
+    "line": 19
+   },
+   {
+    "x": 51.4,
+    "y": 88.9,
+    "species": "White pine",
+    "height_ft": 6.0,
     "line": 19
    },
    {
@@ -4914,28 +4663,28 @@
     "x": 53.8,
     "y": 38.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 20
    },
    {
     "x": 53.8,
     "y": 40.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 20
    },
    {
     "x": 53.8,
     "y": 42.9,
     "species": "White pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 20
    },
    {
     "x": 53.8,
     "y": 44.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 20
    },
    {
@@ -4949,28 +4698,28 @@
     "x": 53.8,
     "y": 48.9,
     "species": "White pine",
-    "height_ft": 1.5,
+    "height_ft": 9.0,
     "line": 20
    },
    {
     "x": 53.8,
     "y": 50.9,
     "species": "White pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 20
    },
    {
     "x": 53.8,
     "y": 52.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 20
    },
    {
     "x": 53.8,
     "y": 54.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 20
    },
    {
@@ -4984,7 +4733,7 @@
     "x": 53.8,
     "y": 58.9,
     "species": "White pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 20
    },
    {
@@ -4998,14 +4747,14 @@
     "x": 53.8,
     "y": 62.9,
     "species": "White pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 20
    },
    {
     "x": 53.8,
     "y": 64.9,
     "species": "White pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 20
    },
    {
@@ -5019,14 +4768,14 @@
     "x": 53.8,
     "y": 68.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 20
    },
    {
     "x": 53.8,
     "y": 70.9,
     "species": "White pine",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 20
    },
    {
@@ -5040,14 +4789,14 @@
     "x": 53.8,
     "y": 74.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 20
    },
    {
     "x": 53.8,
     "y": 76.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 20
    },
    {
@@ -5061,14 +4810,42 @@
     "x": 53.8,
     "y": 80.9,
     "species": "White pine",
+    "height_ft": 9.0,
+    "line": 20
+   },
+   {
+    "x": 53.8,
+    "y": 82.9,
+    "species": "White pine",
+    "height_ft": 9.0,
+    "line": 20
+   },
+   {
+    "x": 53.8,
+    "y": 84.9,
+    "species": "White pine",
+    "height_ft": 6.0,
+    "line": 20
+   },
+   {
+    "x": 53.8,
+    "y": 86.9,
+    "species": "White pine",
     "height_ft": 1.5,
+    "line": 20
+   },
+   {
+    "x": 53.8,
+    "y": 88.9,
+    "species": "White pine",
+    "height_ft": 6.0,
     "line": 20
    },
    {
     "x": 56.2,
     "y": 34.9,
     "species": "White pine",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 21
    },
    {
@@ -5089,7 +4866,7 @@
     "x": 56.2,
     "y": 40.9,
     "species": "White pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 21
    },
    {
@@ -5103,14 +4880,14 @@
     "x": 56.2,
     "y": 44.9,
     "species": "White pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 21
    },
    {
     "x": 56.2,
     "y": 46.9,
     "species": "White pine",
-    "height_ft": 9.0,
+    "height_ft": 1.5,
     "line": 21
    },
    {
@@ -5138,49 +4915,49 @@
     "x": 56.2,
     "y": 54.9,
     "species": "White pine",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 21
    },
    {
     "x": 56.2,
     "y": 56.9,
     "species": "White pine",
-    "height_ft": 1.5,
+    "height_ft": 9.0,
     "line": 21
    },
    {
     "x": 56.2,
     "y": 58.9,
     "species": "White pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 21
    },
    {
     "x": 56.2,
     "y": 60.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 21
    },
    {
     "x": 56.2,
     "y": 62.9,
     "species": "White pine",
-    "height_ft": 9.0,
+    "height_ft": 1.5,
     "line": 21
    },
    {
     "x": 56.2,
     "y": 64.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 21
    },
    {
     "x": 56.2,
     "y": 66.9,
     "species": "White pine",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 21
    },
    {
@@ -5194,33 +4971,68 @@
     "x": 56.2,
     "y": 70.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 21
    },
    {
     "x": 56.2,
     "y": 72.9,
     "species": "White pine",
-    "height_ft": 1.5,
+    "height_ft": 9.0,
     "line": 21
    },
    {
     "x": 56.2,
     "y": 74.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 21
    },
    {
     "x": 56.2,
     "y": 76.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 21
    },
    {
     "x": 56.2,
     "y": 78.9,
+    "species": "White pine",
+    "height_ft": 9.0,
+    "line": 21
+   },
+   {
+    "x": 56.2,
+    "y": 80.9,
+    "species": "White pine",
+    "height_ft": 9.0,
+    "line": 21
+   },
+   {
+    "x": 56.2,
+    "y": 82.9,
+    "species": "White pine",
+    "height_ft": 6.0,
+    "line": 21
+   },
+   {
+    "x": 56.2,
+    "y": 84.9,
+    "species": "White pine",
+    "height_ft": 1.5,
+    "line": 21
+   },
+   {
+    "x": 56.2,
+    "y": 86.9,
+    "species": "White pine",
+    "height_ft": 9.0,
+    "line": 21
+   },
+   {
+    "x": 56.2,
+    "y": 88.9,
     "species": "White pine",
     "height_ft": 6.0,
     "line": 21
@@ -5229,7 +5041,7 @@
     "x": 58.6,
     "y": 32.9,
     "species": "White pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 22
    },
    {
@@ -5243,70 +5055,70 @@
     "x": 58.6,
     "y": 36.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 22
    },
    {
     "x": 58.6,
     "y": 38.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 22
    },
    {
     "x": 58.6,
     "y": 40.9,
     "species": "White pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 22
    },
    {
     "x": 58.6,
     "y": 42.9,
     "species": "White pine",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 22
    },
    {
     "x": 58.6,
     "y": 44.9,
     "species": "White pine",
-    "height_ft": 1.5,
+    "height_ft": 9.0,
     "line": 22
    },
    {
     "x": 58.6,
     "y": 46.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 22
    },
    {
     "x": 58.6,
     "y": 48.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 22
    },
    {
     "x": 58.6,
     "y": 50.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 22
    },
    {
     "x": 58.6,
     "y": 52.9,
     "species": "White pine",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 22
    },
    {
     "x": 58.6,
     "y": 54.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 22
    },
    {
@@ -5320,21 +5132,21 @@
     "x": 58.6,
     "y": 58.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 22
    },
    {
     "x": 58.6,
     "y": 60.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 22
    },
    {
     "x": 58.6,
     "y": 62.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 22
    },
    {
@@ -5348,7 +5160,7 @@
     "x": 58.6,
     "y": 66.9,
     "species": "White pine",
-    "height_ft": 1.5,
+    "height_ft": 9.0,
     "line": 22
    },
    {
@@ -5362,7 +5174,7 @@
     "x": 58.6,
     "y": 70.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 22
    },
    {
@@ -5376,14 +5188,56 @@
     "x": 58.6,
     "y": 74.9,
     "species": "White pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 22
    },
    {
     "x": 58.6,
     "y": 76.9,
     "species": "White pine",
+    "height_ft": 1.5,
+    "line": 22
+   },
+   {
+    "x": 58.6,
+    "y": 78.9,
+    "species": "White pine",
+    "height_ft": 6.0,
+    "line": 22
+   },
+   {
+    "x": 58.6,
+    "y": 80.9,
+    "species": "White pine",
+    "height_ft": 6.0,
+    "line": 22
+   },
+   {
+    "x": 58.6,
+    "y": 82.9,
+    "species": "White pine",
+    "height_ft": 6.0,
+    "line": 22
+   },
+   {
+    "x": 58.6,
+    "y": 84.9,
+    "species": "White pine",
     "height_ft": 9.0,
+    "line": 22
+   },
+   {
+    "x": 58.6,
+    "y": 86.9,
+    "species": "White pine",
+    "height_ft": 6.0,
+    "line": 22
+   },
+   {
+    "x": 58.6,
+    "y": 88.9,
+    "species": "White pine",
+    "height_ft": 6.0,
     "line": 22
    },
    {
@@ -5397,7 +5251,7 @@
     "x": 61.0,
     "y": 34.9,
     "species": "White pine",
-    "height_ft": 1.5,
+    "height_ft": 9.0,
     "line": 23
    },
    {
@@ -5411,7 +5265,7 @@
     "x": 61.0,
     "y": 38.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 23
    },
    {
@@ -5425,28 +5279,28 @@
     "x": 61.0,
     "y": 42.9,
     "species": "White pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 23
    },
    {
     "x": 61.0,
     "y": 44.9,
     "species": "White pine",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 23
    },
    {
     "x": 61.0,
     "y": 46.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 23
    },
    {
     "x": 61.0,
     "y": 48.9,
     "species": "White pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 23
    },
    {
@@ -5467,14 +5321,14 @@
     "x": 61.0,
     "y": 54.9,
     "species": "White pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 23
    },
    {
     "x": 61.0,
     "y": 56.9,
     "species": "White pine",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 23
    },
    {
@@ -5488,7 +5342,7 @@
     "x": 61.0,
     "y": 60.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 23
    },
    {
@@ -5502,21 +5356,21 @@
     "x": 61.0,
     "y": 64.9,
     "species": "White pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 23
    },
    {
     "x": 61.0,
     "y": 66.9,
     "species": "White pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 23
    },
    {
     "x": 61.0,
     "y": 68.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 23
    },
    {
@@ -5530,7 +5384,7 @@
     "x": 61.0,
     "y": 72.9,
     "species": "White pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 23
    },
    {
@@ -5544,7 +5398,49 @@
     "x": 61.0,
     "y": 76.9,
     "species": "White pine",
+    "height_ft": 1.5,
+    "line": 23
+   },
+   {
+    "x": 61.0,
+    "y": 78.9,
+    "species": "White pine",
     "height_ft": 6.0,
+    "line": 23
+   },
+   {
+    "x": 61.0,
+    "y": 80.9,
+    "species": "White pine",
+    "height_ft": 6.0,
+    "line": 23
+   },
+   {
+    "x": 61.0,
+    "y": 82.9,
+    "species": "White pine",
+    "height_ft": 9.0,
+    "line": 23
+   },
+   {
+    "x": 61.0,
+    "y": 84.9,
+    "species": "White pine",
+    "height_ft": 1.5,
+    "line": 23
+   },
+   {
+    "x": 61.0,
+    "y": 86.9,
+    "species": "White pine",
+    "height_ft": 6.0,
+    "line": 23
+   },
+   {
+    "x": 61.0,
+    "y": 88.9,
+    "species": "White pine",
+    "height_ft": 9.0,
     "line": 23
    },
    {
@@ -5565,7 +5461,7 @@
     "x": 63.4,
     "y": 36.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 24
    },
    {
@@ -5579,35 +5475,35 @@
     "x": 63.4,
     "y": 40.9,
     "species": "White pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 24
    },
    {
     "x": 63.4,
     "y": 42.9,
     "species": "White pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 24
    },
    {
     "x": 63.4,
     "y": 44.9,
     "species": "White pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 24
    },
    {
     "x": 63.4,
     "y": 46.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 24
    },
    {
     "x": 63.4,
     "y": 48.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 24
    },
    {
@@ -5621,7 +5517,7 @@
     "x": 63.4,
     "y": 52.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 24
    },
    {
@@ -5635,14 +5531,14 @@
     "x": 63.4,
     "y": 56.9,
     "species": "White pine",
-    "height_ft": 9.0,
+    "height_ft": 1.5,
     "line": 24
    },
    {
     "x": 63.4,
     "y": 58.9,
     "species": "White pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 24
    },
    {
@@ -5656,42 +5552,42 @@
     "x": 63.4,
     "y": 62.9,
     "species": "White pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 24
    },
    {
     "x": 63.4,
     "y": 64.9,
     "species": "White pine",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 24
    },
    {
     "x": 63.4,
     "y": 66.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 24
    },
    {
     "x": 63.4,
     "y": 68.9,
     "species": "White pine",
-    "height_ft": 1.5,
+    "height_ft": 9.0,
     "line": 24
    },
    {
     "x": 63.4,
     "y": 70.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 24
    },
    {
     "x": 63.4,
     "y": 72.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 24
    },
    {
@@ -5702,17 +5598,66 @@
     "line": 24
    },
    {
+    "x": 63.4,
+    "y": 76.9,
+    "species": "White pine",
+    "height_ft": 6.0,
+    "line": 24
+   },
+   {
+    "x": 63.4,
+    "y": 78.9,
+    "species": "White pine",
+    "height_ft": 6.0,
+    "line": 24
+   },
+   {
+    "x": 63.4,
+    "y": 80.9,
+    "species": "White pine",
+    "height_ft": 6.0,
+    "line": 24
+   },
+   {
+    "x": 63.4,
+    "y": 82.9,
+    "species": "White pine",
+    "height_ft": 9.0,
+    "line": 24
+   },
+   {
+    "x": 63.4,
+    "y": 84.9,
+    "species": "White pine",
+    "height_ft": 9.0,
+    "line": 24
+   },
+   {
+    "x": 63.4,
+    "y": 86.9,
+    "species": "White pine",
+    "height_ft": 9.0,
+    "line": 24
+   },
+   {
+    "x": 63.4,
+    "y": 88.9,
+    "species": "White pine",
+    "height_ft": 6.0,
+    "line": 24
+   },
+   {
     "x": 65.8,
     "y": 32.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 25
    },
    {
     "x": 65.8,
     "y": 34.9,
     "species": "White pine",
-    "height_ft": 9.0,
+    "height_ft": 1.5,
     "line": 25
    },
    {
@@ -5726,14 +5671,14 @@
     "x": 65.8,
     "y": 38.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 25
    },
    {
     "x": 65.8,
     "y": 40.9,
     "species": "White pine",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 25
    },
    {
@@ -5747,42 +5692,42 @@
     "x": 65.8,
     "y": 44.9,
     "species": "White pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 25
    },
    {
     "x": 65.8,
     "y": 46.9,
     "species": "White pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 25
    },
    {
     "x": 65.8,
     "y": 48.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 25
    },
    {
     "x": 65.8,
     "y": 50.9,
     "species": "White pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 25
    },
    {
     "x": 65.8,
     "y": 52.9,
     "species": "White pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 25
    },
    {
     "x": 65.8,
     "y": 54.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 25
    },
    {
@@ -5803,21 +5748,21 @@
     "x": 65.8,
     "y": 60.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 25
    },
    {
     "x": 65.8,
     "y": 62.9,
     "species": "White pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 25
    },
    {
     "x": 65.8,
     "y": 64.9,
     "species": "White pine",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 25
    },
    {
@@ -5831,7 +5776,7 @@
     "x": 65.8,
     "y": 68.9,
     "species": "White pine",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 25
    },
    {
@@ -5856,6 +5801,55 @@
     "line": 25
    },
    {
+    "x": 65.8,
+    "y": 76.9,
+    "species": "White pine",
+    "height_ft": 9.0,
+    "line": 25
+   },
+   {
+    "x": 65.8,
+    "y": 78.9,
+    "species": "White pine",
+    "height_ft": 6.0,
+    "line": 25
+   },
+   {
+    "x": 65.8,
+    "y": 80.9,
+    "species": "White pine",
+    "height_ft": 9.0,
+    "line": 25
+   },
+   {
+    "x": 65.8,
+    "y": 82.9,
+    "species": "White pine",
+    "height_ft": 9.0,
+    "line": 25
+   },
+   {
+    "x": 65.8,
+    "y": 84.9,
+    "species": "White pine",
+    "height_ft": 6.0,
+    "line": 25
+   },
+   {
+    "x": 65.8,
+    "y": 86.9,
+    "species": "White pine",
+    "height_ft": 9.0,
+    "line": 25
+   },
+   {
+    "x": 65.8,
+    "y": 88.9,
+    "species": "White pine",
+    "height_ft": 6.0,
+    "line": 25
+   },
+   {
     "x": 68.2,
     "y": 32.9,
     "species": "Blue spruce",
@@ -6003,17 +5997,73 @@
     "line": 26
    },
    {
+    "x": 68.2,
+    "y": 74.9,
+    "species": "Blue spruce",
+    "height_ft": 9.0,
+    "line": 26
+   },
+   {
+    "x": 68.2,
+    "y": 76.9,
+    "species": "Blue spruce",
+    "height_ft": 6.0,
+    "line": 26
+   },
+   {
+    "x": 68.2,
+    "y": 78.9,
+    "species": "Blue spruce",
+    "height_ft": 6.0,
+    "line": 26
+   },
+   {
+    "x": 68.2,
+    "y": 80.9,
+    "species": "Blue spruce",
+    "height_ft": 6.0,
+    "line": 26
+   },
+   {
+    "x": 68.2,
+    "y": 82.9,
+    "species": "Blue spruce",
+    "height_ft": 9.0,
+    "line": 26
+   },
+   {
+    "x": 68.2,
+    "y": 84.9,
+    "species": "Blue spruce",
+    "height_ft": 9.0,
+    "line": 26
+   },
+   {
+    "x": 68.2,
+    "y": 86.9,
+    "species": "Blue spruce",
+    "height_ft": 9.0,
+    "line": 26
+   },
+   {
+    "x": 68.2,
+    "y": 88.9,
+    "species": "Blue spruce",
+    "height_ft": 6.0,
+    "line": 26
+   },
+   {
     "x": 70.6,
     "y": 32.9,
     "species": "Blue spruce",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 27
    },
    {
     "x": 70.6,
     "y": 34.9,
     "species": "Blue spruce",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 27
    },
    {
@@ -6027,42 +6077,42 @@
     "x": 70.6,
     "y": 38.9,
     "species": "Blue spruce",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 27
    },
    {
     "x": 70.6,
     "y": 40.9,
     "species": "Blue spruce",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 27
    },
    {
     "x": 70.6,
     "y": 42.9,
     "species": "Blue spruce",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 27
    },
    {
     "x": 70.6,
     "y": 44.9,
     "species": "Blue spruce",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 27
    },
    {
     "x": 70.6,
     "y": 46.9,
     "species": "Blue spruce",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 27
    },
    {
     "x": 70.6,
     "y": 48.9,
     "species": "Blue spruce",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 27
    },
    {
@@ -6076,21 +6126,21 @@
     "x": 70.6,
     "y": 52.9,
     "species": "Blue spruce",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 27
    },
    {
     "x": 70.6,
     "y": 54.9,
     "species": "Blue spruce",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 27
    },
    {
     "x": 70.6,
     "y": 56.9,
     "species": "Blue spruce",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 27
    },
    {
@@ -6111,33 +6161,96 @@
     "x": 70.6,
     "y": 62.9,
     "species": "Blue spruce",
-    "height_ft": 1.5,
+    "height_ft": 9.0,
     "line": 27
    },
    {
     "x": 70.6,
     "y": 64.9,
     "species": "Blue spruce",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 27
    },
    {
     "x": 70.6,
     "y": 66.9,
     "species": "Blue spruce",
-    "height_ft": 9.0,
+    "height_ft": 1.5,
     "line": 27
    },
    {
     "x": 70.6,
     "y": 68.9,
     "species": "Blue spruce",
-    "height_ft": 1.5,
+    "height_ft": 9.0,
     "line": 27
    },
    {
     "x": 70.6,
     "y": 70.9,
+    "species": "Blue spruce",
+    "height_ft": 9.0,
+    "line": 27
+   },
+   {
+    "x": 70.6,
+    "y": 72.9,
+    "species": "Blue spruce",
+    "height_ft": 6.0,
+    "line": 27
+   },
+   {
+    "x": 70.6,
+    "y": 74.9,
+    "species": "Blue spruce",
+    "height_ft": 6.0,
+    "line": 27
+   },
+   {
+    "x": 70.6,
+    "y": 76.9,
+    "species": "Blue spruce",
+    "height_ft": 6.0,
+    "line": 27
+   },
+   {
+    "x": 70.6,
+    "y": 78.9,
+    "species": "Blue spruce",
+    "height_ft": 6.0,
+    "line": 27
+   },
+   {
+    "x": 70.6,
+    "y": 80.9,
+    "species": "Blue spruce",
+    "height_ft": 1.5,
+    "line": 27
+   },
+   {
+    "x": 70.6,
+    "y": 82.9,
+    "species": "Blue spruce",
+    "height_ft": 1.5,
+    "line": 27
+   },
+   {
+    "x": 70.6,
+    "y": 84.9,
+    "species": "Blue spruce",
+    "height_ft": 1.5,
+    "line": 27
+   },
+   {
+    "x": 70.6,
+    "y": 86.9,
+    "species": "Blue spruce",
+    "height_ft": 6.0,
+    "line": 27
+   },
+   {
+    "x": 70.6,
+    "y": 88.9,
     "species": "Blue spruce",
     "height_ft": 6.0,
     "line": 27
@@ -6146,7 +6259,7 @@
     "x": 73.0,
     "y": 30.9,
     "species": "Blue spruce",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 28
    },
    {
@@ -6174,49 +6287,49 @@
     "x": 73.0,
     "y": 38.9,
     "species": "Blue spruce",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 28
    },
    {
     "x": 73.0,
     "y": 40.9,
     "species": "Blue spruce",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 28
    },
    {
     "x": 73.0,
     "y": 42.9,
     "species": "Blue spruce",
-    "height_ft": 9.0,
+    "height_ft": 1.5,
     "line": 28
    },
    {
     "x": 73.0,
     "y": 44.9,
     "species": "Blue spruce",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 28
    },
    {
     "x": 73.0,
     "y": 46.9,
     "species": "Blue spruce",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 28
    },
    {
     "x": 73.0,
     "y": 48.9,
     "species": "Blue spruce",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 28
    },
    {
     "x": 73.0,
     "y": 50.9,
     "species": "Blue spruce",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 28
    },
    {
@@ -6230,21 +6343,21 @@
     "x": 73.0,
     "y": 54.9,
     "species": "Blue spruce",
-    "height_ft": 1.5,
+    "height_ft": 9.0,
     "line": 28
    },
    {
     "x": 73.0,
     "y": 56.9,
     "species": "Blue spruce",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 28
    },
    {
     "x": 73.0,
     "y": 58.9,
     "species": "Blue spruce",
-    "height_ft": 1.5,
+    "height_ft": 9.0,
     "line": 28
    },
    {
@@ -6272,7 +6385,7 @@
     "x": 73.0,
     "y": 66.9,
     "species": "Blue spruce",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 28
    },
    {
@@ -6286,28 +6399,28 @@
     "x": 73.0,
     "y": 70.9,
     "species": "Blue spruce",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 28
    },
    {
     "x": 73.0,
     "y": 72.9,
     "species": "Blue spruce",
-    "height_ft": 1.5,
+    "height_ft": 9.0,
     "line": 28
    },
    {
     "x": 73.0,
     "y": 74.9,
     "species": "Blue spruce",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 28
    },
    {
     "x": 73.0,
     "y": 76.9,
     "species": "Blue spruce",
-    "height_ft": 1.5,
+    "height_ft": 9.0,
     "line": 28
    },
    {
@@ -6321,7 +6434,7 @@
     "x": 73.0,
     "y": 80.9,
     "species": "Blue spruce",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 28
    },
    {
@@ -6335,7 +6448,7 @@
     "x": 73.0,
     "y": 84.9,
     "species": "Blue spruce",
-    "height_ft": 1.5,
+    "height_ft": 9.0,
     "line": 28
    },
    {
@@ -6348,34 +6461,6 @@
    {
     "x": 73.0,
     "y": 88.9,
-    "species": "Blue spruce",
-    "height_ft": 9.0,
-    "line": 28
-   },
-   {
-    "x": 73.0,
-    "y": 90.9,
-    "species": "Blue spruce",
-    "height_ft": 6.0,
-    "line": 28
-   },
-   {
-    "x": 73.0,
-    "y": 92.9,
-    "species": "Blue spruce",
-    "height_ft": 9.0,
-    "line": 28
-   },
-   {
-    "x": 73.0,
-    "y": 94.9,
-    "species": "Blue spruce",
-    "height_ft": 6.0,
-    "line": 28
-   },
-   {
-    "x": 73.0,
-    "y": 96.9,
     "species": "Blue spruce",
     "height_ft": 6.0,
     "line": 28
@@ -6391,7 +6476,7 @@
     "x": 75.4,
     "y": 32.9,
     "species": "Blue spruce",
-    "height_ft": 1.5,
+    "height_ft": 9.0,
     "line": 29
    },
    {
@@ -6405,28 +6490,28 @@
     "x": 75.4,
     "y": 36.9,
     "species": "Blue spruce",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 29
    },
    {
     "x": 75.4,
     "y": 38.9,
     "species": "Blue spruce",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 29
    },
    {
     "x": 75.4,
     "y": 40.9,
     "species": "Blue spruce",
-    "height_ft": 1.5,
+    "height_ft": 9.0,
     "line": 29
    },
    {
     "x": 75.4,
     "y": 42.9,
     "species": "Blue spruce",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 29
    },
    {
@@ -6447,14 +6532,14 @@
     "x": 75.4,
     "y": 48.9,
     "species": "Blue spruce",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 29
    },
    {
     "x": 75.4,
     "y": 50.9,
     "species": "Blue spruce",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 29
    },
    {
@@ -6468,7 +6553,7 @@
     "x": 75.4,
     "y": 54.9,
     "species": "Blue spruce",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 29
    },
    {
@@ -6482,7 +6567,7 @@
     "x": 75.4,
     "y": 58.9,
     "species": "Blue spruce",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 29
    },
    {
@@ -6496,21 +6581,21 @@
     "x": 75.4,
     "y": 62.9,
     "species": "Blue spruce",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 29
    },
    {
     "x": 75.4,
     "y": 64.9,
     "species": "Blue spruce",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 29
    },
    {
     "x": 75.4,
     "y": 66.9,
     "species": "Blue spruce",
-    "height_ft": 9.0,
+    "height_ft": 1.5,
     "line": 29
    },
    {
@@ -6524,7 +6609,7 @@
     "x": 75.4,
     "y": 70.9,
     "species": "Blue spruce",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 29
    },
    {
@@ -6538,7 +6623,7 @@
     "x": 75.4,
     "y": 74.9,
     "species": "Blue spruce",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 29
    },
    {
@@ -6559,21 +6644,21 @@
     "x": 75.4,
     "y": 80.9,
     "species": "Blue spruce",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 29
    },
    {
     "x": 75.4,
     "y": 82.9,
     "species": "Blue spruce",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 29
    },
    {
     "x": 75.4,
     "y": 84.9,
     "species": "Blue spruce",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 29
    },
    {
@@ -6591,45 +6676,10 @@
     "line": 29
    },
    {
-    "x": 75.4,
-    "y": 90.9,
-    "species": "Blue spruce",
-    "height_ft": 9.0,
-    "line": 29
-   },
-   {
-    "x": 75.4,
-    "y": 92.9,
-    "species": "Blue spruce",
-    "height_ft": 1.5,
-    "line": 29
-   },
-   {
-    "x": 75.4,
-    "y": 94.9,
-    "species": "Blue spruce",
-    "height_ft": 6.0,
-    "line": 29
-   },
-   {
-    "x": 75.4,
-    "y": 96.9,
-    "species": "Blue spruce",
-    "height_ft": 1.5,
-    "line": 29
-   },
-   {
-    "x": 75.4,
-    "y": 98.9,
-    "species": "Blue spruce",
-    "height_ft": 6.0,
-    "line": 29
-   },
-   {
     "x": 77.8,
     "y": 30.9,
     "species": "Blue spruce",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 30
    },
    {
@@ -6657,14 +6707,14 @@
     "x": 77.8,
     "y": 38.9,
     "species": "Blue spruce",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 30
    },
    {
     "x": 77.8,
     "y": 40.9,
     "species": "Blue spruce",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 30
    },
    {
@@ -6678,7 +6728,7 @@
     "x": 77.8,
     "y": 44.9,
     "species": "Blue spruce",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 30
    },
    {
@@ -6692,7 +6742,7 @@
     "x": 77.8,
     "y": 48.9,
     "species": "Blue spruce",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 30
    },
    {
@@ -6734,7 +6784,7 @@
     "x": 77.8,
     "y": 60.9,
     "species": "Blue spruce",
-    "height_ft": 9.0,
+    "height_ft": 1.5,
     "line": 30
    },
    {
@@ -6762,7 +6812,7 @@
     "x": 77.8,
     "y": 68.9,
     "species": "Blue spruce",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 30
    },
    {
@@ -6790,21 +6840,21 @@
     "x": 77.8,
     "y": 76.9,
     "species": "Blue spruce",
-    "height_ft": 1.5,
+    "height_ft": 9.0,
     "line": 30
    },
    {
     "x": 77.8,
     "y": 78.9,
     "species": "Blue spruce",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 30
    },
    {
     "x": 77.8,
     "y": 80.9,
     "species": "Blue spruce",
-    "height_ft": 1.5,
+    "height_ft": 9.0,
     "line": 30
    },
    {
@@ -6818,7 +6868,7 @@
     "x": 77.8,
     "y": 84.9,
     "species": "Blue spruce",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 30
    },
    {
@@ -6832,42 +6882,7 @@
     "x": 77.8,
     "y": 88.9,
     "species": "Blue spruce",
-    "height_ft": 6.0,
-    "line": 30
-   },
-   {
-    "x": 77.8,
-    "y": 90.9,
-    "species": "Blue spruce",
-    "height_ft": 6.0,
-    "line": 30
-   },
-   {
-    "x": 77.8,
-    "y": 92.9,
-    "species": "Blue spruce",
-    "height_ft": 9.0,
-    "line": 30
-   },
-   {
-    "x": 77.8,
-    "y": 94.9,
-    "species": "Blue spruce",
     "height_ft": 1.5,
-    "line": 30
-   },
-   {
-    "x": 77.8,
-    "y": 96.9,
-    "species": "Blue spruce",
-    "height_ft": 9.0,
-    "line": 30
-   },
-   {
-    "x": 77.8,
-    "y": 98.9,
-    "species": "Blue spruce",
-    "height_ft": 6.0,
     "line": 30
    },
    {
@@ -6881,56 +6896,56 @@
     "x": 80.2,
     "y": 32.9,
     "species": "Blue spruce",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 31
    },
    {
     "x": 80.2,
     "y": 34.9,
     "species": "Blue spruce",
-    "height_ft": 1.5,
+    "height_ft": 9.0,
     "line": 31
    },
    {
     "x": 80.2,
     "y": 36.9,
     "species": "Blue spruce",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 31
    },
    {
     "x": 80.2,
     "y": 38.9,
     "species": "Blue spruce",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 31
    },
    {
     "x": 80.2,
     "y": 40.9,
     "species": "Blue spruce",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 31
    },
    {
     "x": 80.2,
     "y": 42.9,
     "species": "Blue spruce",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 31
    },
    {
     "x": 80.2,
     "y": 44.9,
     "species": "Blue spruce",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 31
    },
    {
     "x": 80.2,
     "y": 46.9,
     "species": "Blue spruce",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 31
    },
    {
@@ -6944,21 +6959,21 @@
     "x": 80.2,
     "y": 50.9,
     "species": "Blue spruce",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 31
    },
    {
     "x": 80.2,
     "y": 52.9,
     "species": "Blue spruce",
-    "height_ft": 1.5,
+    "height_ft": 9.0,
     "line": 31
    },
    {
     "x": 80.2,
     "y": 54.9,
     "species": "Blue spruce",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 31
    },
    {
@@ -6972,14 +6987,14 @@
     "x": 80.2,
     "y": 58.9,
     "species": "Blue spruce",
-    "height_ft": 9.0,
+    "height_ft": 1.5,
     "line": 31
    },
    {
     "x": 80.2,
     "y": 60.9,
     "species": "Blue spruce",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 31
    },
    {
@@ -7014,7 +7029,7 @@
     "x": 80.2,
     "y": 70.9,
     "species": "Blue spruce",
-    "height_ft": 1.5,
+    "height_ft": 6.0,
     "line": 31
    },
    {
@@ -7049,7 +7064,7 @@
     "x": 80.2,
     "y": 80.9,
     "species": "Blue spruce",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 31
    },
    {
@@ -7070,47 +7085,12 @@
     "x": 80.2,
     "y": 86.9,
     "species": "Blue spruce",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 31
    },
    {
     "x": 80.2,
     "y": 88.9,
-    "species": "Blue spruce",
-    "height_ft": 6.0,
-    "line": 31
-   },
-   {
-    "x": 80.2,
-    "y": 90.9,
-    "species": "Blue spruce",
-    "height_ft": 6.0,
-    "line": 31
-   },
-   {
-    "x": 80.2,
-    "y": 92.9,
-    "species": "Blue spruce",
-    "height_ft": 6.0,
-    "line": 31
-   },
-   {
-    "x": 80.2,
-    "y": 94.9,
-    "species": "Blue spruce",
-    "height_ft": 9.0,
-    "line": 31
-   },
-   {
-    "x": 80.2,
-    "y": 96.9,
-    "species": "Blue spruce",
-    "height_ft": 9.0,
-    "line": 31
-   },
-   {
-    "x": 80.2,
-    "y": 98.9,
     "species": "Blue spruce",
     "height_ft": 9.0,
     "line": 31
@@ -7140,28 +7120,28 @@
     "x": 82.6,
     "y": 36.9,
     "species": "Blue spruce",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 32
    },
    {
     "x": 82.6,
     "y": 38.9,
     "species": "Blue spruce",
-    "height_ft": 1.5,
+    "height_ft": 9.0,
     "line": 32
    },
    {
     "x": 82.6,
     "y": 40.9,
     "species": "Blue spruce",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 32
    },
    {
     "x": 82.6,
     "y": 42.9,
     "species": "Blue spruce",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 32
    },
    {
@@ -7203,35 +7183,35 @@
     "x": 82.6,
     "y": 54.9,
     "species": "Blue spruce",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 32
    },
    {
     "x": 82.6,
     "y": 56.9,
     "species": "Blue spruce",
-    "height_ft": 1.5,
+    "height_ft": 9.0,
     "line": 32
    },
    {
     "x": 82.6,
     "y": 58.9,
     "species": "Blue spruce",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 32
    },
    {
     "x": 82.6,
     "y": 60.9,
     "species": "Blue spruce",
-    "height_ft": 9.0,
+    "height_ft": 1.5,
     "line": 32
    },
    {
     "x": 82.6,
     "y": 62.9,
     "species": "Blue spruce",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 32
    },
    {
@@ -7245,42 +7225,42 @@
     "x": 82.6,
     "y": 66.9,
     "species": "Blue spruce",
-    "height_ft": 1.5,
+    "height_ft": 9.0,
     "line": 32
    },
    {
     "x": 82.6,
     "y": 68.9,
     "species": "Blue spruce",
-    "height_ft": 1.5,
+    "height_ft": 9.0,
     "line": 32
    },
    {
     "x": 82.6,
     "y": 70.9,
     "species": "Blue spruce",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 32
    },
    {
     "x": 82.6,
     "y": 72.9,
     "species": "Blue spruce",
-    "height_ft": 9.0,
+    "height_ft": 1.5,
     "line": 32
    },
    {
     "x": 82.6,
     "y": 74.9,
     "species": "Blue spruce",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 32
    },
    {
     "x": 82.6,
     "y": 76.9,
     "species": "Blue spruce",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 32
    },
    {
@@ -7294,14 +7274,14 @@
     "x": 82.6,
     "y": 80.9,
     "species": "Blue spruce",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 32
    },
    {
     "x": 82.6,
     "y": 82.9,
     "species": "Blue spruce",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 32
    },
    {
@@ -7322,42 +7302,7 @@
     "x": 82.6,
     "y": 88.9,
     "species": "Blue spruce",
-    "height_ft": 6.0,
-    "line": 32
-   },
-   {
-    "x": 82.6,
-    "y": 90.9,
-    "species": "Blue spruce",
-    "height_ft": 1.5,
-    "line": 32
-   },
-   {
-    "x": 82.6,
-    "y": 92.9,
-    "species": "Blue spruce",
-    "height_ft": 6.0,
-    "line": 32
-   },
-   {
-    "x": 82.6,
-    "y": 94.9,
-    "species": "Blue spruce",
-    "height_ft": 6.0,
-    "line": 32
-   },
-   {
-    "x": 82.6,
-    "y": 96.9,
-    "species": "Blue spruce",
-    "height_ft": 1.5,
-    "line": 32
-   },
-   {
-    "x": 82.6,
-    "y": 98.9,
-    "species": "Blue spruce",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 32
    },
    {
@@ -7371,7 +7316,7 @@
     "x": 85.0,
     "y": 30.9,
     "species": "Blue spruce",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 33
    },
    {
@@ -7399,21 +7344,21 @@
     "x": 85.0,
     "y": 38.9,
     "species": "Blue spruce",
-    "height_ft": 6.0,
+    "height_ft": 1.5,
     "line": 33
    },
    {
     "x": 85.0,
     "y": 40.9,
     "species": "Blue spruce",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 33
    },
    {
     "x": 85.0,
     "y": 42.9,
     "species": "Blue spruce",
-    "height_ft": 9.0,
+    "height_ft": 6.0,
     "line": 33
    },
    {
@@ -7427,7 +7372,7 @@
     "x": 85.0,
     "y": 46.9,
     "species": "Blue spruce",
-    "height_ft": 9.0,
+    "height_ft": 1.5,
     "line": 33
    },
    {
@@ -7462,7 +7407,7 @@
     "x": 85.0,
     "y": 56.9,
     "species": "Blue spruce",
-    "height_ft": 6.0,
+    "height_ft": 9.0,
     "line": 33
    },
    {
@@ -7476,7 +7421,7 @@
     "x": 85.0,
     "y": 60.9,
     "species": "Blue spruce",
-    "height_ft": 1.5,
+    "height_ft": 9.0,
     "line": 33
    },
    {
@@ -7490,84 +7435,7 @@
     "x": 85.0,
     "y": 64.9,
     "species": "Blue spruce",
-    "height_ft": 1.5,
-    "line": 33
-   },
-   {
-    "x": 85.0,
-    "y": 66.9,
-    "species": "Blue spruce",
     "height_ft": 6.0,
-    "line": 33
-   },
-   {
-    "x": 85.0,
-    "y": 68.9,
-    "species": "Blue spruce",
-    "height_ft": 9.0,
-    "line": 33
-   },
-   {
-    "x": 85.0,
-    "y": 70.9,
-    "species": "Blue spruce",
-    "height_ft": 6.0,
-    "line": 33
-   },
-   {
-    "x": 85.0,
-    "y": 72.9,
-    "species": "Blue spruce",
-    "height_ft": 9.0,
-    "line": 33
-   },
-   {
-    "x": 85.0,
-    "y": 74.9,
-    "species": "Blue spruce",
-    "height_ft": 1.5,
-    "line": 33
-   },
-   {
-    "x": 85.0,
-    "y": 76.9,
-    "species": "Blue spruce",
-    "height_ft": 6.0,
-    "line": 33
-   },
-   {
-    "x": 85.0,
-    "y": 78.9,
-    "species": "Blue spruce",
-    "height_ft": 6.0,
-    "line": 33
-   },
-   {
-    "x": 85.0,
-    "y": 80.9,
-    "species": "Blue spruce",
-    "height_ft": 6.0,
-    "line": 33
-   },
-   {
-    "x": 85.0,
-    "y": 82.9,
-    "species": "Blue spruce",
-    "height_ft": 6.0,
-    "line": 33
-   },
-   {
-    "x": 85.0,
-    "y": 84.9,
-    "species": "Blue spruce",
-    "height_ft": 9.0,
-    "line": 33
-   },
-   {
-    "x": 85.0,
-    "y": 86.9,
-    "species": "Blue spruce",
-    "height_ft": 9.0,
     "line": 33
    }
   ]
@@ -7614,12 +7482,12 @@
   ],
   "lilacs": [
    [
-    50.7,
-    142.2
+    52.6,
+    140.3
    ],
    [
-    60.0,
-    153.2
+    62.1,
+    151.7
    ]
   ]
  }

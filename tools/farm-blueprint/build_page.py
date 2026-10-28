@@ -307,7 +307,7 @@ def options():
             fig('R', 'Road side: steep front gable with its octagonal vent on the left, wing on the right with the one-storey porch, white posts and railing, lattice skirt. White siding, slate-blue trim, dark shingles, buff brick chimney, fieldstone foundation.', farmhouse()),
         ]),
         ('3 · The barn, as I now picture it', [
-            fig('W', 'West side: black shingle roof slope with the painted green Christmas tree and white star, white trim, two tractor-size doors sliding left and right at the top of the black asphalt ramp. A mature lilac at the bottom of the ramp on each side; the old well (left, north) and the sandbox (right, south) sit on grass patches against the barn.', barn_ramp_side(), ('Bank barns', 'https://en.wikipedia.org/wiki/Bank_barn')),
+            fig('W', 'West side: black shingle roof slope with the painted green Christmas tree and white star, white trim, two tractor-size doors sliding left and right at the top of the black asphalt ramp. A mature bush at the bottom of the ramp on each side; the old well (left, north) and the sandbox (right, south) sit on grass patches against the barn.', barn_ramp_side(), ('Bank barns', 'https://en.wikipedia.org/wiki/Bank_barn')),
             fig('S', 'South end: one giant sliding door in the fieldstone lower level, a walk-through door cut into it, and the netless hoop.', barn_south_end()),
         ]),
         ('7 · Orchard trees', [

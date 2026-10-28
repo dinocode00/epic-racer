@@ -65,6 +65,24 @@ def to_m(aerial_pts):
     return np.column_stack([p[:, 0], -p[:, 1]]) * M_PER_PX
 
 
+# v7: the top of the Christmas tree block is one straight west-east line, a little south of
+# the back wall of the red garage (9). The gravel yard is cut back so it stops short of it.
+CT_TOP_Y_M = 91.0
+GRAVEL_CUT_Y_M = CT_TOP_Y_M + 2.6  # leaves room for the mowed path along the block's top
+
+
+def _edge_x_at(p, q, y):
+    return p[0] + (q[0] - p[0]) * (y - p[1]) / (q[1] - p[1])
+
+
+def christmas_poly_m():
+    """Block outline in metres: straight top at CT_TOP_Y_M, sides and bottom from the sketch."""
+    nw, ne, se, sw = (np.array(p) for p in sk(F['christmas_trees']['poly']))
+    return [[round(_edge_x_at(sw, nw, CT_TOP_Y_M), 2), CT_TOP_Y_M],
+            [round(_edge_x_at(se, ne, CT_TOP_Y_M), 2), CT_TOP_Y_M],
+            se.tolist(), sw.tolist()]
+
+
 def barn_centre():
     return to_m(np.array([ANCHORS[1][1]], float))[0]
 
@@ -125,7 +143,7 @@ F['red_shed'] = dict(n=11, kind='building', poly=[(1180, 765), (1202, 775), (118
 F['greenhouse'] = dict(n=12, kind='greenhouse', poly=[(1213, 805), (1293, 832), (1282, 865), (1203, 838)])
 # Extended west toward the property line (v5): the slanted top edge continues west until it
 # nearly meets the orchard, leaving only a mowed path along the west line.
-F['christmas_trees'] = dict(n=13, kind='tree_block', poly=[(747, 742), (1192, 914), (1200, 850), (1222, 792), (1315, 780), (1315, 1175), (685, 1132)],
+F['christmas_trees'] = dict(n=13, kind='tree_block', poly=[(747, 742), (1305, 988), (1315, 1175), (685, 1132)],
                             marked_tree=(1005, 960))
 F['pumpkin_patch'] = dict(n=14, kind='patch', poly=[(726, 1242), (1340, 1246), (1342, 1366), (630, 1362)])
 F['wood_burner'] = dict(n=15, kind='burner', centre=(730, 450))
@@ -140,7 +158,7 @@ F['nw_conifers'] = dict(kind='trees', pts=[(890, 210), (865, 255), (850, 295), (
 F['ne_tree_row'] = dict(kind='tree_row', line=[(905, 150), (1180, 270), (1455, 392)])
 F['west_trail'] = dict(kind='trail', line=[(740, 705), (729, 760), (700, 940), (668, 1168)])
 F['south_lane'] = dict(kind='lane', line=[(640, 1196), (778, 1172), (1060, 1190), (1346, 1210)])
-F['east_trail'] = dict(kind='trail', line=[(1198, 812), (1228, 776), (1300, 766), (1342, 792), (1349, 1000), (1349, 1200), (1342, 1366)])
+F['east_trail'] = dict(kind='trail', line=[(1349, 1000), (1349, 1200), (1342, 1366)])  # v7: top part set in metres in render_svg
 F['christmas_corner_trees'] = dict(kind='trees', pts=[(805, 760), (800, 1132), (1305, 985), (1315, 1172)])
 F['christmas_inner_trees'] = dict(kind='trees', pts=[(870, 930), (1120, 985), (1205, 1005), (925, 1075), (1075, 1095), (1178, 1105)])
 # Unmowed field of weeds, grass and wildflowers east of the barn and along the east line

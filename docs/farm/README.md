@@ -7,8 +7,8 @@ routes are deliberately not designed yet.
 | File | What it is |
 | --- | --- |
 | `sketch.jpg` | The hand-drawn master sketch with the 17 numbered landmarks. It wins every disagreement. |
-| `blueprint.png` | The current blueprint (v6): landmarks on the real outline, contours every 2 ft. |
-| `blueprint.json` | The same blueprint as data, in metres (x east, y north, origin at the SW property corner): every confirmed fact, the open questions, the terrain model and all 931 Christmas trees. |
+| `blueprint.png` | The current blueprint (v7): landmarks on the real outline, contours every 2 ft. |
+| `blueprint.json` | The same blueprint as data, in metres (x east, y north, origin at the SW property corner): every confirmed fact, the open questions, the terrain model and all 913 Christmas trees. |
 
 ## Landmarks
 
@@ -21,7 +21,7 @@ a very large Scotch pine, five huge spruces between the road and the house, a ro
 arborvitae along the driveway, a spruce row along the northeast line, mowed grass paths, and
 a wild field of weeds, grass and wildflowers. The red garage has a rooster weather vane.
 Two old flat wooden hay wagons stand in the grass east of the shed, one with pumpkins, and a
-mature lilac grows on each side at the bottom of the barn ramp.
+mature bush grows from the grass on each side at the bottom of the barn ramp.
 
 ## The picture to capture
 
@@ -48,8 +48,8 @@ rising hill of grass and wildflowers past the pumpkin patch.
   cherry.
 - Christmas trees: Scotch pine, Douglas fir, white pine and blue spruce in bands from west
   to east, in an orderly grid of south-north lines, sizes random tree by tree. The block
-  reaches west to a mowed path along the property line, nearly meets the orchard, and on
-  its east side reaches north to a few metres below the shed.
+  reaches west to a mowed path along the property line. Its top is one straight west-east
+  line just south of the back of the red garage; the gravel yard stops short of it.
 - Ground (barnyard = 0): falls about 20 ft south to the pumpkin patch (gentle at first,
   steeper near the bottom), about 15 ft west to the road corner, and rises slightly toward
   the farmhouse.

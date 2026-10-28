@@ -30,7 +30,7 @@ def _smooth(t):
 class Ground:
     def __init__(self):
         F = b.F
-        self.ct = _P(F['christmas_trees']['poly'])
+        self.ct = np.array(b.christmas_poly_m())
         self.pp = _P(F['pumpkin_patch']['poly'])
         self.y_top = self.ct[:, 1].max()  # northernmost point of the Christmas tree block
         self.y_low = self.pp[:, 1].mean()  # middle of the pumpkin patch
@@ -117,7 +117,7 @@ def _inside(pt, poly):
 def christmas_trees(seed=11):
     """Neat north-south lines; species in four bands west to east; mixed sizes."""
     rng = np.random.default_rng(seed)
-    ct = _P(b.F['christmas_trees']['poly'])
+    ct = np.array(b.christmas_poly_m())
     xs = np.arange(ct[:, 0].min() + 1.6, ct[:, 0].max() - 1.0, COL_SPACING)
     cols = []
     for x in xs:

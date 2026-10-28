@@ -86,6 +86,21 @@ def conifer(p, r, cls='conifer'):
     return f'<polygon class="{cls}" points="{" ".join(pts)}"/>'
 
 
+def clip_above(poly, y0):
+    """Keep the part of a polygon at or north of y = y0 (Sutherland-Hodgman, one edge)."""
+    out = []
+    n = len(poly)
+    for i in range(n):
+        a, c = np.asarray(poly[i], float), np.asarray(poly[(i + 1) % n], float)
+        ina, inc = a[1] >= y0, c[1] >= y0
+        if ina:
+            out.append(a)
+        if ina != inc:
+            t = (y0 - a[1]) / (c[1] - a[1])
+            out.append(a + (c - a) * t)
+    return np.array(out)
+
+
 def near(pt, poly, d):
     """True if pt is inside poly or within d metres of its outline."""
     if inside(pt, poly):
@@ -236,6 +251,10 @@ def render():
     out.append('<g id="lm-paths">')
     for k, wdt in (('south_lane', 4.2), ('west_trail', 2.6), ('east_trail', 2.6)):
         tl = P(F[k]['line'])
+        if k == 'east_trail':  # v7: from the cut gravel, along the block's straight top, then down the east side
+            ct_m = np.array(b.christmas_poly_m())
+            top = b.CT_TOP_Y_M + 1.4
+            tl = np.vstack([[[60.0, top + 0.6], [ct_m[1][0], top], [ct_m[1][0] + 3.6, top - 3.0]], tl])
         out.append(f'<path class="mowed" style="stroke-width:{wdt}" d="{smooth_d(tl, False)}"/>')
         for off in (-0.55, 0.55):
             sh = [p + np.array([0.0, 0.0]) for p in tl]
@@ -243,7 +262,7 @@ def render():
     out.append('</g>')
 
     # Christmas tree block
-    ct = P(F['christmas_trees']['poly'])
+    ct = np.array(b.christmas_poly_m())
     out.append(f'<g id="lm-13"><path class="tree-block" d="{poly_d(ct)}"/>')
     trees, _ = terrain.christmas_trees()
     for t in trees:
@@ -255,7 +274,7 @@ def render():
     out.append('</g>')
 
     # Gravel yard and driveway
-    dw = P(F['driveway']['poly'])
+    dw = clip_above(P(F['driveway']['poly']), b.GRAVEL_CUT_Y_M)
     out.append(f'<g id="lm-5"><path class="gravel" d="{smooth_d(dw, True, 0.35)}"/></g>')
     # Mailbox at the entrance
     ent = P([(757, 290)])[0] + nrm * 1.2 - nw_dir * 3.5
@@ -321,13 +340,13 @@ def render():
     # Grass patches on both sides of the ramp, touching the barn and the ramp
     for s in (-1, 1):
         patch = [bcen + V * 5.75 + U * 4.6 * s, bcen + V * 5.75 + U * 10.8 * s,
-                 bcen + V * 12.3 + U * 10.8 * s, bcen + V * 12.3 + U * 5.11 * s]
+                 bcen + V * 16 + U * 10.8 * s, bcen + V * 16 + U * 5.4 * s]
         out.append(f'<path class="grass-patch" d="{poly_d(patch)}"/>')
     out.append(f'<path class="blacktop" d="{poly_d(ramp)}"/>')
     # A mature lilac at the bottom of the ramp on each side
     out.append('</g><g id="lm-lilac">')
     for s in (-1, 1):
-        lc = bcen + V * 16.8 + U * 7.2 * s
+        lc = bcen + V * 14.2 + U * 7.4 * s  # in the grass at the bottom of the ramp side, not past its end
         out.append(f'<circle class="lilac" cx="{lc[0]:.1f}" cy="{-lc[1]:.1f}" r="1.7"/>')
         for k in range(6):
             q = lc + np.array([math.cos(k * 1.05 + s), math.sin(k * 1.05 + s)]) * 0.95
