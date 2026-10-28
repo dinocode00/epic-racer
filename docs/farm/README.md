@@ -7,7 +7,7 @@ routes are deliberately not designed yet.
 | File | What it is |
 | --- | --- |
 | `sketch.jpg` | The hand-drawn master sketch with the 17 numbered landmarks. It wins every disagreement. |
-| `blueprint.png` | The current blueprint (v7): landmarks on the real outline, contours every 2 ft. |
+| `blueprint.png` | The current blueprint (v8): landmarks on the real outline, contours every 2 ft. |
 | `blueprint.json` | The same blueprint as data, in metres (x east, y north, origin at the SW property corner): every confirmed fact, the open questions, the terrain model and all 913 Christmas trees. |
 
 ## Landmarks
@@ -21,7 +21,7 @@ a very large Scotch pine, five huge spruces between the road and the house, a ro
 arborvitae along the driveway, a spruce row along the northeast line, mowed grass paths, and
 a wild field of weeds, grass and wildflowers. The red garage has a rooster weather vane.
 Two old flat wooden hay wagons stand in the grass east of the shed, one with pumpkins, and a
-mature bush grows from the grass on each side at the bottom of the barn ramp.
+mature lilac (purple blossoms) grows from the grass on each side at the bottom of the barn ramp.
 
 ## The picture to capture
 

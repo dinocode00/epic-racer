@@ -155,6 +155,8 @@ F['big_tree'] = dict(kind='tree', centre=(842, 440))
 # Mature arborvitae (~11 ft) along the north edge of the driveway, from the road to the windmill
 F['arborvitae'] = dict(kind='tree_row', line=[(775, 257), (875, 307), (955, 345)])
 F['nw_conifers'] = dict(kind='trees', pts=[(890, 210), (865, 255), (850, 295), (930, 285), (980, 260)])
+# v8: the spruce that stood in the arborvitae row moves ~6 m north (metres, replaces pts[2])
+SPRUCE_MOVED_M = {2: (22.0, 183.0)}
 F['ne_tree_row'] = dict(kind='tree_row', line=[(905, 150), (1180, 270), (1455, 392)])
 F['west_trail'] = dict(kind='trail', line=[(740, 705), (729, 760), (700, 940), (668, 1168)])
 F['south_lane'] = dict(kind='lane', line=[(640, 1196), (778, 1172), (1060, 1190), (1346, 1210)])

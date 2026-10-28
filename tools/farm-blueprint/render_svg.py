@@ -323,7 +323,8 @@ def render():
     for dx, dy, r in ((0, 0, 6.8), (-2.6, 2.2, 3.4), (2.8, 1.6, 3.2), (1.4, -3.0, 3.4), (-2.4, -2.4, 3.0), (0.4, 0.4, 3.0)):
         out.append(f'<circle class="{"big-pine" if r > 6 else "big-pine-tuft"}" cx="{bt[0] + dx:.1f}" cy="{-(bt[1] + dy):.1f}" r="{r:.1f}"/>')
     out.append('</g><g id="lm-conifers">')
-    for p in P(F['nw_conifers']['pts']):
+    for i, p in enumerate(P(F['nw_conifers']['pts'])):
+        p = np.array(b.SPRUCE_MOVED_M.get(i, p), float)
         out.append(conifer(p, 4.2, 'spruce big'))
     out.append('</g><g id="lm-arborvitae">')
     for p in along(P(F['arborvitae']['line']), 1.15):
