@@ -178,11 +178,23 @@ def convert(v):
     return v
 
 
+# v9: as remembered, the east line steps in where the Christmas trees start and then runs just
+# outside the east mowed path down to the south line. The old strip east of it is wild field
+# outside the property. Points in metres, replacing the satellite SE corner.
+EAST_LINE_M = [(103.0, 95.0), (95.0, 88.5), (94.6, 40.0), (94.3, -6.9)]
+
+
+def boundary_m():
+    pts = np.round(to_m(np.array(BOUNDARY_AERIAL, float)), 1).tolist()
+    se = BOUNDARY_AERIAL.index((1040, 1168))
+    return pts[:se] + [list(p) for p in EAST_LINE_M] + pts[se + 2:]  # drop the old SE corner and next point
+
+
 def blueprint():
     out = {
         'units': 'metres; x east, y north; origin = SW property corner',
         'm_per_aerial_px': M_PER_PX,
-        'boundary': np.round(to_m(np.array(BOUNDARY_AERIAL, float)), 1).tolist(),
+        'boundary': boundary_m(),
         'features': {k: {kk: convert(vv) for kk, vv in v.items()} for k, v in F.items()},
     }
     return out

@@ -7,7 +7,7 @@ routes are deliberately not designed yet.
 | File | What it is |
 | --- | --- |
 | `sketch.jpg` | The hand-drawn master sketch with the 17 numbered landmarks. It wins every disagreement. |
-| `blueprint.png` | The current blueprint (v8): landmarks on the real outline, contours every 2 ft. |
+| `blueprint.png` | The current blueprint (v9): landmarks on the real outline, contours every 2 ft. |
 | `blueprint.json` | The same blueprint as data, in metres (x east, y north, origin at the SW property corner): every confirmed fact, the open questions, the terrain model and all 913 Christmas trees. |
 
 ## Landmarks
@@ -25,8 +25,9 @@ mature lilac (purple blossoms) grows from the grass on each side at the bottom o
 
 ## The picture to capture
 
-Lush green summer into early fall: fruit on the trees, flowers blooming, sunshine. Five
-acres bordered by prairie and trees, no fences. A cracked paved country road on the
+Lush green summer into early fall: fruit on the trees, flowers blooming, sunshine. About
+five acres bordered by prairie and trees, no fences. A wild field of weeds, grass and
+wildflowers lies outside the east line. A cracked paved country road on the
 northwest side with a light ditch along it, a gravel lane on the northeast, neighbouring
 farmhouses behind trees to the northeast and southwest, and a
 rising hill of grass and wildflowers past the pumpkin patch.
@@ -60,7 +61,9 @@ the barn's ramp side.
 ## How it was made
 
 - The property outline was traced from a present-day satellite photo (not committed) and
-  scaled to the owner's estimate of about 5 acres (≈ 139 m × 218 m).
+  scaled to the owner's estimate of about 5 acres (≈ 139 m × 218 m). South of the Christmas
+  trees' top edge, the east line follows memory instead: just outside the east mowed path
+  (≈ 4.8 acres in all).
 - The sketch was stretched onto that outline with mean value coordinates, matching 7 points
   (both road corners, the notch, both south corners, the NE corner, the driveway entrance),
   with the farmhouse and barn pinned to today's footprints.

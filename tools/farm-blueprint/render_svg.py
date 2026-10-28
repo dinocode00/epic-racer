@@ -179,6 +179,12 @@ def render():
     south = bd[(bd[:, 1] < 12)]
     hill = [(p[0], p[1]) for p in south[np.argsort(south[:, 0])]]
     hill = [(hill[0][0] - 10, hill[0][1])] + hill + [(hill[-1][0] + 14, hill[-1][1]), (hill[-1][0] + 14, miny), (hill[0][0] - 10, miny)]
+    # The wild field of weeds, grass and wildflowers lies outside the east line (v9)
+    east_out = [p for p in bd[1:11]] + [np.array([bd[10][0], miny]), np.array([maxx, miny]), np.array([maxx, bd[1][1]])]
+    out.append(f'<g id="lm-meadow"><path class="meadow" d="{poly_d(east_out)}"/>')
+    out.append(tag((maxx - 9.5, 72), 'weeds, grass'))
+    out.append(tag((maxx - 9.5, 69.2), 'and wildflowers'))
+    out.append('</g>')
     out.append(f'<g id="lm-outside"><path class="meadow" d="{poly_d(hill)}"/>')
     out.append(tag((np.mean([p[0] for p in hill[:-2]]), miny + 5), 'RISING HILL OF GRASS, WILDFLOWERS AND WEEDS'))
     for c, label, anchor in (((ne[0] + 13, ne[1] - 24), 'neighbouring farm behind trees', 'middle'),
@@ -190,7 +196,8 @@ def render():
             out.append(tag((c[0], c[1] - 10), 'neighbouring farm', anchor))
             out.append(tag((c[0], c[1] - 12.8), 'behind trees', anchor))
         else:
-            out.append(tag((c[0] - 7, c[1] - 10), label, anchor))
+            out.append(tag((c[0], c[1] - 10), 'neighbouring farm', 'middle'))
+            out.append(tag((c[0], c[1] - 12.8), 'behind trees', 'middle'))
     out.append('</g>')
 
     # The paved country road along the NW edge, with aged cracks, and the lane seen today on the NE.
@@ -223,7 +230,6 @@ def render():
     # Ground: mowed lawn, then contour lines every 2 ft relative to the barnyard
     out.append(f'<path class="lawn" d="{poly_d(bd)}"/>')
     out.append('<g clip-path="url(#prop)">')
-    out.append(f'<g id="lm-meadow"><path class="meadow" d="{smooth_d(P(F["meadow_east"]["poly"]), True, 0.3)}"/></g>')
     g = terrain.Ground()
     cs = terrain.contours(g, bd[:, 0].min() - 2, bd[:, 0].max() + 2, bd[:, 1].min() - 2, bd[:, 1].max() + 2)
     out.append('<g id="lm-ground">')
@@ -494,7 +500,7 @@ def render():
         return (f'<path class="slope" d="M{svgpt(p)} L{svgpt(q)} M{svgpt(q - dd * 2 + nn * 1.3)} '
                 f'L{svgpt(q)} L{svgpt(q - dd * 2 - nn * 1.3)}"/>')
 
-    for x in (20 * K, 90 * K):
+    for x in (20 * K, 80.0):
         out.append(downhill((x, g.y_top - 6), (x, g.y_low + 22)))
     wmid = g.A + (g.H - g.A) * 0.45
     out.append(downhill(wmid - g.n * 3, wmid + g.n * 17))
@@ -507,8 +513,8 @@ def render():
     def spot(p, text, anchor='middle'):
         return f'<text class="spot" text-anchor="{anchor}" x="{p[0]:.1f}" y="{-p[1]:.1f}">{text}</text>'
 
-    out.append(spot((90 * K, g.y_top + 2.2), 'slope starts · 0 ft'))
-    out.append(spot((91 * K, 17 * K), 'lowest · ≈ −20 ft'))
+    out.append(spot((74.0, g.y_top + 2.6), 'slope starts · 0 ft'))
+    out.append(spot((78.0, 24.6), 'lowest · ≈ −20 ft'))
     out.append(spot(west + (9, 1), '≈ −15 ft', 'start'))
     out.append(spot(P([(1035, 560)])[0], 'barnyard · 0 ft'))
     out.append(spot(house_c + np.array([-1.0, -10.5]), 'rises ≈ 3 ft to house'))
@@ -522,8 +528,6 @@ def render():
     out.append(tag(P([(866, 296)])[0] + V * 2.6 + U * 1, 'arborvitae'))
     out.append(tag(g9c + np.array([1.5, -6.0]), 'rooster vane'))
     out.append(tag(sh + np.array([17.0, -6.2]), 'old hay wagons'))
-    out.append(tag(P([(1385, 560)])[0], 'weeds, grass'))
-    out.append(tag(P([(1385, 560)])[0] - (0, 2.8), 'and wildflowers'))
 
     # Property line on top
     out.append(f'<path class="propline" d="{poly_d(bd)}"/>')

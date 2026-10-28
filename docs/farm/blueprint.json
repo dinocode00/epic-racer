@@ -31,12 +31,20 @@
    136.9
   ],
   [
-   105.8,
-   -9.1
+   103.0,
+   95.0
   ],
   [
-   99.9,
-   -7.9
+   95.0,
+   88.5
+  ],
+  [
+   94.6,
+   40.0
+  ],
+  [
+   94.3,
+   -6.9
   ],
   [
    76.2,
@@ -816,43 +824,6 @@
     ]
    ]
   },
-  "meadow_east": {
-   "kind": "meadow",
-   "poly": [
-    [
-     84.6,
-     154.7
-    ],
-    [
-     107.9,
-     148.5
-    ],
-    [
-     107.3,
-     16.1
-    ],
-    [
-     93.6,
-     17.6
-    ],
-    [
-     92.4,
-     89.4
-    ],
-    [
-     89.9,
-     99.7
-    ],
-    [
-     86.5,
-     107.5
-    ],
-    [
-     82.0,
-     119.4
-    ]
-   ]
-  },
   "arborvitae": {
    "kind": "tree_row",
    "line": [
@@ -885,7 +856,7 @@
    ]
   }
  },
- "acres": 5.0,
+ "acres": 4.76,
  "farm_compass": "In the answers, \"north\" means along the barn toward the wooden garage (bearing ~40°) and \"west\" means the barn's ramp side.",
  "confirmed": {
   "Farmhouse": [
@@ -992,12 +963,12 @@
    "The big tree was a very large Scotch pine.",
    "The northeast row was evergreen spruce.",
    "Dashed lines and the south lane were mowed grass paths, often with tractor tyre marks.",
-   "The blank land east of the barn was a field of weeds, grass and wildflowers.",
+   "The field of weeds, grass and wildflowers lies outside the east property line. Inside, the far east side is mowed grass running down to the pumpkins.",
    "The five evergreens between the road and the house were very large spruces, 10 to 20 ft taller than the house.",
    "A row of mature arborvitae, about 11 ft tall, ran along the north edge of the driveway from the road to the windmill, with no big tree in the line."
   ],
   "The land as a whole": [
-   "About 5 acres. Same property line as the red line today.",
+   "About 5 acres. Same property line as the red line today, except on the east: from where the Christmas trees start, the line comes in to run just outside the east mowed path (about 4.8 acres in all).",
    "South slope: about 20 ft down to the pumpkin patch, slight on the north side and steeper toward the bottom.",
    "West slope: about 15 ft down to the road corner. North of the house, the ground also falls toward the road.",
    "The yard rises slightly as you drive toward the farmhouse.",
@@ -7455,7 +7426,8 @@
   "northeast": "gravel lane (existed back then), neighbouring farmhouse behind trees",
   "southwest": "neighbouring farmhouse behind trees",
   "south": "rising hill of grass, wildflowers and weeds",
-  "borders": "natural prairie and trees, no fences"
+  "borders": "natural prairie and trees, no fences",
+  "east": "field of weeds, grass and wildflowers outside the east line"
  },
  "placed_in_metres": {
   "red_shed_centre": [
@@ -7500,5 +7472,6 @@
     151.7
    ]
   ]
- }
+ },
+ "boundary_note": "Satellite parcel outline, except the east line south of the Christmas trees' top edge, which follows the owner's memory: just outside the east mowed path."
 }

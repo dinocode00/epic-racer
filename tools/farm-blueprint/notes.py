@@ -29,7 +29,7 @@ LEGEND = [
     ('lm-treerow', '·', 'Spruce row', 'Along the northeast line'),
     ('lm-conifers', '·', 'Five big spruces', '10–20 ft taller than the house'),
     ('lm-paths', '·', 'Mowed grass paths', 'With tractor tyre marks'),
-    ('lm-meadow', '·', 'Wild field', 'Weeds, grass and wildflowers'),
+    ('lm-meadow', '·', 'Wild field', 'Outside the east line'),
     ('lm-ground', '·', 'Contour lines', 'Every 2 ft; thicker every 10 ft'),
     ('lm-slopes', '·', 'Slopes', 'Arrows point downhill'),
     ('lm-outside', '·', 'Beyond the line', 'Hill to the south, neighbours behind trees'),
@@ -171,14 +171,14 @@ CARDS = [
      ['The big tree was a very large Scotch pine.',
       'The northeast row was evergreen spruce.',
       'Dashed lines and the south lane were mowed grass paths, often with tractor tyre marks.',
-      'The blank land east of the barn was a field of weeds, grass and wildflowers.',
+      'The field of weeds, grass and wildflowers lies outside the east property line. Inside, the far east side is mowed grass running down to the pumpkins.',
       'The five evergreens between the road and the house were very large spruces, 10 to 20 ft taller than the house.',
       'A row of mature arborvitae, about 11 ft tall, ran along the north edge of the driveway from the road to the windmill, with no big tree in the line.'],
      []),
     ('·', 'The land as a whole',
      'Your sketch shows the layout. These answers decide the ground under it.',
      'Contours every 2 ft follow your slopes. Barnyard is level zero.',
-     ['About 5 acres. Same property line as the red line today.',
+     ['About 5 acres. Same property line as the red line today, except on the east: from where the Christmas trees start, the line comes in to run just outside the east mowed path (about 4.8 acres in all).',
       'South slope: about 20 ft down to the pumpkin patch, slight on the north side and steeper toward the bottom.',
       'West slope: about 15 ft down to the road corner. North of the house, the ground also falls toward the road.',
       'The yard rises slightly as you drive toward the farmhouse.',
@@ -193,7 +193,7 @@ CARDS = [
 ]
 
 CHANGES = [
-    ('Spruces', 'The big spruce that stood in the arborvitae row moved about 6 m north, so the arborvitae line from the road to the windmill is unbroken.'),
-    ('Lilacs', 'Confirmed as lilacs, shown with purple blossoms.'),
-    ('Open questions', 'None left. Every landmark card is settled.'),
+    ('East property line', 'From where the Christmas trees start, the line now steps in and runs about 8 ft outside the east mowed path, down to the south line. North of that, beside the barn, it is unchanged. The property comes to about 4.8 acres.'),
+    ('Wild field', 'The weeds, grass and wildflowers now lie outside the east line, joining the wildflower hill to the south.'),
+    ('East side', 'Inside the line, the east side is mowed grass, with the mowed path running down to the pumpkins.'),
 ]
