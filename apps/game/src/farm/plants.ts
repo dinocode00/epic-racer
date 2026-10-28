@@ -95,10 +95,10 @@ class TreeBatch {
 }
 
 const TINT: Record<Species, [number, number, number]> = {
-  scotch: [1.18, 1.16, 0.62],
-  douglas: [0.62, 0.8, 0.66],
-  white: [0.92, 1.12, 1.12],
-  blue: [0.95, 1.18, 1.65],
+  scotch: [1.45, 1.38, 0.5],
+  douglas: [0.55, 0.75, 0.6],
+  white: [0.95, 1.25, 1.2],
+  blue: [1.05, 1.35, 2.1],
 };
 const WIDTH: Record<Species, number> = { scotch: 1.05, douglas: 0.95, white: 1.12, blue: 0.9 };
 

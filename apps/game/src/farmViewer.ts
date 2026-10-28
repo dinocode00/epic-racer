@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { PLAYER_COLORS, VEHICLES } from '@epic/shared';
 import { FarmScene } from './farm/farmScene.ts';
-import { FARM, FARM_SCALE, type XY, mid } from './farm/layout.ts';
+import { FARM, FARM_SCALE, U, type XY, add, mid } from './farm/layout.ts';
 import { KartView } from './render/kartView.ts';
 import { View } from './render/view.ts';
 
@@ -49,7 +49,7 @@ const LANDMARKS: Landmark[] = [
     name: '1 · Farmhouse',
     at: FARM.house.main.c,
     dist: 300,
-    yaw: -2.3,
+    yaw: -0.75,
     pitch: 0.28,
     lift: 30,
   },
@@ -65,11 +65,11 @@ const LANDMARKS: Landmark[] = [
   {
     id: 'south-door',
     name: '3 · Barn south door and hoop',
-    at: FARM.barn.c,
-    dist: 300,
-    yaw: 0.35,
-    pitch: 0.18,
-    lift: 20,
+    at: add(FARM.barn.c, U, -12),
+    dist: 230,
+    yaw: -0.62,
+    pitch: 0.16,
+    lift: 18,
   },
   {
     id: 'windmill',
