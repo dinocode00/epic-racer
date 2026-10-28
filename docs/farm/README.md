@@ -7,7 +7,7 @@ routes are deliberately not designed yet.
 | File | What it is |
 | --- | --- |
 | `sketch.jpg` | The hand-drawn master sketch with the 17 numbered landmarks. It wins every disagreement. |
-| `blueprint.png` | The current blueprint (v10): landmarks on the real outline, contours every 2 ft. |
+| `blueprint.png` | The current blueprint (v11): landmarks on the real outline, contours every 2 ft. |
 | `blueprint.json` | The same blueprint as data, in metres (x east, y north, origin at the SW property corner): every confirmed fact, the open questions, the terrain model and all 913 Christmas trees. |
 
 ## Landmarks
@@ -72,12 +72,27 @@ the barn's ramp side.
 - Today's pond is new since then and is left out. The dense evergreen forest across the
   south half today is the Christmas tree block grown up.
 
+## In the game (first look)
+
+The farm is built in 3D from this blueprint at **1:10 scale**: racers are RC-car sized, the
+barn is about 225 m long and the property is about 1.4 × 2.2 km, so crossing it at a kart's
+top speed takes about a minute. No racetrack yet.
+
+- Run the game (`pnpm start` or the launcher), then open `http://localhost:4000/farm.html`.
+- Fly around like a drone, pick a landmark to fly to it, or press **Drive a mini kart**
+  (arrows/WASD, Shift for a burst, V to change the ride, C for the drone again).
+- `apps/game/src/farm/farmLayout.json` is the game's copy of the blueprint. Regenerate it
+  with `python3 tools/farm-blueprint/export_game.py apps/game/src/farm/farmLayout.json`
+  (run from `tools/farm-blueprint`, with the images folder the other scripts use).
+- The scale is one constant, `FARM_SCALE` in `apps/game/src/farm/layout.ts`.
+
 ## Status
 
 - [x] Step 1: placement (boundary, positions, rough sizes)
 - [x] Step 2: the look of each landmark
 - [x] Step 3: ground and surroundings
-- [ ] Step 4: blueprint locked as map data
+- [x] Step 4: blueprint locked as map data (`apps/game/src/farm/farmLayout.json`)
+- [x] First 3D build of the farm in the game (`farm.html`)
 - Later: race routes
 
 Rebuild with `tools/farm-blueprint/` (Python 3 + numpy + Pillow). It needs the sketch and

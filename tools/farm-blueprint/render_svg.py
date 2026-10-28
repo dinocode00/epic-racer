@@ -10,6 +10,8 @@ import blueprint as b
 import terrain
 
 rng = np.random.default_rng(7)
+# Everything placed by render(), recorded for the game export (metres, x east, y north).
+LAYOUT: dict = {}
 GRID = 50.0  # farm grid: long axis of barn, perpendicular to the NE property line (deg)
 K = b.M_PER_PX / 0.19  # hand-placed metre positions below were set at the old 0.19 scale
 U = np.array([math.cos(math.radians(GRID)), math.sin(math.radians(GRID))])  # farm "north"
@@ -149,6 +151,7 @@ def seg(a, c, cls):
 
 
 def render():
+    LAYOUT.clear()
     F = b.F
     bd = np.array(b.blueprint()['boundary'])
     out = []
@@ -179,8 +182,10 @@ def render():
     south = bd[(bd[:, 1] < 12)]
     hill = [(p[0], p[1]) for p in south[np.argsort(south[:, 0])]]
     hill = [(hill[0][0] - 10, hill[0][1])] + hill + [(hill[-1][0] + 14, hill[-1][1]), (hill[-1][0] + 14, miny), (hill[0][0] - 10, miny)]
+    LAYOUT['outside_hill'] = [list(map(float, p)) for p in hill]
     # The wild field of weeds, grass and wildflowers lies outside the east line (v9)
     east_out = [p for p in bd[1:11]] + [np.array([bd[10][0], miny]), np.array([maxx, miny]), np.array([maxx, bd[1][1]])]
+    LAYOUT['outside_east_field'] = [list(map(float, p)) for p in east_out]
     out.append(f'<g id="lm-meadow"><path class="meadow" d="{poly_d(east_out)}"/>')
     out.append(tag((maxx - 9.5, 72), 'weeds, grass'))
     out.append(tag((maxx - 9.5, 69.2), 'and wildflowers'))
@@ -207,6 +212,7 @@ def render():
         nrm = -nrm
     road = [tip - nw_dir * 30 + nrm * 4.5, west + nw_dir * 30 + nrm * 4.5]
     out.append(f'<path class="road" d="{poly_d(road, False)}"/>')
+    LAYOUT['road'] = [list(map(float, p)) for p in road]
     for t in np.linspace(0.05, 0.95, 9):
         p0 = road[0] + (road[1] - road[0]) * t + nrm * rng.uniform(-1.5, 1.5)
         pts = [p0]
@@ -218,11 +224,13 @@ def render():
     ent_t = float((P([(757, 290)])[0] - tip) @ nw_dir)
     L_nw = float(np.linalg.norm(west - tip))
     for t0, t1 in ((0.6, ent_t - 4.5), (ent_t + 4.5, L_nw - 0.6)):
+        LAYOUT.setdefault('ditch', []).append([list(map(float, tip + nw_dir * t0 + nrm * 0.9)), list(map(float, tip + nw_dir * t1 + nrm * 0.9))])
         out.append(seg(tip + nw_dir * t0 + nrm * 0.9, tip + nw_dir * t1 + nrm * 0.9, 'ditch'))
     out.append(tag(tip + nw_dir * (L_nw * 0.72) - nrm * 2.8, 'light ditch along the road'))
     ne_dir = (ne - tip) / np.linalg.norm(ne - tip)
     nrm2 = np.array([-ne_dir[1], ne_dir[0]])  # outward (to the NE)
     lane = [tip + nrm2 * 7 - ne_dir * 8, ne + nrm2 * 7 + ne_dir * 18]
+    LAYOUT['lane'] = [list(map(float, p)) for p in lane]
     out.append(f'<path class="lane" d="{poly_d(lane, False)}"/>')
     out.append(f'<text class="road-label faint" transform="translate({svgpt((tip + ne) / 2 + nrm2 * 13)}) '
                f'rotate({-math.degrees(math.atan2(ne[1] - tip[1], ne[0] - tip[0])):.1f})">GRAVEL LANE</text>')
@@ -241,6 +249,7 @@ def render():
 
     # Pumpkin and gourd patch
     pp = np.array(F['pumpkin_patch']['poly_m'])
+    LAYOUT['pumpkin_patch'] = pp.tolist()
     out.append(f'<g id="lm-14"><path class="soil" d="{poly_d(pp)}"/>')
     for y in np.arange(pp[:, 1].min() + 2.5, pp[:, 1].max() - 1, 3.2):
         row = [(x, y) for x in np.arange(pp[:, 0].min() + 1, pp[:, 0].max(), 2.6) if inside((x, y), pp)]
@@ -250,6 +259,7 @@ def render():
             jx, jy = rng.normal(0, 0.5, 2)
             gourd = rng.uniform() < 0.22
             cls, r = ('gourd', rng.uniform(0.35, 0.5)) if gourd else ('pumpkin', rng.uniform(0.55, 0.9))
+            LAYOUT.setdefault('pumpkins', []).append([round(float(x + jx), 2), round(float(yy + jy), 2), round(float(r), 2), cls])
             out.append(f'<circle class="{cls}" cx="{x + jx:.1f}" cy="{-(yy + jy):.1f}" r="{r:.2f}"/>')
     out.append('</g>')
 
@@ -262,6 +272,7 @@ def render():
             top = b.CT_TOP_Y_M + 1.4
             tl = np.vstack([[[60.0, top + 0.6], [ct_m[1][0], top], [ct_m[1][0] + 3.6, top - 3.0]], tl])
         out.append(f'<path class="mowed" style="stroke-width:{wdt}" d="{smooth_d(tl, False)}"/>')
+        LAYOUT.setdefault('paths', []).append({'name': k, 'width': wdt, 'pts': np.asarray(tl, float).round(2).tolist()})
         for off in (-0.55, 0.55):
             sh = [p + np.array([0.0, 0.0]) for p in tl]
             out.append(f'<path class="tyre" transform="translate({off:.2f},{off * 0.3:.2f})" d="{smooth_d(sh, False)}"/>')
@@ -271,6 +282,8 @@ def render():
     ct = np.array(b.christmas_poly_m())
     out.append(f'<g id="lm-13"><path class="tree-block" d="{poly_d(ct)}"/>')
     trees, _ = terrain.christmas_trees()
+    LAYOUT['christmas_trees'] = trees
+    LAYOUT['christmas_block'] = np.asarray(ct, float).tolist()
     for t in trees:
         r = terrain.SIZES[t['size']][2]
         if t['species'] in ('scotch', 'white'):  # pines: soft round tufts
@@ -281,9 +294,11 @@ def render():
 
     # Gravel yard and driveway
     dw = clip_above(P(F['driveway']['poly']), b.GRAVEL_CUT_Y_M)
+    LAYOUT['gravel'] = dw.round(2).tolist()
     out.append(f'<g id="lm-5"><path class="gravel" d="{smooth_d(dw, True, 0.35)}"/></g>')
     # Mailbox at the entrance
     ent = P([(757, 290)])[0] + nrm * 1.2 - nw_dir * 3.5
+    LAYOUT['mailbox'] = ent.tolist()
     out.append(f'<g id="lm-mailbox"><rect class="mailbox" x="{ent[0] - .5:.1f}" y="{-ent[1] - .3:.1f}" width="1" height=".6"/></g>')
 
     # Orchard: 9 lines along the barn's length, about 10 trees each; west two lines pear and cherry
@@ -297,6 +312,7 @@ def render():
             if not inside(q, oc) or near(q, dw, 2.2) or near(q, ct, 2.0):
                 continue
             fruit = 'apple' if i < 7 else ('pear' if (j + i) % 2 == 0 else 'cherry')
+            LAYOUT.setdefault('orchard', []).append([round(float(q[0]), 2), round(float(q[1]), 2), fruit])
             out.append(f'<circle class="orchard-tree" cx="{q[0]:.1f}" cy="{-q[1]:.1f}" r="1.75"/>')
             for _ in range(3):
                 a, r = rng.uniform(0, 6.28), rng.uniform(0.3, 1.2)
@@ -309,6 +325,7 @@ def render():
     for row in F['grape_vines']['rows']:
         r = P(row)
         a, c = r[0], r[0] + (r[1] - r[0]) * 0.8
+        LAYOUT.setdefault('grape_rows', []).append([a.tolist(), c.tolist()])
         ends.append((a, r[1]))
         out.append(seg(a, c, 'trellis'))
         for p in along([a, c], 3.0):
@@ -316,6 +333,7 @@ def render():
     out.append('</g>')
     gc = np.mean([a + (c - a) * 0.92 for a, c in ends], axis=0)
     gdir = math.degrees(math.atan2(*(ends[0][1] - ends[0][0])[::-1]))
+    LAYOUT['garden'] = {'c': gc.tolist(), 'w': 2.1, 'h': 3.05, 'angle': gdir}
     out.append(f'<g id="lm-garden"><path class="garden" d="{poly_d(rect(gc, 2.1, 3.05, gdir))}"/>')
     for k in range(-1, 2):
         q = gc + np.array([math.cos(math.radians(gdir)), math.sin(math.radians(gdir))]) * 0.0 + \
@@ -325,18 +343,22 @@ def render():
 
     # Scenery trees: the very large Scotch pine, the evergreens by the road, the spruce row
     bt = P([F['big_tree']['centre']])[0]
+    LAYOUT['big_scotch_pine'] = bt.tolist()
     out.append('<g id="lm-bigtree">')
     for dx, dy, r in ((0, 0, 6.8), (-2.6, 2.2, 3.4), (2.8, 1.6, 3.2), (1.4, -3.0, 3.4), (-2.4, -2.4, 3.0), (0.4, 0.4, 3.0)):
         out.append(f'<circle class="{"big-pine" if r > 6 else "big-pine-tuft"}" cx="{bt[0] + dx:.1f}" cy="{-(bt[1] + dy):.1f}" r="{r:.1f}"/>')
     out.append('</g><g id="lm-conifers">')
     for i, p in enumerate(P(F['nw_conifers']['pts'])):
         p = np.array(b.SPRUCE_MOVED_M.get(i, p), float)
+        LAYOUT.setdefault('big_spruces', []).append(p.tolist())
         out.append(conifer(p, 4.2, 'spruce big'))
     out.append('</g><g id="lm-arborvitae">')
     for p in along(P(F['arborvitae']['line']), 1.15):
+        LAYOUT.setdefault('arborvitae', []).append([float(p[0]), float(p[1])])
         out.append(f'<circle class="arborvitae" cx="{p[0]:.1f}" cy="{-p[1]:.1f}" r=".62"/>')
     out.append('</g><g id="lm-treerow">')
     for p in along(P(F['ne_tree_row']['line']), 6.5)[1:-1]:
+        LAYOUT.setdefault('spruce_row', []).append([float(p[0]), float(p[1])])
         out.append(conifer(p + rng.normal(0, 0.4, 2), 2.7, 'spruce'))
     out.append('</g>')
 
@@ -344,16 +366,19 @@ def render():
     bcen = b.barn_centre()
     out.append('<g id="lm-4">')
     ramp = [bcen + V * 5.75 - U * 4.6, bcen + V * 5.75 + U * 4.6, bcen + V * 16 + U * 5.4, bcen + V * 16 - U * 5.4]
+    LAYOUT['ramp'] = [p.tolist() for p in ramp]
     # Grass patches on both sides of the ramp, touching the barn and the ramp
     for s in (-1, 1):
         patch = [bcen + V * 5.75 + U * 4.6 * s, bcen + V * 5.75 + U * 10.8 * s,
                  bcen + V * 16 + U * 10.8 * s, bcen + V * 16 + U * 5.4 * s]
+        LAYOUT.setdefault('grass_patches', []).append([p.tolist() for p in patch])
         out.append(f'<path class="grass-patch" d="{poly_d(patch)}"/>')
     out.append(f'<path class="blacktop" d="{poly_d(ramp)}"/>')
     # A mature lilac at the bottom of the ramp on each side
     out.append('</g><g id="lm-lilac">')
     for s in (-1, 1):
         lc = bcen + V * 14.2 + U * 7.4 * s  # in the grass at the bottom of the ramp side, not past its end
+        LAYOUT.setdefault('lilacs', []).append(lc.tolist())
         out.append(f'<circle class="lilac" cx="{lc[0]:.1f}" cy="{-lc[1]:.1f}" r="1.7"/>')
         for k in range(6):
             q = lc + np.array([math.cos(k * 1.05 + s), math.sin(k * 1.05 + s)]) * 0.95
@@ -363,9 +388,11 @@ def render():
                f'L{svgpt(bcen + V * 8)} L{svgpt(bcen + V * 9.5 - U * 1.2)}"/>')
     out.append('</g>')
     well = bcen + V * 8.2 + U * 8.6
+    LAYOUT['well'] = well.tolist()
     out.append(f'<g id="lm-well"><circle class="well" cx="{well[0]:.1f}" cy="{-well[1]:.1f}" r="1.22"/>'
                f'<circle class="well-in" cx="{well[0]:.1f}" cy="{-well[1]:.1f}" r=".92"/></g>')
     sand = bcen + V * 8.0 - U * 8.4
+    LAYOUT['sandbox'] = {'c': sand.tolist(), 'w': 2.44, 'h': 1.22, 'angle': GRID}
     out.append(f'<g id="lm-sandbox"><path class="sandbox" d="{poly_d(rect(sand, 2.44, 1.22, GRID))}"/></g>')
 
     # Buildings, snapped to the farm grid
@@ -379,6 +406,7 @@ def render():
     main = rect(hc, 10.0, 6.4, GRID)
     wing = rect(hc + U * 2.2 + V * 4.45, 5.4, 2.5, GRID)
     porch = rect(hc - U * 2.6 + V * 4.25, 4.6, 2.1, GRID)
+    LAYOUT['house'] = {'main': {'c': hc.tolist(), 'w': 10.0, 'h': 6.4}, 'wing': {'c': (hc + U * 2.2 + V * 4.45).tolist(), 'w': 5.4, 'h': 2.5}, 'porch': {'c': (hc - U * 2.6 + V * 4.25).tolist(), 'w': 4.6, 'h': 2.1}, 'steps': {'c': (hc - U * 5.8).tolist(), 'w': 1.6, 'h': 2.6}, 'chimney': (hc + U * 0.9).tolist(), 'bench': (hc - U * 5.45 - V * 0.95).tolist(), 'front_door': (hc - U * 5.0 + V * 0.3).tolist(), 'porch_door': (hc + V * 3.2 - U * 2.5).tolist(), 'angle': GRID}
     for q in (main, wing):
         out.append(f'<path class="stone" d="{poly_d(rect(np.mean(q, axis=0), np.linalg.norm(q[1] - q[0]) + .5, np.linalg.norm(q[3] - q[0]) + .5, GRID))}"/>')
     out.append(f'<path class="porch-floor" d="{poly_d(porch)}"/>')
@@ -393,7 +421,18 @@ def render():
     ch = hc + U * 0.9
     out.append(f'<path class="chimney" d="{poly_d(rect(ch, 0.7, 0.7, GRID))}"/>')
     # Front steps on the south end, railings both sides, door slightly left, bench to the right
+    # Concrete pad ~15 ft out from the front door, the steps on it, a sidewalk round to the
+    # west porch, and grandpa's grill on the pad in front of the steps toward its west-north corner.
+    pad = rect(hc - U * 7.3, 4.6, 5.0, GRID)
+    walk = [hc - U * 6.0 + V * 2.5, hc - U * 6.0 + V * 4.3, hc - U * 4.9 + V * 4.3]
+    grill = hc - U * 7.3 + V * 1.9
+    LAYOUT['house_pad'] = {'c': (hc - U * 7.3).tolist(), 'w': 4.6, 'h': 5.0, 'angle': GRID}
+    LAYOUT['house_walk'] = {'pts': [p.tolist() for p in walk], 'width': 1.0}
+    LAYOUT['grill'] = grill.tolist()
+    out.append(f'<path class="concrete" d="{poly_d(pad)}"/>')
+    out.append(f'<path class="walk" d="{poly_d(walk, False)}"/>')
     out.append(f'<path class="concrete" d="{poly_d(rect(hc - U * 5.8, 1.6, 2.6, GRID))}"/>')
+    out.append(f'<circle class="grill" cx="{grill[0]:.1f}" cy="{-grill[1]:.1f}" r=".4"/>')
     for s in (-1, 1):
         out.append(seg(hc - U * 5.0 + V * 1.3 * s, hc - U * 6.6 + V * 1.3 * s, 'rail'))
     out.append(seg(hc - U * 5.0 + V * 0.85, hc - U * 5.0 - V * 0.25, 'door'))
@@ -427,6 +466,8 @@ def render():
 
     # Wooden garage on the barn's north end: red, shed roof falling north, door facing west
     g2 = bcen + U * 14.1
+    LAYOUT['barn'] = {'c': bcen.tolist(), 'w': 22.5, 'h': 11.5, 'angle': GRID}
+    LAYOUT['wooden_garage'] = {'c': g2.tolist(), 'w': 5.6, 'h': 11.5, 'angle': GRID}
     out.append(f'<g id="lm-2"><path class="bld roof-black wall-red" d="{poly_d(rect(g2, 5.6, 11.5, GRID))}"/>')
     for k in (-3, 0, 3):
         out.append(f'<path class="roof-fall" d="M{svgpt(g2 + V * k - U * 1.6)} L{svgpt(g2 + V * k + U * 1.6)} '
@@ -436,6 +477,7 @@ def render():
 
     # Red wooden garage: black shingles, big door facing north
     g9c = P([(1027, 776)])[0]
+    LAYOUT['red_garage'] = {'c': g9c.tolist(), 'w': 11.0, 'h': 7.0, 'angle': GRID + 15}
     ang9 = GRID + 15
     u9 = np.array([math.cos(math.radians(ang9)), math.sin(math.radians(ang9))])
     v9 = np.array([-u9[1], u9[0]])
@@ -454,22 +496,29 @@ def render():
     out.append(f'<g id="lm-11"><path class="bld roof-black wall-red" d="{poly_d(rect(sh, 6, 3.6, GRID))}"/>'
                f'{seg(sh - U * 3, sh + U * 3, "ridge")}</g>')
     gh = sh - V * 3.9  # right beside the shed, on its east side
+    LAYOUT['corn_crib'] = bc.tolist()
+    LAYOUT['shed'] = {'c': sh.tolist(), 'w': 6.0, 'h': 3.6, 'angle': GRID}
+    LAYOUT['greenhouse'] = {'c': gh.tolist(), 'w': 3.05, 'h': 1.83, 'angle': GRID}
     out.append(f'<g id="lm-12"><path class="bld glass" d="{poly_d(rect(gh, 3.05, 1.83, GRID))}"/>'
                f'{seg(gh - U * 1.52, gh + U * 1.52, "ridge")}</g>')
     # Old flat wooden wagons parked in the grass east of the shed, one with pumpkins on it
     out.append(f'<g id="lm-wagons">{wagon(sh + np.array([9.5, -7.5]), GRID + 14)}{wagon(sh + np.array([15.0, -11.5]), GRID - 20, load=7)}</g>')
+    LAYOUT['wagons'] = [{'c': (sh + np.array([9.5, -7.5])).tolist(), 'angle': GRID + 14, 'load': 0}, {'c': (sh + np.array([15.0, -11.5])).tolist(), 'angle': GRID - 20, 'load': 7}]
     pl = house_c + np.array([8.0, 1.5]) - V * 9.5 + np.array([3.2, 0.0])  # just east of the clothes lines' east end
+    LAYOUT['playhouse'] = {'c': pl.tolist(), 'w': 2.44, 'h': 2.44, 'angle': GRID}
     out.append(f'<g id="lm-17"><path class="bld roof-black wall-red" d="{poly_d(rect(pl, 2.44, 2.44, GRID))}"/>'
                f'{seg(pl - U * 1.22, pl + U * 1.22, "ridge light")}</g>')
 
     # Windmill
     wm = P([F['windmill']['centre']])[0]
+    LAYOUT['windmill'] = wm.tolist()
     sq = rect(wm, 2.6, 2.6, GRID)
     out.append(f'<g id="lm-6"><circle class="rotor" cx="{wm[0]:.1f}" cy="{-wm[1]:.1f}" r="2.6"/>'
                f'<path class="tower" d="{poly_d(sq)}"/>'
                f'<path class="tower-x" d="{poly_d(sq)} M{svgpt(sq[0])} L{svgpt(sq[2])} M{svgpt(sq[1])} L{svgpt(sq[3])}"/></g>')
     # Barrel stove for burning garbage, with a small pile of scrap wood
     wb = P([F['wood_burner']['centre']])[0]
+    LAYOUT['stove'] = wb.tolist()
     out.append(f'<g id="lm-15"><rect class="rust" x="{wb[0] - 1.1:.1f}" y="{-wb[1] - .45:.1f}" width="2.2" height=".9" rx=".45"/>'
                f'<circle class="stack" cx="{wb[0] + 0.7:.1f}" cy="{-wb[1]:.1f}" r=".3"/>')
     for k in range(5):
@@ -480,6 +529,7 @@ def render():
     # Clothes lines: two sets of T-posts, three lines
     e0 = house_c + np.array([8.0, 1.5])  # close to the house's east side, running parallel to the NE line
     e1 = e0 - V * 9.5
+    LAYOUT['clothes_lines'] = [e0.tolist(), e1.tolist()]
     d = (e1 - e0) / np.linalg.norm(e1 - e0)
     n_ = np.array([-d[1], d[0]])
     out.append('<g id="lm-16">')

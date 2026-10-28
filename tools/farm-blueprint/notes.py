@@ -43,6 +43,7 @@ CARDS = [
      ['Same place as today\'s house. Two storeys.',
       'Porch on the west side with a door, but everyone used the south-facing front door.',
       'Front door: up a few concrete steps covered in black outdoor carpet, railings on both sides. The door is slightly left of the middle of the steps, with a white metal bench to its right.',
+      'A concrete pad reaches about 15 ft out from the front door; the steps sit on it, a concrete sidewalk links it to the west porch, and grandpa\'s simple grill stands on the pad in front of the steps, toward its west-north corner.',
       'From the photo: white horizontal siding, slate-blue window trim, corner boards and roof edges, dark charcoal shingles, a buff brick chimney at the ridge, and a rounded fieldstone foundation like the barn\'s.',
       'From the photo: a steep front gable with an octagonal vent near the peak, and a one-storey porch with white posts, white railings, a white lattice skirt and a gooseneck light by its door.'],
      []),
@@ -194,7 +195,5 @@ CARDS = [
 ]
 
 CHANGES = [
-    ('Pumpkin patch', 'Its north edge now runs right along the mowed grass lane above it, from the west line to the east path. No more strip of open grass between them.'),
-    ('Playhouse', 'Moved a little south so it sits just east of the clothes lines.'),
-    ('Hay wagons', 'Moved south, closer to the mowed path along the top of the Christmas trees.'),
+    ('Farmhouse', 'A concrete pad about 15 ft out from the front door, holding the front steps, with a concrete sidewalk to the west porch and grandpa\'s grill on the pad in front of the steps.'),
 ]

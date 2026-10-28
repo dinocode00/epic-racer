@@ -1,0 +1,100 @@
+/* Farm viewer overlay: a quiet panel of landmarks and modes over the 3D view. */
+#stage canvas {
+  touch-action: none;
+}
+.farm-title {
+  position: fixed;
+  left: max(16px, env(safe-area-inset-left, 0px));
+  top: max(14px, env(safe-area-inset-top, 0px));
+  font-size: 22px;
+  letter-spacing: 0.02em;
+  text-shadow: 0 2px 6px var(--shadow);
+}
+.farm-title small {
+  display: block;
+  font-family: system-ui, sans-serif;
+  font-size: 13px;
+  opacity: 0.9;
+  letter-spacing: 0;
+}
+.farm-panel {
+  position: fixed;
+  right: max(12px, env(safe-area-inset-right, 0px));
+  top: max(12px, env(safe-area-inset-top, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: calc(100% - 24px);
+  overflow-y: auto;
+  font-family: system-ui, sans-serif;
+}
+.farm-panel button {
+  font: 600 13px system-ui, sans-serif;
+  color: #fff;
+  background: rgba(20, 28, 22, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  padding: 7px 12px;
+  text-align: left;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+}
+.farm-panel button:hover,
+.farm-panel button.on {
+  background: rgba(163, 48, 42, 0.85);
+}
+.farm-panel button:focus-visible {
+  outline: 2px solid #ffd23f;
+}
+.farm-panel .sep {
+  height: 4px;
+}
+.farm-help {
+  position: fixed;
+  left: max(16px, env(safe-area-inset-left, 0px));
+  bottom: max(14px, env(safe-area-inset-bottom, 0px));
+  font: 500 13px system-ui, sans-serif;
+  text-shadow: 0 1px 4px var(--shadow);
+  max-width: 60ch;
+}
+.farm-speed {
+  position: fixed;
+  right: max(16px, env(safe-area-inset-right, 0px));
+  bottom: max(14px, env(safe-area-inset-bottom, 0px));
+  font-size: 30px;
+  text-shadow: 0 2px 6px var(--shadow);
+}
+.farm-touch {
+  position: fixed;
+  bottom: max(70px, env(safe-area-inset-bottom, 0px));
+  display: flex;
+  gap: 10px;
+}
+.farm-touch[hidden] {
+  display: none;
+}
+.farm-touch.left {
+  left: max(16px, env(safe-area-inset-left, 0px));
+}
+.farm-touch.right {
+  right: max(16px, env(safe-area-inset-right, 0px));
+}
+.farm-touch button {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  font: 700 22px system-ui, sans-serif;
+  color: #fff;
+  background: rgba(20, 28, 22, 0.55);
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  touch-action: none;
+}
+@media (max-width: 700px) {
+  .farm-panel button {
+    padding: 5px 9px;
+    font-size: 12px;
+  }
+  .farm-title {
+    font-size: 17px;
+  }
+}
