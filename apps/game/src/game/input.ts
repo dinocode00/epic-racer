@@ -130,8 +130,18 @@ export class PhoneSource implements InputSource {
   readonly kind = 'phone';
   state: PadState = neutralPad();
   lastSeen = performance.now();
+  private itemPressAt = -Infinity;
   constructor(readonly label: string) {}
+  receive(pad: PadState): void {
+    if (pad.item && !this.state.item) this.itemPressAt = performance.now();
+    this.state = pad;
+    this.lastSeen = performance.now();
+  }
   poll(): PadState {
+    // A quick tap's press and release can arrive in the same burst over Wi-Fi, between two
+    // reads; keep the press showing for a few sim steps so the game always sees it.
+    if (!this.state.item && performance.now() - this.itemPressAt < 80)
+      return { ...this.state, item: true };
     return this.state;
   }
 }

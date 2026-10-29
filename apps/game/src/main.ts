@@ -130,10 +130,7 @@ net.onLeave = (slot) => {
 };
 net.onInput = (slot, pad) => {
   const src = phones.get(slot);
-  if (src) {
-    src.state = pad;
-    src.lastSeen = performance.now();
-  }
+  src?.receive(pad);
 };
 net.onMsg = (slot, msg) => {
   const m = memberBySlot(slot);

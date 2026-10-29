@@ -47,7 +47,7 @@ export function paramsFor(v: VehicleDef): KartParams {
   return {
     topSpeed: 38 + (v.speed - 3) * 2,
     accel: 19 + (3 - v.weight) * 1.6 + (v.handling - 3) * 0.5,
-    turnRate: 1.9 + (v.handling - 3) * 0.17,
+    turnRate: 2.3 + (v.handling - 3) * 0.17,
     mass: 1 + (v.weight - 3) * 0.3,
     rideHeight: v.hover ? 0.7 : 0,
   };
@@ -314,8 +314,7 @@ export function stepKart(
     const lowSpeed = clamp(Math.abs(spd) / 5, 0, 1);
     // Grip fades with speed: at full tilt the tightest corners need a lift or a drift. Cranking
     // the wheel over claws some of it back, so the turn sharpens the further you steer.
-    const highSpeed =
-      1 - 0.42 * clamp(Math.abs(spd) / P.topSpeed, 0, 1) * (1 - 0.4 * steer * steer);
+    const highSpeed = 1 - 0.3 * clamp(Math.abs(spd) / P.topSpeed, 0, 1) * (1 - 0.4 * steer * steer);
     yawRate = steer * P.turnRate * lowSpeed * highSpeed * Math.sign(spd || 1);
   }
   if (stunned) yawRate = 0; // spinning on screen only: the kart keeps its heading

@@ -239,7 +239,7 @@ button.big.ready {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: calc(44% + 40vmin); /* the knob plus its full-lock travel each way */
+  width: calc(32% + 40vmin); /* the knob plus its full-lock travel each way */
   height: 10px;
   margin-top: -5px;
   border-radius: 5px;
@@ -403,4 +403,9 @@ button.big.ready {
   color: var(--ink);
   font-size: 3.6vmin;
   font-weight: 800;
+}
+/* Touches land on the button itself, never on its label, which is redrawn as items change. */
+.btn > *,
+.drive .knob > * {
+  pointer-events: none;
 }

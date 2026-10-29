@@ -35,6 +35,36 @@ const run = (race: Race, steps: number, pads: PadState[] = []) => {
 };
 
 describe('items', () => {
+  it('a tap of ITEM uses every kind of item a human can hold', () => {
+    const kinds: ItemKind[] = [
+      'boost',
+      'boost3',
+      'shot',
+      'homing',
+      'trap',
+      'shield',
+      'whip',
+      'special',
+      'eagle',
+    ];
+    for (const kind of kinds) {
+      const race = setup(
+        ['bat', 'pod'],
+        [
+          [60, 0],
+          [120, 3],
+        ],
+      );
+      const k = race.karts[0]!;
+      run(race, 5);
+      give(k, kind);
+      const before = k.itemCount;
+      run(race, 1, [{ ...gas, item: true }, gas]); // one step down, then let go
+      run(race, 5);
+      expect(`${kind}: ${k.itemCount}`).toBe(`${kind}: ${before - 1}`);
+    }
+  });
+
   it('driving through a box rolls an item into the empty slot', () => {
     const row = PROVING.itemRows![0]!;
     const race = setup(['bat'], [[row - 25, 0]]);

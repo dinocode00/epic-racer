@@ -73,7 +73,15 @@ let framesSent = 0;
 // Hold the phone sideways like a steering wheel: turning it clockwise steers right. The tilt
 // is read from gravity in the screen's own plane, so it works whichever way the phone is
 // rotated and however far it leans back.
-const TILT_FULL_LOCK = 30; // degrees of turn for full lock
+const TILT_FULL_LOCK = 25; // degrees of turn for full lock
+
+/**
+ * Slide or tilt (-1..1 of full lock) to steering. Straight in proportion past a small dead
+ * zone for thumb jitter, so even a slight move gives a real turn.
+ */
+function steerCurve(v: number): number {
+  return Math.sign(v) * Math.max(0, (Math.abs(v) - 0.04) / 0.96);
+}
 const tilt = {
   on: store.get('epic.steer') === 'tilt',
   /** Motion listener added. */
@@ -108,11 +116,8 @@ function onMotion(e: DeviceMotionEvent): void {
   if (tilt.center === null) tilt.center = Math.abs(wrap(tilt.angle)) < Math.PI / 2 ? 0 : Math.PI;
   const turned = (-wrap(tilt.angle - tilt.center) * 180) / Math.PI;
   const v = Math.max(-1, Math.min(1, turned / TILT_FULL_LOCK));
-  // Same feel as the slide: a slight tilt gives a small correction, and the turn sharpens
-  // towards full lock.
-  const a = Math.max(0, (Math.abs(v) - 0.05) / 0.95);
   tilt.turn = v;
-  tilt.steer = Math.sign(v) * (0.6 * a + 0.4 * a ** 3);
+  tilt.steer = steerCurve(v);
   if (tilt.on && mode === 'race') pad.steer = tilt.steer;
   tilt.listening = true;
   onTilt?.();
@@ -195,16 +200,21 @@ function send(m: object): void {
 
 let lastSent = '';
 let lastSentAt = 0;
-setInterval(() => {
+/** An ITEM press not yet sent: even a tap shorter than one send tick must reach the TV. */
+let itemTap = false;
+function pump(): void {
   if (mode !== 'race' || ws?.readyState !== 1) return;
-  const key = `${pad.steer.toFixed(2)}|${pad.throttle}|${pad.brake}|${pad.drift}|${pad.item}`;
+  const out = itemTap ? { ...pad, item: true } : pad;
+  const key = `${out.steer.toFixed(2)}|${out.throttle}|${out.brake}|${out.drift}|${out.item}`;
   const now = performance.now();
   if (key === lastSent && now - lastSentAt < 100) return;
+  itemTap = false;
   lastSent = key;
   lastSentAt = now;
-  ws.send(encodeInput(pad, seq++));
+  ws.send(encodeInput(out, seq++));
   framesSent++;
-}, 16);
+}
+setInterval(pump, 16);
 
 function onHost(m: HostToPad): void {
   switch (m.t) {
@@ -400,9 +410,8 @@ function bindPad(): void {
   let originX = 0;
   let box = drive.getBoundingClientRect();
   const btnTouches = new Map<number, HTMLElement | null>();
-  // Full lock sits about 1.3 cm either side of where the thumb landed: enough travel to hold a
-  // gentle line without the thumb wandering into a full turn.
-  const range = () => box.width * 0.22;
+  // Full lock sits about 1 cm either side of where the thumb landed.
+  const range = () => box.width * 0.16;
 
   const center = drive.querySelector<HTMLElement>('.center');
   const showTilt = () => (knob.style.transform = `translateX(${tilt.turn * range()}px)`);
@@ -427,11 +436,7 @@ function bindPad(): void {
     const r = range();
     // The landing spot stays the centre, so putting the thumb back there is always straight.
     const v = Math.max(-1, Math.min(1, (x - originX) / r));
-    // Small dead zone for thumb jitter. Near the middle a slight slide gives a usable
-    // correction straight away; further out the curve steepens, so the turn gets sharper the
-    // further the thumb goes, up to full lock at the end of the travel.
-    const a = Math.max(0, (Math.abs(v) - 0.04) / 0.96);
-    pad.steer = Math.sign(v) * (0.6 * a + 0.4 * a ** 3);
+    pad.steer = steerCurve(v);
     knob.style.transform = `translateX(${v * r}px)`;
   };
   const startDrive = (id: number, x: number, y: number) => {
@@ -463,7 +468,11 @@ function bindPad(): void {
     // Braking wins over the gas: hold both to stop or reverse while still steering.
     pad.throttle = driveTouch !== null && !pad.brake ? 1 : 0;
     pad.drift = held.has('drift');
-    pad.item = held.has('item');
+    const item = held.has('item');
+    if (item && !pad.item) itemTap = true;
+    const changed = item !== pad.item;
+    pad.item = item;
+    if (changed) pump(); // buttons go out at once rather than on the next tick
   };
 
   // Played without looking: a press in a gap takes the nearest button if it's close.
@@ -481,8 +490,17 @@ function bindPad(): void {
     return best;
   };
 
+  // A finger whose lift went missing (its element was redrawn under it) must not stay held
+  // forever: each touch event lists every finger still down, so drop the rest.
+  const forgetLost = (e: TouchEvent) => {
+    const down = new Set(Array.from(e.touches, (t) => t.identifier));
+    for (const id of btnTouches.keys()) if (!down.has(id)) btnTouches.delete(id);
+    if (driveTouch !== null && driveTouch >= 0 && !down.has(driveTouch)) endDrive();
+  };
+
   const onStart = (e: TouchEvent) => {
     e.preventDefault();
+    forgetLost(e);
     for (const t of Array.from(e.changedTouches)) {
       if (center && t.target instanceof Node && center.contains(t.target)) {
         tilt.center = tilt.angle; // however the phone is held right now is straight
@@ -499,6 +517,7 @@ function bindPad(): void {
   };
   const onMove = (e: TouchEvent) => {
     e.preventDefault();
+    forgetLost(e);
     for (const t of Array.from(e.changedTouches)) {
       if (t.identifier === driveTouch) steerTo(t.clientX);
       else if (btnTouches.has(t.identifier))
@@ -512,6 +531,7 @@ function bindPad(): void {
       if (t.identifier === driveTouch) endDrive();
       btnTouches.delete(t.identifier);
     }
+    forgetLost(e);
     refreshButtons();
   };
   const root = app.querySelector<HTMLElement>('.pad')!;

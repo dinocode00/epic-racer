@@ -60,7 +60,7 @@ export function aiDrive(
   const to = sub(target, k.pos);
   const right = cross(k.fwd, k.up);
   const angle = Math.atan2(dot(to, right), dot(to, k.fwd));
-  pad.steer = clamp(angle * 2.4, -1, 1);
+  pad.steer = clamp(angle * 2.2, -1, 1);
 
   // Corner severity further ahead decides drifting and lifting.
   const far = track.frameAtS(k.s + look * 2.2).tan;
