@@ -3,13 +3,20 @@
  *  - serves the game page (/) and the phone controller (/c/)
  *  - relays phone input to the game host over a WebSocket
  *  - prints the join URL and a QR code
+ *
+ * Phones join over HTTPS (with a certificate this server makes for itself), because iPhones
+ * only let a page read the tilt sensors on a secure connection. The laptop's game page stays
+ * on plain http://localhost.
  */
+import type { Duplex } from 'node:stream';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
-import { readFile, stat } from 'node:fs/promises';
+import { createServer as createHttpsServer } from 'node:https';
+import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { networkInterfaces } from 'node:os';
-import { extname, join, normalize, resolve } from 'node:path';
+import { dirname, extname, join, normalize, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import QRCode from 'qrcode';
+import { generate as generateCert } from 'selfsigned';
 import { WebSocketServer, type WebSocket, type RawData } from 'ws';
 import {
   DEFAULT_PORT,
@@ -22,6 +29,7 @@ import {
 } from '@epic/shared';
 
 const PORT = Number(process.env.PORT ?? DEFAULT_PORT);
+const HTTPS_PORT = Number(process.env.HTTPS_PORT ?? PORT + 1);
 const ROOT = resolve(fileURLToPath(import.meta.url), '../../../..');
 const GAME_DIR = join(ROOT, 'apps/game/dist');
 const PAD_DIR = join(ROOT, 'apps/controller/dist');
@@ -46,7 +54,58 @@ function lanAddresses(): string[] {
 
 const lan = lanAddresses();
 const host = process.env.PUBLIC_HOST ?? lan[0] ?? 'localhost';
-const controllerUrl = `http://${host}:${PORT}/c/`;
+const plainControllerUrl = `http://${host}:${PORT}/c/`;
+let controllerUrl = plainControllerUrl;
+
+// ---------- certificate for the phones' secure connection ----------
+const CERT_FILE = join(ROOT, '.tools', 'cert.json');
+interface StoredCert {
+  hosts: string[];
+  notAfter: number;
+  key: string;
+  cert: string;
+}
+
+/**
+ * Kept between runs: Safari remembers that a phone accepted this certificate, so the
+ * "not private" warning only shows once per phone. A new one is made only when the laptop's
+ * address changes or it is close to expiring.
+ */
+async function loadCert(): Promise<StoredCert> {
+  const hosts = [...new Set([host, ...lan, '127.0.0.1'])];
+  try {
+    const c = JSON.parse(await readFile(CERT_FILE, 'utf8')) as StoredCert;
+    const fresh = c.notAfter - Date.now() > 30 * 86_400_000;
+    if (fresh && hosts.every((h) => c.hosts.includes(h))) return c;
+  } catch {
+    /* none yet */
+  }
+  const notAfter = new Date(Date.now() + 800 * 86_400_000);
+  const ip = (h: string) => /^[\d.]+$/.test(h);
+  const pems = await generateCert([{ name: 'commonName', value: 'Epic Racer' }], {
+    keyType: 'ec',
+    algorithm: 'sha256',
+    notAfterDate: notAfter,
+    extensions: [
+      { name: 'basicConstraints', cA: false },
+      { name: 'keyUsage', digitalSignature: true, keyEncipherment: true },
+      { name: 'extKeyUsage', serverAuth: true },
+      {
+        name: 'subjectAltName',
+        altNames: [
+          { type: 2, value: 'localhost' },
+          ...hosts.map((h) =>
+            ip(h) ? { type: 7 as const, ip: h } : { type: 2 as const, value: h },
+          ),
+        ],
+      },
+    ],
+  });
+  const c: StoredCert = { hosts, notAfter: notAfter.getTime(), key: pems.private, cert: pems.cert };
+  await mkdir(dirname(CERT_FILE), { recursive: true });
+  await writeFile(CERT_FILE, JSON.stringify(c));
+  return c;
+}
 
 // ---------- static files ----------
 const TYPES: Record<string, string> = {
@@ -96,7 +155,7 @@ async function info(): Promise<ServerInfo> {
   return { room: ROOM, controllerUrl, qrSvg, lanAddresses: lan };
 }
 
-const server = createServer(async (req: IncomingMessage, res: ServerResponse) => {
+async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const url = new URL(req.url ?? '/', 'http://x');
   if (url.pathname === '/api/info') {
     res.writeHead(200, { 'content-type': 'application/json' });
@@ -105,7 +164,8 @@ const server = createServer(async (req: IncomingMessage, res: ServerResponse) =>
   if (url.pathname === '/c') return void res.writeHead(302, { location: '/c/' }).end();
   if (url.pathname.startsWith('/c/')) return serveFile(res, PAD_DIR, url.pathname.slice(3));
   return serveFile(res, GAME_DIR, url.pathname.slice(1));
-});
+}
+const server = createServer(handle);
 
 // ---------- websocket relay ----------
 interface PadConn {
@@ -129,7 +189,13 @@ function freeSlot(playerId: string): number {
   return -1;
 }
 
-const wss = new WebSocketServer({ server, path: WS_PATH });
+// One relay shared by the plain server (the laptop's game page) and the secure one (phones).
+const wss = new WebSocketServer({ noServer: true });
+function onUpgrade(req: IncomingMessage, socket: Duplex, head: Buffer): void {
+  if (new URL(req.url ?? '', 'http://x').pathname !== WS_PATH) return void socket.destroy();
+  wss.handleUpgrade(req, socket, head, (ws) => wss.emit('connection', ws, req));
+}
+server.on('upgrade', onUpgrade);
 wss.on('connection', (ws, req) => {
   const role = new URL(req.url ?? '', 'http://x').searchParams.get('role');
   if (role === 'host') {
@@ -196,11 +262,38 @@ wss.on('connection', (ws, req) => {
   });
 });
 
+async function startSecure(): Promise<void> {
+  try {
+    const { key, cert } = await loadCert();
+    const secure = createHttpsServer({ key, cert }, handle);
+    secure.on('upgrade', onUpgrade);
+    await new Promise<void>((ok, fail) => {
+      secure.once('error', fail);
+      secure.listen(HTTPS_PORT, '0.0.0.0', ok);
+    });
+    controllerUrl = `https://${host}:${HTTPS_PORT}/c/`;
+  } catch (e) {
+    console.log(`  (Secure phone link unavailable, tilt steering is off: ${(e as Error).message})`);
+  }
+}
+
+await startSecure(); // before the plain server, so the QR code never shows the old link
 server.listen(PORT, '0.0.0.0', async () => {
   const term = await QRCode.toString(controllerUrl, { type: 'terminal', small: true });
   console.log(`\n  EPIC RACER is running.\n`);
   console.log(`  1. On the laptop connected to the TV, open:  http://localhost:${PORT}/`);
   console.log(`  2. Phones join at:                           ${controllerUrl}   (room ${ROOM})\n`);
   console.log(term);
+  if (controllerUrl !== plainControllerUrl) {
+    console.log(
+      `  The first time a phone opens the link, Safari says "This Connection Is Not Private".`,
+    );
+    console.log(
+      `  That's this game's own certificate: tap Show Details, then "visit this website".`,
+    );
+    console.log(
+      `  (Without the warning: ${plainControllerUrl}, but tilt steering needs the secure link.)\n`,
+    );
+  }
   if (lan.length > 1) console.log(`  Other addresses: ${lan.slice(1).join(', ')}\n`);
 });

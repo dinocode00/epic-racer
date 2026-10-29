@@ -10,7 +10,8 @@ import {
 
 /**
  * Phone controller. Thin client: sends input, shows a small HUD. All game logic lives
- * on the TV laptop. Works over plain HTTP on the home Wi-Fi (no permissions needed).
+ * on the TV laptop. Joins over the server's own HTTPS link, which tilt steering needs; plain
+ * HTTP works too, with slide steering only.
  */
 
 const app = document.getElementById('app')!;
@@ -30,6 +31,17 @@ const store = {
     }
   },
 };
+
+// A hop from the plain link to the secure one brings the name and steering choice along.
+const params = new URLSearchParams(location.search);
+for (const [q, k] of [
+  ['name', 'epic.name'],
+  ['steer', 'epic.steer'],
+] as const) {
+  const v = params.get(q);
+  if (v) store.set(k, v);
+}
+if (params.size) history.replaceState(null, '', location.pathname);
 
 let playerId = store.get('epic.playerId');
 if (!playerId) {
@@ -54,7 +66,107 @@ let framesSent = 0;
   pad,
   frames: () => framesSent,
   mode: () => mode,
+  tilt: () => tilt,
 };
+
+// ---------- tilt steering ----------
+// Hold the phone sideways like a steering wheel: turning it clockwise steers right. The tilt
+// is read from gravity in the screen's own plane, so it works whichever way the phone is
+// rotated and however far it leans back.
+const TILT_FULL_LOCK = 30; // degrees of turn for full lock
+const tilt = {
+  on: store.get('epic.steer') === 'tilt',
+  /** Motion listener added. */
+  armed: false,
+  /** Readings are arriving. */
+  listening: false,
+  /** Steering from the tilt, -1..1. */
+  steer: 0,
+  /** How far the wheel is turned, -1..1 of full lock (drives the on-screen knob). */
+  turn: 0,
+  angle: null as number | null,
+  center: null as number | null,
+  note: '',
+};
+const wrap = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
+
+function onMotion(e: DeviceMotionEvent): void {
+  const g = e.accelerationIncludingGravity;
+  if (g?.x == null || g.y == null) return;
+  const deg =
+    screen.orientation?.angle ?? Number((window as { orientation?: number }).orientation ?? 0);
+  const r = (deg * Math.PI) / 180;
+  // Gravity in screen coordinates (x right, y up on the screen as it's displayed).
+  const sx = g.x * Math.cos(r) - g.y * Math.sin(r);
+  const sy = g.x * Math.sin(r) + g.y * Math.cos(r);
+  if (Math.hypot(sx, sy) < 2.5) return; // lying nearly flat: no clear wheel angle, keep the last
+  const raw = Math.atan2(sx, sy);
+  // Light smoothing against hand shake.
+  tilt.angle = tilt.angle === null ? raw : tilt.angle + wrap(raw - tilt.angle) * 0.5;
+  // Straight starts as "level". Browsers disagree on gravity's sign, so level is whichever of
+  // the two upright readings is nearer; CENTER can set straight to any angle.
+  if (tilt.center === null) tilt.center = Math.abs(wrap(tilt.angle)) < Math.PI / 2 ? 0 : Math.PI;
+  const turned = (-wrap(tilt.angle - tilt.center) * 180) / Math.PI;
+  const v = Math.max(-1, Math.min(1, turned / TILT_FULL_LOCK));
+  // Same feel as the slide: a slight tilt gives a small correction, and the turn sharpens
+  // towards full lock.
+  const a = Math.max(0, (Math.abs(v) - 0.05) / 0.95);
+  tilt.turn = v;
+  tilt.steer = Math.sign(v) * (0.6 * a + 0.4 * a ** 3);
+  if (tilt.on && mode === 'race') pad.steer = tilt.steer;
+  tilt.listening = true;
+  onTilt?.();
+}
+let onTilt: (() => void) | null = null;
+
+/** Turns on the motion sensors. iPhones ask once, and only from a tap on a secure page. */
+let asking: Promise<boolean> | null = null;
+function startTilt(): Promise<boolean> {
+  if (tilt.armed) return Promise.resolve(true);
+  return (asking ??= askForMotion().finally(() => (asking = null)));
+}
+async function askForMotion(): Promise<boolean> {
+  if (!window.isSecureContext || typeof DeviceMotionEvent === 'undefined') return false;
+  const DM = DeviceMotionEvent as unknown as { requestPermission?: () => Promise<string> };
+  try {
+    if (DM.requestPermission && (await DM.requestPermission()) !== 'granted') {
+      tilt.note =
+        'Motion access is off. Close this tab, open the link from the TV again and tap Allow.';
+      return false;
+    }
+  } catch {
+    tilt.note = 'Tap TILT again to allow motion access.';
+    return false;
+  }
+  if (!tilt.armed) addEventListener('devicemotion', onMotion);
+  tilt.armed = true;
+  tilt.note = '';
+  return true;
+}
+
+async function chooseSteering(choice: 'slide' | 'tilt'): Promise<void> {
+  tilt.note = '';
+  if (choice === 'tilt' && !window.isSecureContext) {
+    // Hop to the server's secure link, keeping the name and the choice.
+    try {
+      const info = (await (await fetch('/api/info')).json()) as { controllerUrl: string };
+      if (info.controllerUrl.startsWith('https:')) {
+        location.href = `${info.controllerUrl}?name=${encodeURIComponent(name)}&steer=tilt`;
+        return;
+      }
+    } catch {
+      /* fall through */
+    }
+    tilt.note =
+      'Tilt needs the secure link. Restart the game on the laptop and scan the new QR code.';
+  } else if (choice === 'slide' || (await startTilt())) {
+    tilt.on = choice === 'tilt';
+    store.set('epic.steer', choice);
+  } else {
+    tilt.note ||= 'This phone has no motion sensor the browser can read.';
+  }
+  if (mode === 'lobby') renderLobby();
+}
 
 // ---------- networking ----------
 function connect(): void {
@@ -158,6 +270,9 @@ function renderLobby(): void {
     <div class="sub">Choose your ride</div>
     <div class="cars">${cars}</div>
     ${trackName ? `<div class="trackpick">${canChangeTrack ? '<button id="tprev">◀</button>' : ''}<span>Track: <b>${trackName}</b></span>${canChangeTrack ? '<button id="tnext">▶</button>' : ''}</div>` : ''}
+    <div class="steerpick"><span>Steering</span>${(['slide', 'tilt'] as const).map((k) => `<button data-s="${k}" class="${(k === 'tilt') === tilt.on ? 'sel' : ''}">${k.toUpperCase()}</button>`).join('')}</div>
+    ${tilt.on && !tilt.note ? '<div class="tiltmeter"><b>◀</b><i></i><b>▶</b></div><div class="sub">Hold the phone sideways like a wheel and turn it</div>' : ''}
+    ${tilt.note ? `<div class="sub warn">${tilt.note}</div>` : ''}
     <button class="big ${ready ? 'ready' : ''}" id="ready">${ready ? 'READY!' : 'READY?'}</button>
     <div class="sub">Watch the TV. The race starts when everyone is ready.</div>
   </div>`;
@@ -172,6 +287,11 @@ function renderLobby(): void {
     tn = document.getElementById('tnext');
   if (tp) tp.onclick = () => send({ t: 'menu', action: 'prev' });
   if (tn) tn.onclick = () => send({ t: 'menu', action: 'next' });
+  app.querySelectorAll<HTMLElement>('.steerpick button').forEach((b) => {
+    b.onclick = () => void chooseSteering(b.dataset.s as 'slide' | 'tilt');
+  });
+  const meter = app.querySelector<HTMLElement>('.tiltmeter i');
+  onTilt = meter ? () => (meter.style.left = `${50 + tilt.turn * 45}%`) : null;
   document.getElementById('ready')!.onclick = () => {
     ready = !ready;
     send({ t: 'ready', ready });
@@ -185,6 +305,10 @@ let hudEls: { place: HTMLElement; lap: HTMLElement; item: HTMLElement; flash: HT
 function showRace(): void {
   mode = 'race';
   Object.assign(pad, neutralPad());
+  if (tilt.on) {
+    tilt.center = null; // each race starts with level as straight
+    tilt.angle = null;
+  }
   app.innerHTML = `<div class="pad">
     <div class="bar"><span>${name}</span><span class="place">-</span><span class="lap">LAP 1</span><span class="item" hidden></span><span class="dot"></span></div>
     <div class="zones">
@@ -196,7 +320,8 @@ function showRace(): void {
       <div class="drive">
         <div class="rail"></div>
         <div class="knob"><span>◀</span><b>GAS</b><span>▶</span></div>
-        <div class="hint">hold for gas · slide to steer</div>
+        ${tilt.on ? '<div class="center">⟲ CENTER</div>' : ''}
+        <div class="hint">hold for gas · ${tilt.on ? 'turn the phone' : 'slide'} to steer</div>
       </div>
     </div>
     <div class="flash"></div>
@@ -264,7 +389,8 @@ const ordinal = (n: number) =>
 
 // ---------- touch handling ----------
 // Right thumb: anywhere on the right half holds the gas, and sliding it sideways from where it
-// landed steers, so the gas never has to be let go. Left thumb: DRIFT, ITEM and BRAKE.
+// landed steers (or, with tilt on, turning the phone does), so the gas never has to be let go.
+// Left thumb: DRIFT, ITEM and BRAKE.
 function bindPad(): void {
   const drive = app.querySelector<HTMLElement>('.drive')!;
   const knob = drive.querySelector<HTMLElement>('.knob')!;
@@ -278,7 +404,26 @@ function bindPad(): void {
   // gentle line without the thumb wandering into a full turn.
   const range = () => box.width * 0.22;
 
+  const center = drive.querySelector<HTMLElement>('.center');
+  const showTilt = () => (knob.style.transform = `translateX(${tilt.turn * range()}px)`);
+  // Until the sensors answer (say the page reloaded mid-race) the slide steers instead, and
+  // a tap on the corner button wakes the sensors.
+  const tilting = () => tilt.on && tilt.listening;
+  const labelCenter = () =>
+    center && (center.textContent = tilting() ? '⟲ CENTER' : 'TAP FOR TILT');
+  labelCenter();
+  center?.addEventListener('touchend', () => {
+    if (!tilt.listening) void startTilt().then(labelCenter);
+  });
+  onTilt = tilt.on
+    ? () => {
+        if (center?.textContent !== '⟲ CENTER') labelCenter();
+        showTilt();
+      }
+    : null;
+
   const steerTo = (x: number) => {
+    if (tilting()) return showTilt();
     const r = range();
     // The landing spot stays the centre, so putting the thumb back there is always straight.
     const v = Math.max(-1, Math.min(1, (x - originX) / r));
@@ -302,7 +447,7 @@ function bindPad(): void {
   };
   const endDrive = () => {
     driveTouch = null;
-    pad.steer = 0;
+    if (!tilting()) pad.steer = 0;
     drive.classList.remove('on');
     for (const el of [knob, rail]) el.style.left = el.style.top = el.style.transform = '';
   };
@@ -339,7 +484,10 @@ function bindPad(): void {
   const onStart = (e: TouchEvent) => {
     e.preventDefault();
     for (const t of Array.from(e.changedTouches)) {
-      if (inDrive(t.clientX, t.clientY)) {
+      if (center && t.target instanceof Node && center.contains(t.target)) {
+        tilt.center = tilt.angle; // however the phone is held right now is straight
+        navigator.vibrate?.(15);
+      } else if (inDrive(t.clientX, t.clientY)) {
         if (driveTouch === null) startDrive(t.identifier, t.clientX, t.clientY);
       } else {
         const b = btnAt(t.clientX, t.clientY);
@@ -400,6 +548,9 @@ document.addEventListener(
   'visibilitychange',
   () => document.visibilityState === 'visible' && keepAwake(),
 );
+
+// With tilt chosen, the first tap anywhere wakes the sensors (iPhones need a tap for that).
+document.addEventListener('click', () => tilt.on && void startTilt());
 
 showJoin();
 if (name) connect();
