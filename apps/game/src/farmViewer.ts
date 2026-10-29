@@ -127,9 +127,9 @@ const LANDMARKS: Landmark[] = [
     id: 'yard',
     name: '16–17 · Clothes lines and playhouse',
     at: FARM.playhouse.c,
-    dist: 220,
-    yaw: 2.6,
-    pitch: 0.28,
+    dist: 150,
+    yaw: -0.85,
+    pitch: 0.22,
   },
   { id: 'well', name: 'Old well and sandbox', at: FARM.well, dist: 140, yaw: -2.0, pitch: 0.4 },
 ];

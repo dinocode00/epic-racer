@@ -889,15 +889,21 @@
    "Same place as today's house. Two storeys.",
    "Porch on the west side with a door, but everyone used the south-facing front door.",
    "Front door: up a few concrete steps covered in black outdoor carpet, railings on both sides. The door is slightly left of the middle of the steps, with a white metal bench to its right.",
-   "A concrete pad reaches about 15 ft out from the front door; the steps sit on it, a concrete sidewalk links it to the west porch, and grandpa's simple grill stands on the pad in front of the steps, toward its west-north corner.",
+   "A concrete pad reaches about 23 ft out from the front door; the steps sit on it, a concrete sidewalk links it to the west porch, and grandpa's simple grill stands on the pad in front of the steps, toward its west-north corner.",
    "The front steps have a small stoop at the top next to the door, and the stoop and steps run from the door all the way to the house's right-hand (east) corner. The concrete pad is level with the ground.",
    "Windows: on the east side one downstairs and one upstairs, both centred; on the north side two downstairs and one upstairs.",
    "From the photo: white horizontal siding, slate-blue window trim, corner boards and roof edges, dark charcoal shingles, a buff brick chimney at the ridge, and a rounded fieldstone foundation like the barn's.",
-   "From the photo: a steep front gable with an octagonal vent near the peak, and a one-storey porch with white posts, white railings, a white lattice skirt and a gooseneck light by its door."
+   "From the photo: a steep front gable with an octagonal vent near the peak, and a one-storey porch with white posts, white railings, a white lattice skirt and a gooseneck light by its door.",
+   "Front (south) wall: no upstairs windows, just one window a little wider than normal, to the right of the front door.",
+   "Small white steps run north to south from the west porch down onto the sidewalk; smaller than the front steps.",
+   "A planter about 4\u20135 ft deep runs along the east wall, full of flowers.",
+   "A garden hose hangs on the east wall near the southeast corner.",
+   "About 10 ft out from the east downstairs window: a wooden birdhouse on a wooden post at window height, with a seed tray in front where bluebirds came to eat."
   ],
   "Wooden garage": [
    "Attached to the barn. Roof slants down toward the north, black shingles.",
-   "Door faces west. Painted red to match the barn."
+   "Door faces west. Painted red to match the barn.",
+   "The overhead door is shown most of the way up, with an early-1990s sky-blue Chevrolet pickup parked inside."
   ],
   "Large red barn": [
    "Same barn, same place as today. Rounded fieldstone foundation about 8 ft high.",
@@ -916,7 +922,9 @@
    "The ramp's top is black asphalt; its sides are rounded grassy mounds with flowers, drooping down to the ground.",
    "The bushes grew out of the grass at the very bottom of the ramp sides and did not extend past the end of the ramp.",
    "They are lilacs, shown with purple blossoms.",
-   "The sandbox is a bit bigger west to east than first drawn."
+   "The sandbox is a bit bigger west to east than first drawn.",
+   "The lilacs are true bushes: many thin woody stems from the ground, no single trunk.",
+   "Honeybees work the flowers here, as everywhere there are flowers on the property."
   ],
   "Gravel driveway": [
    "All open gravel, graded for driving and parking. No grass inside it.",
@@ -927,7 +935,8 @@
    "About 15 ft taller than the house.",
    "Nothing at its foot.",
    "It still spun.",
-   "Bare silver all over."
+   "Bare silver all over.",
+   "The tower's square base lines up square with the concrete pad beside it."
   ],
   "Orchard": [
    "Lines run parallel with the length of the barn. About 10 trees per line, about 9 lines.",
@@ -936,7 +945,8 @@
    "The wavy line was nothing.",
    "The grass under the trees was always mowed and well kept.",
    "The orchard and the Christmas trees sat closer together than in v4 (see 13).",
-   "The orchard sat closer to the red garage, with the grape vines squeezed in between."
+   "The orchard sat closer to the red garage, with the grape vines squeezed in between.",
+   "Every tree has some windfall fruit lying under it, with honeybees about."
   ],
   "Grape vines and garden": [
    "4 rows. Shortened by 20% at the north end.",
@@ -944,7 +954,8 @@
   ],
   "Red wooden garage": [
    "Door faces north. Black shingle roof. White trim like the barn.",
-   "A rooster weather vane on top that turned with the wind."
+   "A rooster weather vane on top that turned with the wind.",
+   "A side entry door on the east wall, close to the north end, for when you didn't want to open the big north door."
   ],
   "Wire corn crib": [
    "Round wire-mesh corn crib, about 8 ft tall, half full of corn."
@@ -953,7 +964,9 @@
    "The circle you drew at its corner was the corn crib, so the shed sits right beside it.",
    "The shed and corn crib stand right next to the barn, close to touching its southeast corner.",
    "Used for garden tools.",
-   "Same red and trim as the barn."
+   "Same red and trim as the barn.",
+   "It sits just south of the corn crib, its west wall on the same line as the barn's east wall.",
+   "A simple door on its west side; none on the east."
   ],
   "Old hay wagons": [
    "One or two old wooden trailers with an open wooden platform, pulled by the tractors.",
@@ -977,12 +990,16 @@
    "Gourds grew there too.",
    "The patch hugs the mowed grass lane along its north side.",
    "Past the south line: a rising hill of grass, wildflowers and weeds.",
-   "A real variety of pumpkins, with a few giant ones far bigger than the rest."
+   "A real variety of pumpkins, with a few giant ones far bigger than the rest.",
+   "Thick pumpkin vines with yellow flowers run all through the patch.",
+   "The gourds are horn-shaped: a round bottom tapering and curling up to a thin stem.",
+   "The pumpkins run a bit bigger, and there are more pumpkins and gourds."
   ],
   "Old rusted barrel stove": [
    "Used to burn garbage.",
    "A small pile of scrap wood next to it.",
-   "A big barrel, larger than first drawn."
+   "A big barrel, larger than first drawn.",
+   "The stovepipe is about half as tall as first drawn, and the feed door faces east."
   ],
   "Clothes lines": [
    "Three lines, two sets of posts.",
@@ -991,7 +1008,7 @@
   "Kids' small playhouse": [
    "Coloured to match the barn.",
    "Black shingle roof, nothing on top.",
-   "About 8 \u00d7 8 ft, with a window on the left side, one on the right side and two in front.",
+   "About 8 \u00d7 8 ft. Door on the south side with a small window either side and a small window above it near the peak; one window on each of the east and west sides, toward the south corner; none on the north side.",
    "Much closer to the farmhouse, just east of the clothes lines."
   ],
   "Trees, paths and fields": [
@@ -7470,12 +7487,12 @@
    122.5
   ],
   "red_shed_centre": [
-   67.7,
-   120.2
+   62.6,
+   118.4
   ],
   "greenhouse_centre": [
-   70.6,
-   114.4
+   65.5,
+   112.6
   ],
   "hay_wagons": [
    [
@@ -7523,11 +7540,11 @@
   },
   "front_pad": {
    "centre": [
-    38.9,
-    166.9
+    38.1,
+    166.0
    ],
    "size_m": [
-    4.6,
+    7.04,
     6.2
    ]
   },

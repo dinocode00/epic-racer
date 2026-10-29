@@ -57,8 +57,13 @@ export class FarmScene {
     farm.position.set(-CENTRE[0] * S, 0, CENTRE[1] * S);
     farm.add(buildGround());
     const b = buildBuildings();
-    farm.add(b.group, buildPlants());
-    this.updateProps = b.update;
+    const plants = buildPlants();
+    farm.add(b.group, plants);
+    const bees = plants.userData.update as (t: number) => void;
+    this.updateProps = (t) => {
+      b.update(t);
+      bees(t);
+    };
     this.solids = b.solids;
     s.add(farm);
     patchScene(s);

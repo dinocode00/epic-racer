@@ -255,12 +255,12 @@ def render():
     LAYOUT['pumpkin_patch'] = pp.tolist()
     out.append(f'<g id="lm-14"><path class="soil" d="{poly_d(pp)}"/>')
     for y in np.arange(pp[:, 1].min() + 2.5, pp[:, 1].max() - 1, 3.2):
-        row = [(x, y) for x in np.arange(pp[:, 0].min() + 1, pp[:, 0].max(), 2.6) if inside((x, y), pp)]
+        row = [(x, y) for x in np.arange(pp[:, 0].min() + 1, pp[:, 0].max(), 1.9) if inside((x, y), pp)]
         if len(row) > 1:
             out.append(f'<path class="vine" d="M{svgpt(row[0])} L{svgpt(row[-1])}"/>')
         for x, yy in row:
             jx, jy = rng.normal(0, 0.5, 2)
-            gourd = rng.uniform() < 0.22
+            gourd = rng.uniform() < 0.28  # v13: more pumpkins and gourds
             cls, r = ('gourd', rng.uniform(0.35, 0.5)) if gourd else ('pumpkin', rng.uniform(0.55, 0.9))
             LAYOUT.setdefault('pumpkins', []).append([round(float(x + jx), 2), round(float(yy + jy), 2), round(float(r), 2), cls])
             out.append(f'<circle class="{cls}" cx="{x + jx:.1f}" cy="{-(yy + jy):.1f}" r="{r:.2f}"/>')
@@ -428,10 +428,12 @@ def render():
     # Concrete pad ~15 ft out from the front door, the steps on it, a sidewalk round to the
     # west porch, and grandpa's grill on the pad in front of the steps toward its west-north corner.
     # v12: the stoop and steps now run to the house's east corner, so the pad widens to hold them
-    pad = rect(hc - U * 7.3 - V * 0.6, 4.6, 6.2, GRID)
+    # v13: the pad runs about 8 ft farther south (23 ft out from the house)
+    pad_c, pad_w = hc - U * 8.52 - V * 0.6, 7.04
+    pad = rect(pad_c, pad_w, 6.2, GRID)
     walk = [hc - U * 6.0 + V * 2.5, hc - U * 6.0 + V * 4.3, hc - U * 4.9 + V * 4.3]
     grill = hc - U * 8.6 + V * 1.9
-    LAYOUT['house_pad'] = {'c': (hc - U * 7.3 - V * 0.6).tolist(), 'w': 4.6, 'h': 6.2, 'angle': GRID}
+    LAYOUT['house_pad'] = {'c': pad_c.tolist(), 'w': pad_w, 'h': 6.2, 'angle': GRID}
     LAYOUT['house_walk'] = {'pts': [p.tolist() for p in walk], 'width': 1.0}
     LAYOUT['grill'] = grill.tolist()
     out.append(f'<path class="concrete" d="{poly_d(pad)}"/>')
@@ -499,7 +501,8 @@ def render():
     bc = barn_se - U * 1.9 - V * 1.0
     out.append(f'<g id="lm-10"><circle class="crib" cx="{bc[0]:.1f}" cy="{-bc[1]:.1f}" r="1.4"/>'
                f'<circle class="crib-cap" cx="{bc[0]:.1f}" cy="{-bc[1]:.1f}" r=".45"/></g>')
-    sh = bc - V * 3.5
+    # v13: the shed sits south of the crib, its west wall on the line of the barn's east wall
+    sh = barn_se - U * 6.5 - V * 1.8
     out.append(f'<g id="lm-11"><path class="bld roof-black wall-red" d="{poly_d(rect(sh, 6, 3.6, GRID))}"/>'
                f'{seg(sh - U * 3, sh + U * 3, "ridge")}</g>')
     gh = sh - V * 6.0 - U * 2.6  # a little east and south of the shed

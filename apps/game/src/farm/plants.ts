@@ -1,6 +1,44 @@
 import * as THREE from 'three';
 import { TREES, type TreeGeo, barkMaterial, leafDepth, leafMaterial } from '../render/foliage.ts';
-import { FARM, type Species, type XY, driveHeight, groundHeight } from './layout.ts';
+import { type BeeSpot, bees } from './bees.ts';
+import {
+  BERM,
+  FARM,
+  type Species,
+  type XY,
+  driveHeight,
+  groundHeight,
+  inside,
+  rampFrame,
+  rampHeight,
+  rampPoint,
+} from './layout.ts';
+
+/** Where the honeybees work: every flower patch and the windfalls in the orchard. */
+const SPOTS: BeeSpot[] = [];
+
+/** Bees over the ramp's wildflower mounds, the garden and the wildflower fields. */
+function meadowBees(): void {
+  for (let i = 0; i < 10; i++) {
+    const t = 0.12 + (i / 10) * 0.85;
+    const side = i % 2 ? 1 : -1;
+    const [x, y] = rampPoint(t, side * (rampFrame(...rampPoint(t, 0)).half + BERM * 0.5));
+    SPOTS.push({ x, y: (rampHeight(x, y) ?? groundHeight(x, y)) + 0.2, z: -y, r: 1.0, n: 2 });
+  }
+  const G = FARM.garden.c;
+  SPOTS.push({ x: G[0], y: groundHeight(G[0], G[1]) + 0.4, z: -G[1], r: 1.4, n: 3 });
+  for (const poly of [FARM.outside_east_field, FARM.outside_hill]) {
+    const xs = poly.map((p) => p[0]),
+      ys = poly.map((p) => p[1]);
+    for (let placed = 0, tries = 0; placed < 18 && tries < 500; tries++) {
+      const x = Math.min(...xs) + rnd() * (Math.max(...xs) - Math.min(...xs));
+      const y = Math.min(...ys) + rnd() * (Math.max(...ys) - Math.min(...ys));
+      if (!inside(x, y, poly)) continue;
+      SPOTS.push({ x, y: groundHeight(x, y) + 0.35, z: -y, r: 1.5, n: 2 });
+      placed++;
+    }
+  }
+}
 
 /**
  * Everything that grows on the farm, in real metres: the Christmas tree grid (four kinds,
@@ -148,7 +186,7 @@ export function buildPlants(): THREE.Group {
   const fruit = new THREE.InstancedMesh(
     fruitGeo,
     new THREE.MeshStandardMaterial({ roughness: 0.45 }),
-    FARM.orchard.length * 26,
+    FARM.orchard.length * 36,
   );
   fruit.castShadow = true;
   let nf = 0;
@@ -179,6 +217,23 @@ export function buildPlants(): THREE.Group {
       fruit.setMatrixAt(nf, mtx);
       fruit.setColorAt(nf++, new THREE.Color(col).multiplyScalar(0.85 + rnd() * 0.3));
     }
+    // Windfalls: some fruit always drops before picking, a few of them going brown.
+    const fallen = 5 + ((rnd() * 6) | 0);
+    for (let i = 0; i < fallen; i++) {
+      const a = rnd() * Math.PI * 2;
+      const d = 0.3 + rnd() * 1.9;
+      const fx = x + Math.cos(a) * d,
+        fz = y + Math.sin(a) * d;
+      mtx
+        .makeRotationY(rnd() * 6)
+        .scale(new THREE.Vector3(r, r * 0.92, r))
+        .setPosition(fx, groundHeight(fx, fz) + r * 0.7, -fz);
+      fruit.setMatrixAt(nf, mtx);
+      const c = new THREE.Color(col).multiplyScalar(0.7 + rnd() * 0.3);
+      if (rnd() < 0.3) c.lerp(new THREE.Color(0x5a3a1c), 0.55);
+      fruit.setColorAt(nf++, c);
+    }
+    SPOTS.push({ x, y: g0 + 0.12, z: -y, r: 1.3, n: 2 });
   }
   fruit.count = nf;
   root.add(orch.done(), fruit);
@@ -202,6 +257,10 @@ export function buildPlants(): THREE.Group {
   root.add(neighbourFarm([FARM.neighbourWoods[1]![0] - 28, FARM.neighbourWoods[1]![1] - 6], 2.1));
 
   root.add(arborvitae(), lilacs(), grapes(), garden(), pumpkins());
+  meadowBees();
+  const hive = bees(SPOTS);
+  root.add(hive.mesh);
+  root.userData.update = hive.update;
   root.traverse((o) => {
     if ((o as THREE.Mesh).isMesh && !(o as THREE.InstancedMesh).isInstancedMesh) {
       o.castShadow = true;
@@ -253,6 +312,14 @@ function arborvitae(): THREE.InstancedMesh {
  */
 function lilacs(): THREE.Group {
   const g = new THREE.Group();
+  const bark = new THREE.MeshStandardMaterial({ color: 0x6b5a4a, roughness: 0.95 });
+  const stem = (a: THREE.Vector3, b: THREE.Vector3, r0: number, r1: number) => {
+    const d = new THREE.Vector3().subVectors(b, a);
+    const o = new THREE.Mesh(new THREE.CylinderGeometry(r1, r0, d.length(), 5), bark);
+    o.position.copy(a).addScaledVector(d, 0.5);
+    o.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize());
+    return o;
+  };
   const leaf = new THREE.MeshStandardMaterial({ color: 0x4f7d45, roughness: 0.9 });
   const leafDark = new THREE.MeshStandardMaterial({ color: 0x3f6a38, roughness: 0.92 });
   const bloom = new THREE.MeshStandardMaterial({ color: 0xa77bc9, roughness: 0.8 });
@@ -279,7 +346,7 @@ function lilacs(): THREE.Group {
       const r = 0.55 + rnd() * 0.35;
       const c = new THREE.Vector3(
         Math.cos(a) * Math.cos(e) * 1.25,
-        1.25 + Math.sin(e) * 1.35,
+        1.8 + Math.sin(e) * 1.3,
         Math.sin(a) * Math.cos(e) * 1.25,
       );
       clumps.push({ c, r });
@@ -288,8 +355,8 @@ function lilacs(): THREE.Group {
       o.scale.set(1, 0.85, 1);
       b.add(o);
     }
-    const core = new THREE.Mesh(new THREE.IcosahedronGeometry(1.3, 1), leafDark);
-    core.position.set(0, 1.5, 0);
+    const core = new THREE.Mesh(new THREE.IcosahedronGeometry(1.15, 1), leafDark);
+    core.position.set(0, 2.15, 0);
     core.scale.set(1, 0.9, 1);
     b.add(core);
     // Panicles sit in the clumps on their outward, upper faces, half buried in the leaves.
@@ -304,7 +371,28 @@ function lilacs(): THREE.Group {
       o.scale.setScalar(0.8 + rnd() * 0.45);
       b.add(o);
     }
+    // No single trunk: a clump of thin woody stems rising from the ground and fanning out,
+    // forking once on the way up into the leaves.
+    for (let i = 0; i < 16; i++) {
+      const a = rnd() * Math.PI * 2,
+        a2 = a + (rnd() - 0.5) * 0.8;
+      const base = new THREE.Vector3(Math.cos(a) * rnd() * 0.35, 0.05, Math.sin(a) * rnd() * 0.35);
+      const reach = 0.35 + rnd() * 0.35;
+      const mid = new THREE.Vector3(Math.cos(a) * reach, 0.75 + rnd() * 0.35, Math.sin(a) * reach);
+      const r0 = 0.025 + rnd() * 0.022;
+      b.add(stem(base, mid, r0, r0 * 0.8));
+      for (const da of [-0.35, 0.35]) {
+        const tr = reach + 0.3 + rnd() * 0.45;
+        const tip = new THREE.Vector3(
+          Math.cos(a2 + da) * tr,
+          1.55 + rnd() * 0.45,
+          Math.sin(a2 + da) * tr,
+        );
+        b.add(stem(mid, tip, r0 * 0.75, r0 * 0.45));
+      }
+    }
     b.position.set(p[0], driveHeight(p[0], p[1]) - 0.15, -p[1]);
+    SPOTS.push({ x: p[0], y: b.position.y + 2.6, z: -p[1], r: 2.0, n: 7 });
     b.rotation.y = rnd() * 6;
     g.add(b);
   }
@@ -381,6 +469,194 @@ function pumpkinGeo(flat: number, ribs: number, depth: number, warts = 0): THREE
 }
 
 /**
+ * A crookneck gourd of unit bulb radius lying on its side: a round bulb whose neck tapers away
+ * and curls up toward the stem. `curl` is how far the neck bends, `len` how long it runs.
+ */
+function hornGeo(len: number, curl: number): THREE.BufferGeometry {
+  const prof: THREE.Vector2[] = [new THREE.Vector2(0, 0)];
+  for (let i = 1; i < 24; i++) {
+    const t = i / 24;
+    const r = 0.17 + 0.83 * Math.exp(-(((t - 0.2) / 0.21) ** 2)) * Math.min(1, t * 7);
+    prof.push(new THREE.Vector2(Math.max(0.12, r), t * len));
+  }
+  prof.push(new THREE.Vector2(0.1, len), new THREE.Vector2(0, len));
+  const geo = new THREE.LatheGeometry(prof, 14);
+  const pos = geo.attributes.position!;
+  const k = curl / (len * 0.72) ** 2;
+  for (let i = 0; i < pos.count; i++) {
+    const y = pos.getY(i);
+    pos.setX(i, pos.getX(i) + k * Math.max(0, y - len * 0.28) ** 2);
+  }
+  // Lay it down: the neck runs along -x, rising a little, and curls up.
+  const tilt = Math.PI / 2 - 0.18;
+  geo.rotateZ(tilt);
+  const by = len * 0.2;
+  geo.translate(by * Math.sin(tilt), -by * Math.cos(tilt), 0);
+  geo.computeVertexNormals();
+  return geo;
+}
+
+/**
+ * Pumpkin vines through the whole patch: runners wandering out from every pumpkin and between
+ * them, thick with broad lobed leaves and yellow trumpet flowers.
+ */
+function pumpkinVines(): THREE.Group {
+  const g = new THREE.Group();
+  const patch = FARM.pumpkin_patch;
+  const segs: THREE.Matrix4[] = [],
+    leaves: THREE.Matrix4[] = [],
+    flowers: THREE.Matrix4[] = [];
+  const e = new THREE.Euler(),
+    q = new THREE.Quaternion(),
+    one = new THREE.Vector3();
+  const mat = (
+    x: number,
+    y: number,
+    z: number,
+    rx: number,
+    ry: number,
+    rz: number,
+    sx: number,
+    sy: number,
+    sz: number,
+  ) =>
+    new THREE.Matrix4().compose(
+      new THREE.Vector3(x, y, z),
+      q.setFromEuler(e.set(rx, ry, rz, 'YXZ')),
+      one.set(sx, sy, sz),
+    );
+  const grow = (x: number, y: number, heading: number, n: number) => {
+    for (let i = 0; i < n; i++) {
+      heading += (rnd() - 0.5) * 0.7;
+      const step = 0.32;
+      const nx = x + Math.cos(heading) * step,
+        ny = y + Math.sin(heading) * step;
+      if (!inside(nx, ny, patch)) return;
+      const h = groundHeight((x + nx) / 2, (y + ny) / 2);
+      segs.push(
+        mat((x + nx) / 2, h + 0.03, -(y + ny) / 2, 0, heading, 0, step + 0.04, 0.025, 0.025),
+      );
+      x = nx;
+      y = ny;
+      if (rnd() < 0.8) {
+        const side = rnd() < 0.5 ? -1 : 1;
+        const lx = x + Math.cos(heading + side * 1.4) * 0.12,
+          ly = y + Math.sin(heading + side * 1.4) * 0.12;
+        const s = 0.13 + rnd() * 0.09;
+        leaves.push(
+          mat(
+            lx,
+            groundHeight(lx, ly) + 0.06 + rnd() * 0.16,
+            -ly,
+            (rnd() - 0.5) * 0.7,
+            rnd() * 6.3,
+            (rnd() - 0.5) * 0.7,
+            s,
+            s,
+            s,
+          ),
+        );
+      }
+      if (rnd() < 0.11) {
+        const s = 0.8 + rnd() * 0.5;
+        if (rnd() < 0.12) SPOTS.push({ x, y: groundHeight(x, y) + 0.3, z: -y, r: 0.5, n: 1 });
+        flowers.push(
+          mat(
+            x,
+            groundHeight(x, y) + 0.12 + rnd() * 0.12,
+            -y,
+            (rnd() - 0.5) * 0.6,
+            rnd() * 6.3,
+            (rnd() - 0.5) * 0.6,
+            s,
+            s,
+            s,
+          ),
+        );
+      }
+    }
+  };
+  for (const [x, y] of FARM.pumpkins) {
+    const a = rnd() < 0.5 ? 0 : Math.PI;
+    grow(x, y, a + (rnd() - 0.5) * 0.8, 9 + ((rnd() * 9) | 0));
+    grow(x, y, a + Math.PI + (rnd() - 0.5) * 0.8, 6 + ((rnd() * 8) | 0));
+    if (rnd() < 0.5) grow(x, y, rnd() * 6.3, 5 + ((rnd() * 6) | 0));
+  }
+  // Extra runners filling the gaps between the rows.
+  const xs = patch.map((p) => p[0]),
+    ys = patch.map((p) => p[1]);
+  for (let placed = 0, tries = 0; placed < 260 && tries < 4000; tries++) {
+    const x = Math.min(...xs) + rnd() * (Math.max(...xs) - Math.min(...xs));
+    const y = Math.min(...ys) + rnd() * (Math.max(...ys) - Math.min(...ys));
+    if (!inside(x, y, patch)) continue;
+    grow(x, y, rnd() * 6.3, 10 + ((rnd() * 10) | 0));
+    placed++;
+  }
+  const inst = (
+    geo: THREE.BufferGeometry,
+    m: THREE.Material,
+    at: THREE.Matrix4[],
+    col?: () => THREE.Color,
+  ) => {
+    const im = new THREE.InstancedMesh(geo, m, at.length);
+    at.forEach((mt, i) => {
+      im.setMatrixAt(i, mt);
+      if (col) im.setColorAt(i, col());
+    });
+    im.receiveShadow = true;
+    return im;
+  };
+  g.add(
+    inst(
+      new THREE.BoxGeometry(1, 1, 1),
+      new THREE.MeshStandardMaterial({ color: 0x5b8a30, roughness: 0.9 }),
+      segs,
+    ),
+  );
+  // A broad five-lobed leaf, cupped a little.
+  const leafShape = new THREE.Shape();
+  for (let i = 0; i <= 40; i++) {
+    const a = (i / 40) * Math.PI * 2;
+    const r = 0.75 + 0.25 * Math.cos(a * 5) ** 2 - 0.25 * Math.max(0, Math.cos(a)) ** 12;
+    const px = Math.cos(a) * r,
+      pz = Math.sin(a) * r;
+    i ? leafShape.lineTo(px, pz) : leafShape.moveTo(px, pz);
+  }
+  const leafGeo = new THREE.ShapeGeometry(leafShape, 3);
+  leafGeo.rotateX(Math.PI / 2);
+  const lp = leafGeo.attributes.position!;
+  for (let i = 0; i < lp.count; i++) {
+    const d = Math.hypot(lp.getX(i), lp.getZ(i));
+    lp.setY(i, 0.18 * d * d);
+  }
+  leafGeo.computeVertexNormals();
+  const leaf = inst(
+    leafGeo,
+    new THREE.MeshStandardMaterial({ roughness: 0.85, side: THREE.DoubleSide }),
+    leaves,
+    () => new THREE.Color().setHSL(0.26 + rnd() * 0.04, 0.5, 0.26 + rnd() * 0.1),
+  );
+  leaf.castShadow = true;
+  g.add(leaf);
+  // Yellow trumpet flowers, open to the sky.
+  const fl = new THREE.ConeGeometry(0.05, 0.1, 7, 1, true);
+  fl.rotateX(Math.PI);
+  g.add(
+    inst(
+      fl,
+      new THREE.MeshStandardMaterial({
+        color: 0xf5c02a,
+        roughness: 0.6,
+        side: THREE.DoubleSide,
+        emissive: 0x3a2a00,
+      }),
+      flowers,
+    ),
+  );
+  return g;
+}
+
+/**
  * The pumpkin patch: a mix of field pumpkins, flat red Cinderellas, tall jack-o-lanterns,
  * white ghosts, warty greens and tans, gourds, and a few prize giants dwarfing the rest.
  */
@@ -399,7 +675,8 @@ function pumpkins(): THREE.Group {
     tall: style(1.05, 9, 0.06),
     warty: style(0.78, 10, 0.06, 0.09),
     giant: style(0.72, 14, 0.1),
-    gourd: style(0.85, 6, 0.04),
+    gourd: { geo: hornGeo(3.0, 1.4), flat: 1, at: [], col: [] } as Style,
+    gooseneck: { geo: hornGeo(4.2, 2.4), flat: 1, at: [], col: [] } as Style,
   };
   const stems: THREE.Matrix4[] = [];
   const put = (s: Style, x: number, y: number, base: number, r: number, c: number, v = 0.15) => {
@@ -412,7 +689,7 @@ function pumpkins(): THREE.Group {
       .setPosition(x, base + r * s.flat * 0.88, -y);
     s.at.push(m);
     s.col.push(new THREE.Color(c).multiplyScalar(1 - v + rnd() * v * 2));
-    if (s !== S.gourd) {
+    if (s !== S.gourd && s !== S.gooseneck) {
       const sr = 0.012 + r * 0.06;
       stems.push(
         new THREE.Matrix4()
@@ -447,11 +724,12 @@ function pumpkins(): THREE.Group {
     if (giants.some((q, i) => Math.hypot(q[0] - x, q[1] - y) < giantR[i]! + 0.7)) continue;
     const h = groundHeight(x, y) - 0.02;
     if (kind === 'gourd') {
-      put(S.gourd, x, y, h, 0.07 + (r - 0.35) * 0.2, gourdCols[(rnd() * 4) | 0]!);
+      const gr = 0.08 + (r - 0.35) * 0.25;
+      put(rnd() < 0.7 ? S.gourd : S.gooseneck, x, y, h, gr, gourdCols[(rnd() * 4) | 0]!);
       continue;
     }
     // Sizes run from little pie pumpkins to big carvers.
-    const rr = (0.1 + (r - 0.55) * 0.3) * (0.7 + rnd() * rnd() * 1.6);
+    const rr = (0.13 + (r - 0.55) * 0.4) * (0.7 + rnd() * rnd() * 1.6);
     const roll = rnd();
     if (roll < 0.5) put(S.field, x, y, h, rr, 0xe0661c);
     else if (roll < 0.64) put(S.cinderella, x, y, h, rr * 1.15, 0xc8441a);
@@ -468,7 +746,7 @@ function pumpkins(): THREE.Group {
       const x = w.c[0] + lx * Math.cos(a) - lz * Math.sin(a);
       const y = w.c[1] + lx * Math.sin(a) + lz * Math.cos(a);
       const base = groundHeight(w.c[0], w.c[1]) + 1.01;
-      const rr = 0.13 + rnd() * 0.08;
+      const rr = 0.16 + rnd() * 0.08;
       if (rnd() < 0.8) put(S.field, x, y, base, rr, 0xe0661c, 0.1);
       else put(S.field, x, y, base, rr, 0xeeeadc, 0.05);
     }
@@ -484,6 +762,7 @@ function pumpkins(): THREE.Group {
     m.castShadow = m.receiveShadow = true;
     g.add(m);
   }
+  g.add(pumpkinVines());
   const stemGeo = new THREE.CylinderGeometry(0.7, 1, 1, 6);
   const sm = new THREE.InstancedMesh(
     stemGeo,

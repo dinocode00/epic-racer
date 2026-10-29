@@ -7,6 +7,9 @@ import {
   RAMP_RISE,
   type RectDef,
   type XY,
+  U,
+  V,
+  add as addXY,
   groundHeight,
   mid,
   rampFrame,
@@ -159,6 +162,7 @@ function makeMats() {
     brass: std({ color: 0xc9a23a, metalness: 1, roughness: 0.3 }),
     bulb: std({ color: 0xfff1c4, emissive: 0xffd88a, emissiveIntensity: 0.8 }),
     doormat: std({ color: 0x6a5a40, roughness: 1 }),
+    soil: std({ color: 0x4a3626, roughness: 1 }),
     grassMound: std({ color: 0x6fa645, roughness: 1 }),
   };
 }
@@ -190,26 +194,6 @@ function boxM(w: number, h: number, d: number, m: THREE.Material, x = 0, y = 0, 
   const o = new THREE.Mesh(g, m);
   o.position.set(x, y, z);
   return o;
-}
-
-/** Lean-to walls along x: height hHigh at -L/2 falling to hLow at +L/2, width W across z. */
-function lean(L: number, W: number, hHigh: number, hLow: number, m: THREE.Material) {
-  const s = new THREE.Shape();
-  s.moveTo(-L / 2, 0);
-  s.lineTo(L / 2, 0);
-  s.lineTo(L / 2, hLow);
-  s.lineTo(-L / 2, hHigh);
-  s.closePath();
-  const g = new THREE.ExtrudeGeometry(s, { depth: W, bevelEnabled: false });
-  g.translate(0, 0, -W / 2);
-  const uv = g.attributes.uv!,
-    pos = g.attributes.position!,
-    nor = g.attributes.normal!;
-  for (let i = 0; i < uv.count; i++) {
-    if (Math.abs(nor.getZ(i)) > 0.5) uv.setXY(i, pos.getX(i), pos.getY(i));
-    else uv.setXY(i, pos.getZ(i), pos.getY(i));
-  }
-  return new THREE.Mesh(g, m);
 }
 
 /** A gable wall body along x: length L, width W, walls to `eave`, gable peak at `ridge`. */
@@ -405,6 +389,27 @@ function farmhouse(): THREE.Group {
   porch.add(shedRoofZ(pw, pd, 3.75, 3.35, m.shingle));
   const pDoor = box(0.95, 2.1, 0.08, m.trimWhite, 0.4, 2.05, pd / 2 - 0.02);
   porch.add(pDoor);
+  // Small white wooden steps off the porch's south end, down onto the sidewalk.
+  const pst = 4,
+    prise = 1.01 / (pst + 1),
+    ptread = 0.28,
+    psw = 1.0;
+  for (let i = 1; i <= pst; i++) {
+    const top = 1.01 - i * prise;
+    porch.add(box(ptread + 0.03, 0.05, psw, m.trimWhite, -pw / 2 - (i - 0.5) * ptread, top, 0));
+    porch.add(
+      box(0.03, prise, psw, m.trimWhite, -pw / 2 - (i - 1) * ptread - 0.015, top + prise / 2, 0),
+    );
+  }
+  for (const z of [-psw / 2, psw / 2])
+    porch.add(
+      strut(
+        new THREE.Vector3(-pw / 2, 0.98, z),
+        new THREE.Vector3(-pw / 2 - pst * ptread, 0.0, z),
+        0.045,
+        m.trimWhite,
+      ),
+    );
   porch.position.set(px, 0, pz);
   g.add(porch);
   // The concrete pad and the sidewalk to the porch lie flush in the ground (painted there);
@@ -478,8 +483,6 @@ function farmhouse(): THREE.Group {
     [L / 2, -1.6, 2, 2.4], // north: two windows downstairs
     [L / 2, 1.6, 2, 2.4],
     [L / 2, 0, 2, 5.0], // north: one window upstairs
-    [-L / 2, 1.8, 3, 5.0],
-    [-L / 2, -1.8, 3, 5.0],
   ];
   for (const [x, z, f, y] of wins) {
     const w = windowAt(0.95, 1.5, m.trimBlue, 1);
@@ -487,6 +490,11 @@ function farmhouse(): THREE.Group {
     w.rotation.y = [0, Math.PI, Math.PI / 2, -Math.PI / 2][f]!;
     g.add(w);
   }
+  // South (front) wall: no upstairs windows, just one wider window right of the front door.
+  const fw = windowAt(1.4, 1.5, m.trimBlue, 1);
+  fw.position.set(-L / 2, 2.4, 1.75);
+  fw.rotation.y = -Math.PI / 2;
+  g.add(fw);
   // Slate-blue corner boards.
   for (const [x, z] of [
     [L / 2, W / 2],
@@ -495,6 +503,220 @@ function farmhouse(): THREE.Group {
     [-L / 2, -W / 2],
   ] as const)
     g.add(box(0.18, eave - base, 0.18, m.trimBlue, x, (eave + base) / 2, z));
+  g.add(eastPlanter(L, W / 2 + 0.13));
+  g.add(
+    gardenHose()
+      .translateX(-L / 2 + 0.75)
+      .translateZ(W / 2 + 0.13),
+  );
+  // The bird feeder about 10 ft out from the east window, at window height so it can be
+  // watched from inside.
+  const feeder = birdFeeder();
+  feeder.position.set(0, 0, W / 2 + 3.0);
+  g.add(feeder);
+  g.userData.birds = feeder.userData.birds;
+  return g;
+}
+
+/** Flower planter along the east wall, about 4.5 ft deep, edged in timbers and full of flowers. */
+function eastPlanter(L: number, z0: number): THREE.Group {
+  const m = mats();
+  const g = new THREE.Group();
+  const d = 1.4,
+    len = L - 0.3,
+    zc = z0 + d / 2;
+  g.add(box(len, 0.2, d, m.soil, 0, 0.0, zc));
+  g.add(
+    boxM(len + 0.2, 0.22, 0.12, m.wood, 0, 0.05, z0 + d + 0.06),
+    boxM(0.12, 0.22, d + 0.12, m.wood, -len / 2 - 0.06, 0.05, zc),
+    boxM(0.12, 0.22, d + 0.12, m.wood, len / 2 + 0.06, 0.05, zc),
+  );
+  let seed = 31;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const leafy: THREE.Matrix4[] = [],
+    blooms: THREE.Matrix4[] = [],
+    cols: THREE.Color[] = [];
+  const palette = [0xe8384a, 0xf27aa6, 0xf6d02c, 0xffffff, 0x9b6ad6, 0xf28a2a, 0xd8344f];
+  const mt = (x: number, y: number, z: number, sx: number, sy: number) =>
+    new THREE.Matrix4().makeScale(sx, sy, sx).setPosition(x, y, z);
+  for (let i = 0; i < 70; i++) {
+    const x = -len / 2 + 0.2 + rnd() * (len - 0.4),
+      z = z0 + 0.15 + rnd() * (d - 0.3);
+    const s = 0.14 + rnd() * 0.12;
+    leafy.push(mt(x, 0.15 + s * 0.6, z, s, s * 0.8));
+    const c = palette[(rnd() * palette.length) | 0]!;
+    for (let k = 0; k < 4; k++) {
+      blooms.push(
+        mt(
+          x + (rnd() - 0.5) * s * 1.6,
+          0.2 + s * (1.0 + rnd() * 0.5),
+          z + (rnd() - 0.5) * s * 1.6,
+          0.035 + rnd() * 0.025,
+          0.03,
+        ),
+      );
+      cols.push(new THREE.Color(c).multiplyScalar(0.85 + rnd() * 0.3));
+    }
+  }
+  const geo = new THREE.IcosahedronGeometry(1, 1);
+  const lm = new THREE.InstancedMesh(
+    geo,
+    new THREE.MeshStandardMaterial({ color: 0x4d8a3a, roughness: 0.9 }),
+    leafy.length,
+  );
+  leafy.forEach((x, i) => lm.setMatrixAt(i, x));
+  const bm = new THREE.InstancedMesh(
+    geo,
+    new THREE.MeshStandardMaterial({ roughness: 0.7 }),
+    blooms.length,
+  );
+  blooms.forEach((x, i) => {
+    bm.setMatrixAt(i, x);
+    bm.setColorAt(i, cols[i]!);
+  });
+  g.add(lm, bm);
+  return g;
+}
+
+/** A green garden hose coiled on a wall hanger above its spigot; wall normal along +z. */
+function gardenHose(): THREE.Group {
+  const m = mats();
+  const g = new THREE.Group();
+  const green = new THREE.MeshStandardMaterial({ color: 0x2f8a3a, roughness: 0.5 });
+  g.add(box(0.08, 0.12, 0.14, m.galv, 0, 1.55, 0.07));
+  for (let i = 0; i < 5; i++) {
+    const loop = new THREE.Mesh(new THREE.TorusGeometry(0.22 + i * 0.008, 0.016, 6, 22), green);
+    loop.rotation.y = (i - 2) * 0.06; // coil hangs flat against the wall
+    loop.scale.y = 1.25;
+    loop.position.set((i - 2) * 0.012, 1.33, 0.09 + i * 0.03);
+    g.add(loop);
+  }
+  // Spigot below, with the hose running up into the coil.
+  g.add(box(0.06, 0.06, 0.1, m.brass, 0.25, 0.95, 0.05));
+  g.add(
+    strut(new THREE.Vector3(0.25, 0.95, 0.11), new THREE.Vector3(0.2, 0.8, 0.2), 0.016, green),
+    strut(new THREE.Vector3(0.2, 0.8, 0.2), new THREE.Vector3(0.05, 1.08, 0.2), 0.016, green),
+  );
+  return g;
+}
+
+/**
+ * A wooden birdhouse on a post with a seed tray in front, facing the house (-z), and a few
+ * bluebirds: two at the tray pecking at seed, one perched on the roof.
+ */
+function birdFeeder(): THREE.Group {
+  const m = mats();
+  const g = new THREE.Group();
+  const top = 2.1;
+  g.add(boxM(0.1, top, 0.1, m.wood, 0, top / 2 - 0.1, 0));
+  // Tray with a rim, sprinkled with seed.
+  g.add(boxM(0.6, 0.03, 0.62, m.wood, 0, top + 0.015, -0.05));
+  for (const [w, d, x, z] of [
+    [0.6, 0.02, 0, -0.35],
+    [0.02, 0.62, -0.29, -0.05],
+    [0.02, 0.62, 0.29, -0.05],
+  ] as const)
+    g.add(box(w, 0.04, d, m.wood, x, top + 0.05, z));
+  const seedM = new THREE.MeshStandardMaterial({ color: 0x8a7350, roughness: 1 });
+  for (let i = 0; i < 26; i++)
+    g.add(
+      box(
+        0.012,
+        0.008,
+        0.018,
+        seedM,
+        -0.24 + ((i * 37) % 48) / 100,
+        top + 0.034,
+        -0.32 + ((i * 53) % 22) / 100,
+      ),
+    );
+  // The house on the back of the tray, its round hole toward the window.
+  const hz = 0.1;
+  g.add(boxM(0.28, 0.32, 0.26, m.wood, 0, top + 0.19, hz));
+  const roof = gableRoof(0.26, 0.28, 0.35, 0.47, m.wood, 0.05, 0.02);
+  roof.rotation.y = Math.PI / 2;
+  roof.position.set(0, top, hz);
+  g.add(roof);
+  const gable = new THREE.Shape();
+  gable.moveTo(-0.14, 0);
+  gable.lineTo(0.14, 0);
+  gable.lineTo(0, 0.12);
+  gable.closePath();
+  for (const zz of [hz - 0.13, hz + 0.13]) {
+    const gm = new THREE.Mesh(new THREE.ShapeGeometry(gable), m.wood);
+    gm.position.set(0, top + 0.35, zz);
+    if (zz > hz) gm.rotation.y = Math.PI;
+    g.add(gm);
+  }
+  const hole = new THREE.Mesh(new THREE.CircleGeometry(0.035, 12), m.black);
+  hole.position.set(0, top + 0.24, hz - 0.132);
+  hole.rotation.y = Math.PI;
+  g.add(hole);
+  g.add(box(0.015, 0.015, 0.06, m.wood, 0, top + 0.15, hz - 0.16));
+  // Bluebirds.
+  const birds: THREE.Object3D[] = [];
+  for (const [x, z, yaw, y] of [
+    [-0.13, -0.24, 0.4, top + 0.03],
+    [0.14, -0.2, 2.6, top + 0.03],
+    [0.03, hz, -1.2, top + 0.44],
+  ] as const) {
+    const b = bluebird();
+    b.position.set(x, y, z);
+    b.rotation.y = yaw;
+    g.add(b);
+    birds.push(b);
+  }
+  g.userData.birds = birds;
+  return g;
+}
+
+/** An eastern bluebird about 7 in long: blue back and head, rusty breast, white belly. */
+function bluebird(): THREE.Group {
+  const blue = new THREE.MeshStandardMaterial({ color: 0x2f62c8, roughness: 0.5 });
+  const rust = new THREE.MeshStandardMaterial({ color: 0xc8662e, roughness: 0.6 });
+  const white = new THREE.MeshStandardMaterial({ color: 0xf2efe6, roughness: 0.7 });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x1d1d22, roughness: 0.4 });
+  const g = new THREE.Group();
+  const body = new THREE.Group();
+  const sph = (
+    r: number,
+    mat: THREE.Material,
+    x: number,
+    y: number,
+    z: number,
+    sx = 1,
+    sy = 1,
+    sz = 1,
+  ) => {
+    const o = new THREE.Mesh(new THREE.SphereGeometry(r, 10, 8), mat);
+    o.position.set(x, y, z);
+    o.scale.set(sx, sy, sz);
+    return o;
+  };
+  body.add(sph(0.045, blue, -0.005, 0.06, 0, 1.5, 0.95, 1));
+  body.add(sph(0.038, rust, 0.02, 0.05, 0, 1.1, 0.95, 1.05));
+  body.add(sph(0.028, white, 0.0, 0.032, 0, 1.3, 0.8, 0.95));
+  const tail = box(0.07, 0.01, 0.035, blue, -0.085, 0.07, 0);
+  tail.rotation.z = 0.35;
+  body.add(tail);
+  for (const s of [-1, 1]) {
+    const wing = sph(0.03, blue, -0.015, 0.07, s * 0.035, 1.6, 0.6, 0.35);
+    body.add(wing);
+  }
+  // Head on a pivot at the neck so it can dip to the seed.
+  const head = new THREE.Group();
+  head.position.set(0.05, 0.085, 0);
+  head.add(sph(0.028, blue, 0.012, 0.012, 0));
+  const beak = new THREE.Mesh(new THREE.ConeGeometry(0.008, 0.022, 6), dark);
+  beak.rotation.z = -Math.PI / 2;
+  beak.position.set(0.045, 0.008, 0);
+  head.add(beak);
+  for (const s of [-1, 1]) head.add(sph(0.006, dark, 0.026, 0.02, s * 0.02));
+  body.add(head);
+  for (const s of [-1, 1]) body.add(box(0.006, 0.03, 0.006, dark, 0.005, 0.012, s * 0.015));
+  g.add(body);
+  g.userData.head = head;
+  g.userData.body = body;
   return g;
 }
 
@@ -728,33 +950,191 @@ function barn(): THREE.Group {
   hoop.add(rim);
   hoop.position.set(-L / 2 - 0.25, 2.75, 0.4);
   g.add(hoop);
-  // Wooden garage on the north end: red, roof falling north, door facing west.
+  // Wooden garage on the north end: red, roof falling north, its overhead door facing west
+  // and rolled most of the way up, grandpa's sky-blue pickup parked inside.
   const G = FARM.wooden_garage;
   const [gx] = local(G.c, B.c, B.angle ?? 50);
+  // Its floor sits above the highest ground under it (the land rises toward the house).
+  let top = -Infinity;
+  for (const su of [-0.5, 0, 0.5])
+    for (const sv of [-0.5, 0, 0.5]) {
+      const p = addXY(addXY(G.c, U, su * G.w), V, sv * G.h);
+      top = Math.max(top, groundHeight(p[0], p[1]));
+    }
+  const floorY = Math.max(0.2, top - groundHeight(B.c[0], B.c[1]) + 0.08);
+  g.add(woodenGarage(G.w, G.h, floorY).translateX(gx));
+  return g;
+}
+
+/** Lean-to wall in the x/y plane, `t` thick, with an optional rectangular opening. */
+function leanWall(
+  L: number,
+  hHigh: number,
+  hLow: number,
+  t: number,
+  m: THREE.Material,
+  hole?: { x0: number; x1: number; y0: number; y1: number },
+) {
+  const s = new THREE.Shape();
+  s.moveTo(-L / 2, 0);
+  s.lineTo(L / 2, 0);
+  s.lineTo(L / 2, hLow);
+  s.lineTo(-L / 2, hHigh);
+  s.closePath();
+  if (hole) {
+    const h = new THREE.Path();
+    h.moveTo(hole.x0, hole.y0);
+    h.lineTo(hole.x0, hole.y1);
+    h.lineTo(hole.x1, hole.y1);
+    h.lineTo(hole.x1, hole.y0);
+    h.closePath();
+    s.holes.push(h);
+  }
+  const g = new THREE.ExtrudeGeometry(s, { depth: t, bevelEnabled: false });
+  g.translate(0, 0, -t / 2);
+  const uv = g.attributes.uv!,
+    pos = g.attributes.position!;
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, pos.getX(i), pos.getY(i));
+  return new THREE.Mesh(g, m);
+}
+
+/** The barn's wooden garage: hollow, door open most of the way, the pickup inside. */
+function woodenGarage(gl: number, gw: number, floor: number): THREE.Group {
+  const m = mats();
   const gar = new THREE.Group();
-  const gl = G.w,
-    gw = G.h;
-  gar.add(boxM(gl, 0.6, gw, m.stone, 0, -0.1, 0));
-  gar.add(lean(gl, gw, 6.3, 4.1, m.boards));
+  const hi = 6.3,
+    lo = 4.1,
+    t = 0.15;
+  const dw = 3.4,
+    dh = 3.3;
+  gar.add(boxM(gl, floor + 0.4, gw, m.stone, 0, (floor - 0.4) / 2, 0));
+  gar.add(box(gl - 0.3, 0.02, gw - 0.3, m.concrete, 0, floor + 0.01, 0));
+  // West wall with the door opening, the east wall, and the two ends.
+  const west = leanWall(gl, hi, lo, t, m.boards, {
+    x0: -dw / 2,
+    x1: dw / 2,
+    y0: 0,
+    y1: floor + dh,
+  });
+  west.position.z = -gw / 2 + t / 2;
+  const east = leanWall(gl, hi, lo, t, m.boards);
+  east.position.z = gw / 2 - t / 2;
+  gar.add(west, east);
+  gar.add(boxM(t, hi, gw, m.boards, -gl / 2 + t / 2, hi / 2, 0));
+  gar.add(boxM(t, lo, gw, m.boards, gl / 2 - t / 2, lo / 2, 0));
   gar.add(shedRoof(-gl / 2, gl / 2, gw, 6.6, 4.4, m.shingle));
-  const gd = new THREE.Group();
-  gd.add(
-    boxM(3.4, 3.2, 0.14, m.boards),
-    box(3.5, 0.16, 0.2, m.trimWhite, 0, 1.6, 0),
-    box(0.16, 3.2, 0.2, m.trimWhite, 1.7, 0, 0),
-    box(0.16, 3.2, 0.2, m.trimWhite, -1.7, 0, 0),
+  // White casing round the opening.
+  const zf = -gw / 2 - 0.02;
+  gar.add(
+    box(dw + 0.36, 0.18, 0.12, m.trimWhite, 0, floor + dh + 0.09, zf),
+    box(0.18, dh + floor, 0.12, m.trimWhite, -dw / 2 - 0.09, (dh + floor) / 2, zf),
+    box(0.18, dh + floor, 0.12, m.trimWhite, dw / 2 + 0.09, (dh + floor) / 2, zf),
   );
-  gd.position.set(0, 1.6, -gw / 2 - 0.08);
-  gar.add(gd);
+  // Overhead door rolled most of the way up: its last panel still hangs in the opening and
+  // the rest runs back under the ceiling on its tracks.
+  const zi = -gw / 2 + t + 0.06;
+  const hang = 0.75;
+  gar.add(boxM(dw - 0.1, hang, 0.06, m.boards, 0, floor + dh - hang / 2, zi));
+  gar.add(box(dw - 0.1, 0.08, 0.08, m.trimWhite, 0, floor + dh - hang + 0.04, zi - 0.02));
+  gar.add(box(0.12, 0.05, 0.03, m.galv, 0, floor + dh - hang + 0.12, zi - 0.05));
+  const run = dh - hang;
+  gar.add(boxM(dw - 0.1, 0.06, run, m.boards, 0, floor + dh + 0.05, zi + run / 2 + 0.05));
+  for (const x of [-dw / 2 + 0.02, dw / 2 - 0.02]) {
+    gar.add(box(0.05, dh, 0.05, m.galv, x, floor + dh / 2, zi + 0.02));
+    gar.add(box(0.05, 0.05, run + 0.6, m.galv, x, floor + dh + 0.02, zi + (run + 0.6) / 2));
+  }
+  // A bare bulb and a workbench along the back wall.
+  gar.add(box(1.8, 0.9, 0.6, m.wood, 1.4, floor + 0.45, gw / 2 - t - 0.35));
+  const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), m.bulb);
+  bulb.position.set(0, 4.3, 0);
+  gar.add(bulb);
   for (const [x, z] of [
     [gl / 2, gw / 2],
     [gl / 2, -gw / 2],
   ] as const)
     gar.add(box(0.2, 4.6, 0.2, m.trimWhite, x, 2.3, z));
-  gar.position.x = gx;
-  // The garage cuts off the barn's north wall to the 6.2 m mark (walls already overlap there).
-  gar.position.y = 0;
-  g.add(gar);
+  // The pickup, nose out toward the door.
+  const truck = pickup();
+  truck.rotation.y = Math.PI / 2;
+  truck.position.set(0, floor, -gw / 2 + 1.0 + 2.75);
+  gar.add(truck);
+  return gar;
+}
+
+/**
+ * An early-1990s Chevrolet full-size pickup, regular cab, long bed, in sky blue: square body
+ * lines, chrome bumpers and grille with stacked rectangular headlights. Nose toward +x.
+ */
+function pickup(): THREE.Group {
+  const m = mats();
+  const g = new THREE.Group();
+  const blue = new THREE.MeshStandardMaterial({ color: 0x86c0ea, roughness: 0.35, metalness: 0.2 });
+  const chrome = new THREE.MeshStandardMaterial({
+    color: 0xdfe3e8,
+    roughness: 0.2,
+    metalness: 0.9,
+  });
+  const tyre = new THREE.MeshStandardMaterial({ color: 0x1c1c1e, roughness: 0.9 });
+  const tint = new THREE.MeshStandardMaterial({ color: 0x23303a, roughness: 0.1, metalness: 0.3 });
+  const lamp = new THREE.MeshStandardMaterial({
+    color: 0xf6f3e6,
+    emissive: 0x403c30,
+    roughness: 0.2,
+  });
+  const tail = new THREE.MeshStandardMaterial({ color: 0xb3221c, roughness: 0.3 });
+  const Wd = 1.95,
+    sill = 0.55;
+  // Wheels.
+  for (const x of [1.62, -1.72])
+    for (const z of [-0.8, 0.8]) {
+      const w = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.38, 0.26, 18), tyre);
+      w.rotation.x = Math.PI / 2;
+      w.position.set(x, 0.38, z);
+      const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.27, 12), chrome);
+      hub.rotation.x = Math.PI / 2;
+      hub.position.copy(w.position);
+      g.add(w, hub);
+    }
+  // Front end: hood and fenders, grille, lights, bumper.
+  g.add(box(1.75, 0.6, Wd, blue, 1.73, sill + 0.3, 0));
+  g.add(box(1.7, 0.04, Wd - 0.1, blue, 1.73, sill + 0.62, 0));
+  g.add(box(0.06, 0.34, 1.3, chrome, 2.62, sill + 0.36, 0));
+  for (let i = 0; i < 4; i++) g.add(box(0.07, 0.03, 1.2, tint, 2.63, sill + 0.24 + i * 0.08, 0));
+  for (const z of [-0.78, 0.78])
+    for (const y of [0.44, 0.27]) g.add(box(0.06, 0.13, 0.3, lamp, 2.63, sill + y, z));
+  g.add(box(0.2, 0.2, Wd + 0.05, chrome, 2.66, sill - 0.05, 0));
+  // Cab: body below the belt line, glass above, a roof, and the windshield leaning back.
+  g.add(box(1.45, 0.62, Wd, blue, 0.15, sill + 0.31, 0));
+  g.add(box(1.2, 0.56, Wd - 0.16, tint, 0.05, sill + 0.9, 0));
+  g.add(box(1.25, 0.08, Wd - 0.08, blue, 0.02, sill + 1.22, 0));
+  const ws = box(0.06, 0.62, Wd - 0.14, tint, 0.78, sill + 0.92, 0);
+  ws.rotation.z = 0.5;
+  g.add(ws);
+  for (const z of [-Wd / 2 + 0.05, Wd / 2 - 0.05]) {
+    const a = box(0.08, 0.64, 0.08, blue, 0.78, sill + 0.92, z);
+    a.rotation.z = 0.5;
+    g.add(a, box(0.1, 0.56, 0.08, blue, -0.56, sill + 0.9, z));
+    g.add(box(0.12, 0.14, 0.04, m.black, 0.75, sill + 0.75, z + Math.sign(z) * 0.12));
+    g.add(box(0.12, 0.03, 0.03, chrome, 0.15, sill + 0.48, z + Math.sign(z) * 0.01));
+  }
+  // Long bed with its tailgate, rear bumper and tail lights.
+  const bx0 = -0.62,
+    bx1 = -2.85,
+    bl = bx0 - bx1,
+    bc = (bx0 + bx1) / 2;
+  g.add(box(bl, 0.08, Wd - 0.1, m.black, bc, sill + 0.08, 0));
+  for (const z of [-Wd / 2 + 0.05, Wd / 2 - 0.05])
+    g.add(box(bl, 0.6, 0.1, blue, bc, sill + 0.3, z));
+  g.add(box(0.1, 0.6, Wd, blue, bx0 + 0.05, sill + 0.3, 0));
+  g.add(box(0.08, 0.58, Wd, blue, bx1 + 0.04, sill + 0.29, 0));
+  for (const z of [-Wd / 2 + 0.06, Wd / 2 - 0.06])
+    g.add(box(0.06, 0.32, 0.1, tail, bx1 - 0.01, sill + 0.35, z));
+  g.add(box(0.2, 0.18, Wd + 0.05, chrome, bx1 - 0.08, sill - 0.04, 0));
+  // Dark lower body trim and the wheel wells.
+  for (const z of [-Wd / 2 - 0.005, Wd / 2 + 0.005]) {
+    g.add(box(5.4, 0.12, 0.02, m.black, -0.12, sill + 0.06, z));
+    for (const x of [1.62, -1.72]) g.add(box(0.95, 0.42, 0.03, m.black, x, sill + 0.05, z));
+  }
   return g;
 }
 
@@ -804,6 +1184,27 @@ function redGarage(): THREE.Group {
   );
   d.position.set(L / 2 + 0.08, 1.3, 0);
   g.add(d);
+  // Side entry door on the east wall near the north end, for when you didn't want to open
+  // the big door: four-light window up top, white casing, a concrete step.
+  const sdx = L / 2 - 1.5,
+    sz = W / 2;
+  g.add(
+    boxM(0.9, 2.0, 0.08, m.boards, sdx, 1.0, sz + 0.04),
+    box(1.1, 0.12, 0.12, m.trimWhite, sdx, 2.06, sz + 0.05),
+    box(0.1, 2.0, 0.12, m.trimWhite, sdx - 0.5, 1.0, sz + 0.05),
+    box(0.1, 2.0, 0.12, m.trimWhite, sdx + 0.5, 1.0, sz + 0.05),
+    box(1.2, 0.18, 0.5, m.concrete, sdx, 0.05, sz + 0.25),
+  );
+  for (const [x, y] of [
+    [-0.17, 1.72],
+    [0.17, 1.72],
+    [-0.17, 1.42],
+    [0.17, 1.42],
+  ] as const)
+    g.add(box(0.28, 0.24, 0.04, m.glass, sdx + x, y, sz + 0.09));
+  const knob = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 6), m.brass);
+  knob.position.set(sdx - 0.33, 1.0, sz + 0.12);
+  g.add(knob);
   // Rooster weather vane on the ridge.
   const vane = new THREE.Group();
   vane.add(strut(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 1.5, 0), 0.03, m.black));
@@ -881,7 +1282,8 @@ function shed(): THREE.Group {
     box(0.12, 2.0, 0.14, m.trimWhite, 0.65, 0, 0),
     box(0.12, 2.0, 0.14, m.trimWhite, -0.65, 0, 0),
   );
-  d.position.set(0, 1.0, S.h / 2 + 0.06);
+  // A simple door on the west (-z) side.
+  d.position.set(0, 1.0, -S.h / 2 - 0.06);
   g.add(d);
   return g;
 }
@@ -921,28 +1323,34 @@ function greenhouse(): THREE.Group {
   return g;
 }
 
+/**
+ * The playhouse, built like a little barn: door on the south gable end (-x) between two small
+ * windows with a tiny window above it near the peak; one window on each of the east and west
+ * sides, toward the south corner; the north end is blank.
+ */
 function playhouse(): THREE.Group {
   const P = FARM.playhouse;
   const m = mats();
   const g = smallGable(P, 1.8, 2.85, m.boards, m.shingle);
-  // Front (-z, toward the house): door between two windows; one window on each side.
-  const front = -P.h / 2 - 0.03;
+  const front = -P.w / 2 - 0.03;
   g.add(
-    box(0.62, 1.3, 0.06, m.boards, 0, 0.65, front),
-    box(0.74, 0.08, 0.08, m.trimWhite, 0, 1.33, front),
+    box(0.06, 1.3, 0.62, m.boards, front, 0.65, 0),
+    box(0.08, 0.08, 0.76, m.trimWhite, front, 1.34, 0),
+    box(0.08, 1.3, 0.07, m.trimWhite, front, 0.65, -0.345),
+    box(0.08, 1.3, 0.07, m.trimWhite, front, 0.65, 0.345),
   );
-  for (const x of [-0.8, 0.8]) {
-    const w = windowAt(0.42, 0.42, m.trimWhite);
-    w.position.set(x, 1.1, front);
-    w.rotation.y = Math.PI;
-    g.add(w);
-  }
-  for (const s of [-1, 1]) {
-    const w = windowAt(0.42, 0.42, m.trimWhite);
-    w.position.set((s * P.w) / 2 + s * 0.03, 1.1, 0);
-    w.rotation.y = (s * Math.PI) / 2;
-    g.add(w);
-  }
+  const knob = new THREE.Mesh(new THREE.SphereGeometry(0.03, 8, 6), m.brass);
+  knob.position.set(front - 0.05, 0.65, 0.22);
+  g.add(knob);
+  const win = (w: number, x: number, y: number, z: number, rot: number) => {
+    const o = windowAt(w, w, m.trimWhite);
+    o.position.set(x, y, z);
+    o.rotation.y = rot;
+    g.add(o);
+  };
+  for (const z of [-0.8, 0.8]) win(0.38, front, 1.05, z, -Math.PI / 2);
+  win(0.26, front, 2.2, 0, -Math.PI / 2);
+  for (const sd of [-1, 1]) win(0.38, -0.5, 1.05, sd * (P.h / 2 + 0.03), sd > 0 ? 0 : Math.PI);
   return g;
 }
 
@@ -1148,7 +1556,7 @@ function clothesLines(): THREE.Group {
   return g;
 }
 
-/** Rusty barrel stove on short legs with a tall stovepipe, for burning garbage. */
+/** Rusty barrel stove on short legs with a stovepipe, for burning garbage. */
 function stove(): THREE.Group {
   const m = mats();
   const g = new THREE.Group();
@@ -1182,14 +1590,14 @@ function stove(): THREE.Group {
     );
   // Stovepipe with a cap.
   g.add(
-    new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 2.4, 12), m.rust)
+    new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 1.2, 12), m.rust)
       .translateX(0.4)
-      .translateY(cy + r + 1.15),
+      .translateY(cy + r + 0.55),
   );
   g.add(
     new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.18, 12), m.rust)
       .translateX(0.4)
-      .translateY(cy + r + 2.45),
+      .translateY(cy + r + 1.25),
   );
   // Big hinged feed door on the end, with a latch.
   const door = new THREE.Mesh(new THREE.CircleGeometry(0.3, 18), m.black);
@@ -1358,7 +1766,9 @@ export function buildBuildings(): Buildings {
   const group = new THREE.Group();
   const add = (o: THREE.Object3D) => group.add(shadow(o));
   const F = FARM;
-  add(place(farmhouse(), F.house.main.c, F.house.angle));
+  const house = farmhouse();
+  add(place(house, F.house.main.c, F.house.angle));
+  const birds = house.userData.birds as THREE.Object3D[];
   add(place(barn(), F.barn.c, F.barn.angle ?? 50));
   const rg = redGarage();
   add(place(rg, F.red_garage.c, F.red_garage.angle ?? 65));
@@ -1367,11 +1777,13 @@ export function buildBuildings(): Buildings {
   add(place(playhouse(), F.playhouse.c, F.playhouse.angle ?? 50));
   add(place(cornCrib(), F.corn_crib, 0));
   const wm = windmill();
-  add(place(wm, F.windmill, 0));
+  // The tower's square base lines up with the concrete pad beside it.
+  add(place(wm, F.windmill, F.farmGridDeg));
   add(place(well(), F.well, 0));
   add(place(sandbox(), F.sandbox.c, F.sandbox.angle ?? 50));
   add(clothesLines());
-  add(place(stove(), F.stove, 20));
+  // Turned so the feed door (local -x) faces east on the farm grid.
+  add(place(stove(), F.stove, F.farmGridDeg + 90));
   add(place(mailbox(), F.mailbox, F.farmGridDeg - 90));
   for (const w of F.wagons) add(place(wagon(), w.c, w.angle));
   add(ramp());
@@ -1382,6 +1794,19 @@ export function buildBuildings(): Buildings {
   const update = (t: number) => {
     wheel.rotation.z = -t * 1.6;
     rooster.rotation.y = Math.sin(t * 0.13) * 0.6 + Math.sin(t * 0.71) * 0.12;
+    // Bluebirds: the two at the tray keep dipping for seed; the one on the roof looks about.
+    birds.forEach((b, i) => {
+      const head = b.userData.head as THREE.Object3D;
+      const body = b.userData.body as THREE.Object3D;
+      if (i < 2) {
+        const k = Math.max(0, Math.sin(t * (3.1 + i * 0.7) + i * 2)) ** 3;
+        head.rotation.z = -1.1 * k;
+        body.rotation.z = -0.35 * k;
+        b.rotation.y += Math.sin(t * 0.9 + i) * 0.002;
+      } else {
+        head.rotation.y = Math.sin(t * 0.8) * 0.9 + Math.sin(t * 2.3) * 0.2;
+      }
+    });
   };
   const r = (d: RectDef, angle?: number) => ({
     c: d.c,
@@ -1400,7 +1825,7 @@ export function buildBuildings(): Buildings {
     r(F.playhouse),
     { c: F.corn_crib, w: 2.8, h: 2.8, angle: 0 },
     { c: F.well, w: 2.4, h: 2.4, angle: 0 },
-    { c: F.windmill, w: 3.2, h: 3.2, angle: 0 },
+    { c: F.windmill, w: 3.2, h: 3.2, angle: F.farmGridDeg },
   ];
   return { group, update, solids };
 }
