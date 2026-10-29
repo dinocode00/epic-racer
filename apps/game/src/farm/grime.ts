@@ -71,7 +71,7 @@ export function addGrime(m: THREE.Material, band = 0.6, amount = 0.35, mottle = 
         `#include <color_fragment>
         {
           vec3 fp = (vGrimeW - uFarmPos) * uFarmScale;
-          float ground = texture2D(uTerrain, terrainUv(fp.xz)).r;
+          float ground = terrainHeight(uTerrain, fp.xz);
           float h = fp.y - ground;
           float n = gNoise(fp.xz * 3.1 + fp.y * 1.7) * 0.6 + gNoise(fp.xz * 9.0 - fp.y * 4.0) * 0.4;
           float reach = ${f(band)} * (0.55 + 0.9 * n);

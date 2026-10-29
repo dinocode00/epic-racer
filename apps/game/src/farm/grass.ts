@@ -31,12 +31,14 @@ const rnd = () => {
 export function heightTexture(): THREE.DataTexture {
   const nx = X1 - X0 + 1,
     ny = Y1 - Y0 + 1;
-  const d = new Uint16Array(nx * ny);
+  const d = new Float32Array(nx * ny);
   for (let j = 0; j < ny; j++)
-    for (let i = 0; i < nx; i++)
-      d[j * nx + i] = THREE.DataUtils.toHalfFloat(meshHeight(X0 + i, Y0 + j));
-  const t = new THREE.DataTexture(d, nx, ny, THREE.RedFormat, THREE.HalfFloatType);
-  t.magFilter = t.minFilter = THREE.LinearFilter;
+    for (let i = 0; i < nx; i++) d[j * nx + i] = meshHeight(X0 + i, Y0 + j);
+  // Full precision (half floats are off by millimetres, enough to bury a gravel stone), read
+  // with exact texel fetches and blended in the shader (terrainHeight) so no float filtering
+  // support is needed.
+  const t = new THREE.DataTexture(d, nx, ny, THREE.RedFormat, THREE.FloatType);
+  t.magFilter = t.minFilter = THREE.NearestFilter;
   t.needsUpdate = true;
   return t;
 }
@@ -195,7 +197,7 @@ function pebbleGeometry() {
   const p = g.attributes.position!;
   for (let i = 0; i < p.count; i++) {
     const k = 0.75 + rnd() * 0.5;
-    p.setXYZ(i, p.getX(i) * k, Math.max(0, p.getY(i) + 0.15) * 0.7, p.getZ(i) * k);
+    p.setXYZ(i, p.getX(i) * k, Math.max(0, p.getY(i) + 0.25) * 0.9, p.getZ(i) * k);
   }
   g.computeVertexNormals();
   const ig = new THREE.InstancedBufferGeometry();
@@ -346,11 +348,16 @@ export const terrainUniforms = {
   uTerrain: { value: null as THREE.Texture | null },
 };
 
-/** GLSL: uv into the terrain height texture for a farm-local (x, z) point. */
+/** GLSL: terrain height (m) at a farm-local (x, z) point, from the 1 m height texture. */
 export const TERRAIN_UV_GLSL = /* glsl */ `
-vec2 terrainUv(vec2 p) {
-  return (vec2(p.x, -p.y) - vec2(${X0.toFixed(1)}, ${Y0.toFixed(1)}) + 0.5) /
-    vec2(${(X1 - X0 + 1).toFixed(1)}, ${(Y1 - Y0 + 1).toFixed(1)});
+float terrainHeight(sampler2D t, vec2 p) {
+  vec2 q = clamp(vec2(p.x, -p.y) - vec2(${X0.toFixed(1)}, ${Y0.toFixed(1)}), vec2(0.0),
+    vec2(${(X1 - X0 - 1).toFixed(1)}, ${(Y1 - Y0 - 1).toFixed(1)}));
+  ivec2 i = ivec2(floor(q));
+  vec2 f = q - vec2(i);
+  float a = texelFetch(t, i, 0).r, b = texelFetch(t, i + ivec2(1, 0), 0).r;
+  float c = texelFetch(t, i + ivec2(0, 1), 0).r, d = texelFetch(t, i + ivec2(1, 1), 0).r;
+  return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
 }
 `;
 
@@ -423,8 +430,7 @@ function grassMaterial(L: Layer): THREE.MeshStandardMaterial {
         float push = (1.0 - smoothstep(uPush.z * 0.4, uPush.z, pd)) * uPush.w * step(0.001, ${f(L.bend)});
         transformed.xz += away / max(pd, 0.01) * push * tt * hgt * 0.9;
         transformed.y -= push * tt * hgt * 0.55;
-        vec2 hUv = terrainUv(p);
-        transformed += vec3(p.x, texture2D(uHeight, hUv).r + ${f(L.lift ?? -0.01)}, p.y);
+        transformed += vec3(p.x, terrainHeight(uHeight, p) + ${f(L.lift ?? -0.01)}, p.y);
         vec3 ground = texture2D(uGround, uv).rgb;
         vec3 base = mix(aColor, ground * 1.08, ${f(L.groundTint)});
         // Flowers: a green stem under the coloured head.

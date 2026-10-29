@@ -366,7 +366,7 @@ function fluff(): { points: THREE.Points; update: (cam: THREE.Vector3) => void }
           + vec2(sin(uTime * 0.7 + id), cos(uTime * 0.53 + id * 1.3)) * 0.8;
         vec2 p = position.xz + drift;
         p = p + T * floor((uCenter - p) / T + 0.5);
-        float ground = texture2D(uTerrain, terrainUv(p)).r;
+        float ground = terrainHeight(uTerrain, p);
         vec3 transformed = vec3(p.x, ground + position.y + 0.3 * sin(uTime * 0.9 + id * 2.0), p.y);
         `,
       );
