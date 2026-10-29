@@ -4,5 +4,7 @@
   "type": "module",
   "main": "src/index.ts",
   "types": "src/index.ts",
-  "dependencies": { "@epic/shared": "workspace:*" }
+  "dependencies": {
+    "@epic/shared": "workspace:*"
+  }
 }

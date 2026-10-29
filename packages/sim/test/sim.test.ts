@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { VEHICLES, neutralPad, decodeInput, encodeInput } from '@epic/shared';
-import { PROVING, Race, Track, dot, len } from '../src/index.ts';
+import { PROVING, Race, Track, dot, len, scale } from '../src/index.ts';
 
 describe('track', () => {
   const t = new Track(PROVING);
@@ -56,6 +56,41 @@ describe('race', () => {
       race.step([{ ...neutralPad(), throttle: 1, steer: Math.sin(i / 40), drift: i % 120 < 60 }]);
     }
     expect(race.karts[0]!.progress).toBeGreaterThan(200);
+  });
+});
+
+describe('wrong way', () => {
+  const facing = (race: Race) => {
+    const k = race.karts[0]!;
+    return dot(k.fwd, race.track.frameAtS(k.s).tan);
+  };
+  const turnedRound = () => {
+    const race = new Race(PROVING, [{ vehicle: VEHICLES[1]!, human: true }], 2);
+    race.phase = 'racing';
+    race.time = 1;
+    const k = race.karts[0]!;
+    k.fwd = scale(race.track.frameAtS(k.s).tan, -1);
+    return race;
+  };
+  const steps = (race: Race, seconds: number, pad = { ...neutralPad(), throttle: 1 }) => {
+    for (let i = 0; i < seconds * 60; i++) race.step([pad]);
+  };
+
+  it('a kart driving the wrong way is turned round after about 2 seconds', () => {
+    const race = turnedRound();
+    steps(race, 1.6);
+    expect(facing(race)).toBeLessThan(-0.9); // still going the wrong way
+    steps(race, 0.8);
+    expect(facing(race)).toBeGreaterThan(0.9);
+    const p = race.karts[0]!.progress;
+    steps(race, 1);
+    expect(race.karts[0]!.progress).toBeGreaterThan(p + 5); // and heading on round
+  });
+
+  it('a kart standing still facing backwards is left alone', () => {
+    const race = turnedRound();
+    steps(race, 3, neutralPad());
+    expect(facing(race)).toBeLessThan(-0.9);
   });
 });
 

@@ -53,6 +53,9 @@ export function paramsFor(v: VehicleDef): KartParams {
   };
 }
 
+/** Seconds of going the wrong way before the kart is turned round. */
+export const WRONG_WAY_FLIP = 2;
+
 /** Drift charge thresholds in seconds: blue, orange, purple sparks. */
 export const DRIFT_LEVELS = [0.7, 1.5, 2.5];
 const BOOST_FOR_LEVEL = [0, 0.5, 1.0, 1.6];
@@ -89,6 +92,8 @@ export interface KartState {
   stunTotal: number;
   /** Knocked off balance by a hit from behind: weak steering, sliding sideways. */
   wobbleTime: number;
+  /** Seconds in a row spent going the wrong way round the track. */
+  wrongWayTime: number;
   /** Seconds spent tucked in behind another kart; a full charge fires a boost. */
   draft: number;
   /** Held item (one slot), how many uses it has left, and the roulette in progress. */
@@ -177,6 +182,7 @@ export function createKart(
     stunTime: 0,
     stunTotal: 0,
     wobbleTime: 0,
+    wrongWayTime: 0,
     draft: 0,
     item: null,
     itemCount: 0,
@@ -390,8 +396,20 @@ export function stepKart(
   pos = addScaled(addScaled(p2.frame.pos, p2.frame.right, lat), p2.frame.up, P.rideHeight);
   k.pos = pos;
   k.lat = lat;
+  const before = k.progress;
   updateProgress(k, track, p2.s);
   if (Math.abs(lat) < half - 1.5) k.safeS = p2.s;
+
+  // Going the wrong way round (lost after a spin, or reversing off a wall) for a while:
+  // turn the kart to face down the road again, still rolling.
+  k.wrongWayTime = k.progress - before < -1.5 * dt ? k.wrongWayTime + dt : 0;
+  if (k.wrongWayTime >= WRONG_WAY_FLIP) {
+    k.fwd = norm(reject(p2.frame.tan, p2.frame.up));
+    k.speed = Math.min(Math.abs(k.speed), 15);
+    k.slide = 0;
+    k.drift = { active: false, dir: 0, charge: 0 };
+    k.wrongWayTime = 0;
+  }
 
   // Kicker ramps throw you into the air.
   const pop = rules.kickerBetween(s0, p2.s);
