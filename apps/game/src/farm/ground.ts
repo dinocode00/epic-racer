@@ -160,6 +160,37 @@ function paintGround(): THREE.CanvasTexture {
     x.fill();
   }
 
+  // Concrete pad off the front door, flush with the ground, and the sidewalk to the porch.
+  {
+    const r = FARM.house_pad;
+    const a = ((r.angle ?? 0) * Math.PI) / 180;
+    const u: XY = [Math.cos(a), Math.sin(a)],
+      v: XY = [-Math.sin(a), Math.cos(a)];
+    const corner = (su: number, sv: number): XY => [
+      r.c[0] + (u[0] * su * r.w) / 2 + (v[0] * sv * r.h) / 2,
+      r.c[1] + (u[1] * su * r.w) / 2 + (v[1] * sv * r.h) / 2,
+    ];
+    x.fillStyle = '#c9c5bb';
+    poly([corner(-1, -1), corner(1, -1), corner(1, 1), corner(-1, 1)]);
+    x.fill();
+    x.strokeStyle = '#c9c5bb';
+    x.lineWidth = FARM.house_walk.width * PPM;
+    x.lineCap = 'square';
+    x.lineJoin = 'miter';
+    line(FARM.house_walk.pts);
+    x.stroke();
+    // Expansion joints.
+    x.strokeStyle = 'rgba(90,88,80,0.45)';
+    x.lineWidth = 1.2;
+    for (const k of [-1 / 3, 1 / 3]) {
+      line([
+        [r.c[0] + u[0] * k * r.w - (v[0] * r.h) / 2, r.c[1] + u[1] * k * r.w - (v[1] * r.h) / 2],
+        [r.c[0] + u[0] * k * r.w + (v[0] * r.h) / 2, r.c[1] + u[1] * k * r.w + (v[1] * r.h) / 2],
+      ]);
+      x.stroke();
+    }
+  }
+
   // 5. Mowed grass paths and the grass lane, with tractor tyre marks.
   for (const path of FARM.paths) {
     const pts = smoothLine(path.pts, 10);

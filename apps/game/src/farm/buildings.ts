@@ -1,7 +1,18 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import * as tex from '../render/textures.ts';
-import { FARM, RAMP_RISE, type RectDef, type XY, groundHeight, mid } from './layout.ts';
+import {
+  BERM,
+  FARM,
+  RAMP_RISE,
+  type RectDef,
+  type XY,
+  groundHeight,
+  mid,
+  rampFrame,
+  rampHeight,
+  rampPoint,
+} from './layout.ts';
 
 /**
  * Farm buildings and yard objects, modelled in real metres from the blueprint and the
@@ -144,6 +155,11 @@ function makeMats() {
     star: std({ color: 0xffffff, roughness: 0.6, emissive: 0x333333 }),
     orange: std({ color: 0xe0661c, roughness: 0.6 }),
     water: std({ color: 0x1b2a2e, roughness: 0.1, metalness: 0.2 }),
+    panel: std({ color: 0xe9e6dd, roughness: 0.6 }),
+    brass: std({ color: 0xc9a23a, metalness: 1, roughness: 0.3 }),
+    bulb: std({ color: 0xfff1c4, emissive: 0xffd88a, emissiveIntensity: 0.8 }),
+    doormat: std({ color: 0x6a5a40, roughness: 1 }),
+    grassMound: std({ color: 0x6fa645, roughness: 1 }),
   };
 }
 
@@ -391,92 +407,77 @@ function farmhouse(): THREE.Group {
   porch.add(pDoor);
   porch.position.set(px, 0, pz);
   g.add(porch);
-  // Concrete pad ~15 ft out from the front door (the steps sit on it), a sidewalk round to the
-  // west porch, and grandpa's simple kettle grill on the pad in front of the steps.
-  const [padX, padZ] = local(FARM.house_pad.c, H.main.c, H.angle);
-  g.add(boxM(FARM.house_pad.w, 0.7, FARM.house_pad.h, m.concrete, padX, -0.27, padZ));
-  const walk = FARM.house_walk.pts.map((p) => local(p, H.main.c, H.angle));
-  for (let i = 0; i < walk.length - 1; i++) {
-    const [ax, az] = walk[i]!,
-      [bx, bz] = walk[i + 1]!;
-    const seg = boxM(
-      Math.hypot(bx - ax, bz - az) + FARM.house_walk.width,
-      0.6,
-      FARM.house_walk.width,
-      m.concrete,
-      (ax + bx) / 2,
-      -0.24,
-      (az + bz) / 2,
-    );
-    seg.rotation.y = -Math.atan2(bz - az, bx - ax);
-    g.add(seg);
-  }
+  // The concrete pad and the sidewalk to the porch lie flush in the ground (painted there);
+  // grandpa's simple kettle grill stands on the pad just in front of the steps.
   const [grx, grz] = local(FARM.grill, H.main.c, H.angle);
-  g.add(kettleGrill().translateX(grx).translateY(0.08).translateZ(grz));
-  // Front steps on the south end (-x): concrete with black outdoor carpet, railings both sides.
-  const [sx, sz] = local(H.steps.c, H.main.c, H.angle);
-  const steps = new THREE.Group();
-  for (let i = 0; i < 4; i++) {
-    const depth = H.steps.w - i * 0.35;
-    steps.add(
-      box(
-        depth,
-        0.24,
-        H.steps.h,
-        m.concrete,
-        -H.steps.w / 2 + depth / 2 + i * 0.35 - 0.1,
-        0.12 + i * 0.24,
-        0,
+  g.add(kettleGrill().translateX(grx).translateY(-0.02).translateZ(grz));
+  // Front stoop and steps on the south end (-x): a small stoop by the door, and stoop and
+  // steps both running from the door to the house's east (right-hand, +z) corner. Concrete
+  // with black outdoor carpet, railings at both ends.
+  const sill = 0.96; // stoop height = door sill
+  const z0 = -1.4,
+    z1 = W / 2;
+  const sw = z1 - z0,
+    zc = (z0 + z1) / 2;
+  const stoopD = 1.6,
+    tread = 0.32;
+  const wallX = -L / 2;
+  g.add(boxM(stoopD, sill + 0.5, sw, m.concrete, wallX - stoopD / 2, (sill - 0.5) / 2, zc));
+  g.add(box(stoopD - 0.06, 0.02, sw - 0.2, m.carpet, wallX - stoopD / 2, sill + 0.01, zc));
+  for (let i = 1; i <= 3; i++) {
+    const top = sill - i * 0.24;
+    const x = wallX - stoopD - (i - 0.5) * tread;
+    g.add(boxM(tread, top + 0.5, sw, m.concrete, x, (top - 0.5) / 2, zc));
+    g.add(box(tread - 0.04, 0.02, sw - 0.2, m.carpet, x, top + 0.01, zc));
+  }
+  const stepsFoot = wallX - stoopD - 3 * tread;
+  for (const z of [z0 + 0.05, z1 - 0.05]) {
+    g.add(
+      strut(
+        new THREE.Vector3(stepsFoot, 0.9, z),
+        new THREE.Vector3(wallX - stoopD, sill + 0.9, z),
+        0.035,
+        m.black,
       ),
     );
-    steps.add(
-      box(
-        depth,
-        0.02,
-        H.steps.h - 0.3,
-        m.carpet,
-        -H.steps.w / 2 + depth / 2 + i * 0.35 - 0.1,
-        0.25 + i * 0.24,
-        0,
+    g.add(
+      strut(
+        new THREE.Vector3(wallX - stoopD, sill + 0.9, z),
+        new THREE.Vector3(wallX - 0.1, sill + 0.9, z),
+        0.035,
+        m.black,
       ),
     );
+    for (const x of [stepsFoot + 0.05, wallX - stoopD, wallX - 0.12]) {
+      const y0 = x < wallX - stoopD - 0.01 ? 0.0 : sill;
+      g.add(box(0.05, 0.95, 0.05, m.black, x, y0 + 0.47, z));
+    }
   }
-  for (const s of [-1, 1]) {
-    const a = new THREE.Vector3(-H.steps.w / 2 - 0.1, 1.0, (s * H.steps.h) / 2);
-    const b = new THREE.Vector3(H.steps.w / 2, 1.9, (s * H.steps.h) / 2);
-    steps.add(strut(a, b, 0.04, m.black));
-    steps.add(box(0.05, 1.0, 0.05, m.black, -H.steps.w / 2 - 0.1, 0.5, (s * H.steps.h) / 2));
-  }
-  steps.position.set(sx + 0.2, 0, sz);
-  g.add(steps);
-  // Front door slightly left of the steps' centre (seen from the steps), white bench to its right.
-  const sill = 0.96; // top of the front steps
-  g.add(box(0.08, 2.1, 1.0, m.trimWhite, -L / 2 - 0.02, sill + 1.05, -0.3));
-  g.add(box(0.06, 2.3, 1.2, m.trimBlue, -L / 2 - 0.0, sill + 1.05, -0.3));
-  const [bx, bz] = local(H.bench, H.main.c, H.angle);
+  // The front door, slightly left of centre as you face it, with its storm door and light.
+  const door = frontDoor();
+  door.position.set(wallX, sill, -0.3);
+  g.add(door);
+  g.add(box(0.7, 0.02, 1.1, m.doormat, wallX - 0.45, sill + 0.025, -0.3));
+  // White metal bench on the stoop, to the right of the door.
+  const [, bz] = local(H.bench, H.main.c, H.angle);
   const bench = new THREE.Group();
   bench.add(box(0.45, 0.05, 1.2, m.trimWhite, 0, 0.45, 0));
   bench.add(box(0.05, 0.5, 1.2, m.trimWhite, 0.2, 0.75, 0));
   for (const z of [-0.55, 0.55]) bench.add(box(0.4, 0.45, 0.05, m.trimWhite, 0, 0.22, z));
-  bench.position.set(bx + 0.2, sill, bz);
+  bench.position.set(wallX - 0.4, sill, bz);
   g.add(bench);
   // Chimney at the ridge.
   const [cx, cz] = local(H.chimney, H.main.c, H.angle);
   g.add(boxM(0.75, 3.0, 0.75, m.brick, cx, ridge + 0.6, cz));
   // Windows round the main block (skipping where the wing and porch stand).
   const wins: [number, number, number, number][] = [
-    // [x, z, facing (0 = +z, 1 = -z, 2 = +x, 3 = -x), y]
-    [-3, W / 2, 0, 2.4],
-    [0, W / 2, 0, 2.4],
-    [3, W / 2, 0, 2.4],
-    [-3, W / 2, 0, 5.0],
-    [0, W / 2, 0, 5.0],
-    [3, W / 2, 0, 5.0],
+    // [x, z, facing (0 = +z east, 1 = -z west, 2 = +x north, 3 = -x south), y]
+    [0, W / 2, 0, 2.4], // east: one window downstairs, centred
+    [0, W / 2, 0, 5.0], // east: one window upstairs, centred
     [-3.6, -W / 2, 1, 5.0],
-    [L / 2, -1.6, 2, 2.4],
+    [L / 2, -1.6, 2, 2.4], // north: two windows downstairs
     [L / 2, 1.6, 2, 2.4],
-    [L / 2, -1.6, 2, 5.0],
-    [L / 2, 1.6, 2, 5.0],
+    [L / 2, 0, 2, 5.0], // north: one window upstairs
     [-L / 2, 1.8, 3, 5.0],
     [-L / 2, -1.8, 3, 5.0],
   ];
@@ -494,6 +495,51 @@ function farmhouse(): THREE.Group {
     [-L / 2, -W / 2],
   ] as const)
     g.add(box(0.18, eave - base, 0.18, m.trimBlue, x, (eave + base) / 2, z));
+  return g;
+}
+
+/**
+ * Front door facing -x: white six-panel door with small lights at the top, brass knob, slate-blue
+ * casing, a full-view aluminum storm door in front, and a black porch lantern beside it.
+ */
+function frontDoor(): THREE.Group {
+  const m = mats();
+  const g = new THREE.Group();
+  const w = 0.95,
+    h = 2.05;
+  g.add(box(0.1, h + 0.3, w + 0.36, m.trimBlue, -0.02, h / 2 + 0.08, 0)); // casing
+  g.add(box(0.06, h, w, m.trimWhite, -0.06, h / 2, 0)); // door slab
+  for (const [y, ph] of [
+    [0.45, 0.62],
+    [1.18, 0.62],
+  ] as const)
+    for (const z of [-0.22, 0.22]) g.add(box(0.03, ph, 0.34, m.panel, -0.1, y, z));
+  for (let i = 0; i < 3; i++) g.add(box(0.03, 0.26, 0.24, m.glass, -0.1, 1.78, -0.28 + i * 0.28));
+  const knob = new THREE.Mesh(new THREE.SphereGeometry(0.04, 10, 8), m.brass);
+  knob.position.set(-0.13, 1.0, 0.36);
+  g.add(knob);
+  // Storm door: thin white aluminum frame with a big glass panel, standing just proud of the door.
+  const storm = new THREE.Group();
+  storm.add(
+    box(0.04, h + 0.04, 0.06, m.trimWhite, 0, h / 2, -w / 2 + 0.03),
+    box(0.04, h + 0.04, 0.06, m.trimWhite, 0, h / 2, w / 2 - 0.03),
+  );
+  storm.add(
+    box(0.04, 0.06, w, m.trimWhite, 0, h, 0),
+    box(0.04, 0.22, w, m.trimWhite, 0, 0.11, 0),
+    box(0.04, 0.06, w, m.trimWhite, 0, 1.0, 0),
+  );
+  storm.add(box(0.015, h - 0.3, w - 0.1, m.plexi, 0, h / 2 + 0.1, 0));
+  storm.add(box(0.06, 0.03, 0.14, m.galv, -0.04, 1.0, w / 2 - 0.12));
+  storm.position.x = -0.22;
+  g.add(storm);
+  // Porch lantern on the wall beside the door.
+  const lamp = new THREE.Group();
+  lamp.add(box(0.12, 0.3, 0.12, m.black, 0, 0, 0));
+  const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6), m.bulb);
+  lamp.add(bulb, box(0.05, 0.05, 0.12, m.black, 0.08, 0, 0));
+  lamp.position.set(-0.18, h - 0.05, -w / 2 - 0.45);
+  g.add(lamp);
   return g;
 }
 
@@ -635,32 +681,42 @@ function barn(): THREE.Group {
   g.add(box(9.5, 0.14, 0.2, m.black, 0, st + 4.3, -W / 2 - 0.2));
   // South end (-x): giant sliding door in the stone level with a walk-through door and the hoop.
   const sd = new THREE.Group();
-  sd.add(boxM(0.16, 2.3, 3.6, m.boards, 0, 0, 0));
+  const sdw = 6.0; // a wide door, about 20 ft
+  sd.add(boxM(0.16, 2.3, sdw, m.boards, 0, 0, 0));
   sd.add(
-    box(0.22, 0.16, 3.6, m.trimWhite, 0, 1.08, 0),
-    box(0.22, 0.16, 3.6, m.trimWhite, 0, -1.08, 0),
+    box(0.22, 0.16, sdw, m.trimWhite, 0, 1.08, 0),
+    box(0.22, 0.16, sdw, m.trimWhite, 0, -1.08, 0),
+  );
+  sd.add(
+    box(0.22, 2.3, 0.16, m.trimWhite, 0, 0, sdw / 2),
+    box(0.22, 2.3, 0.16, m.trimWhite, 0, 0, -sdw / 2),
   );
   sd.add(
     strut(
-      new THREE.Vector3(-0.1, -1.0, -1.7),
-      new THREE.Vector3(-0.1, 1.0, 1.7),
+      new THREE.Vector3(-0.1, -1.0, -sdw / 2 + 0.2),
+      new THREE.Vector3(-0.1, 1.0, sdw / 2 - 0.2),
       0.06,
       m.trimWhite,
     ),
   );
   sd.add(
     strut(
-      new THREE.Vector3(-0.1, 1.0, -1.7),
-      new THREE.Vector3(-0.1, -1.0, 1.7),
+      new THREE.Vector3(-0.1, 1.0, -sdw / 2 + 0.2),
+      new THREE.Vector3(-0.1, -1.0, sdw / 2 - 0.2),
       0.06,
       m.trimWhite,
     ),
   );
+  // Walk-through door cut into the big one.
   sd.add(
-    box(0.2, 2.0, 0.95, m.boards, -0.05, -0.12, -1.1),
-    box(0.22, 2.0, 0.08, m.trimWhite, -0.06, -0.12, -1.6),
+    box(0.2, 2.0, 0.95, m.boards, -0.05, -0.12, -2.05),
+    box(0.22, 2.0, 0.08, m.trimWhite, -0.06, -0.12, -2.55),
+    box(0.22, 2.0, 0.08, m.trimWhite, -0.06, -0.12, -1.55),
   );
+  sd.add(box(0.24, 0.08, 1.0, m.trimWhite, -0.06, 0.9, -2.05));
   sd.position.set(-L / 2 - 0.1, 1.17, 0.4);
+  // Track above the door, long enough to slide it open.
+  g.add(box(0.2, 0.14, W - 0.3, m.black, -L / 2 - 0.2, 2.4, 0));
   g.add(sd);
   const hoop = new THREE.Group();
   hoop.add(box(0.06, 0.9, 1.25, m.trimWhite, 0, 0, 0));
@@ -1096,28 +1152,50 @@ function clothesLines(): THREE.Group {
 function stove(): THREE.Group {
   const m = mats();
   const g = new THREE.Group();
-  const drum = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 1.0, 18), m.rust);
+  // A big drum for burning sticks and garbage: about 5 ft long and 4 ft across.
+  const r = 0.6,
+    len = 1.6,
+    cy = 1.05;
+  const drum = new THREE.Mesh(new THREE.CylinderGeometry(r, r, len, 22), m.rust);
   drum.rotation.z = Math.PI / 2;
-  drum.position.y = 0.95;
+  drum.position.y = cy;
   g.add(drum);
+  for (const x of [-len / 2 + 0.12, 0, len / 2 - 0.12]) {
+    const hoop = new THREE.Mesh(new THREE.TorusGeometry(r + 0.01, 0.025, 6, 24), m.black);
+    hoop.rotation.y = Math.PI / 2;
+    hoop.position.set(x, cy, 0);
+    g.add(hoop);
+  }
   for (const [x, z] of [
-    [0.35, 0.3],
-    [0.35, -0.3],
-    [-0.35, 0.3],
-    [-0.35, -0.3],
+    [0.5, 0.32],
+    [0.5, -0.32],
+    [-0.5, 0.32],
+    [-0.5, -0.32],
   ] as const)
     g.add(
-      strut(new THREE.Vector3(x, 0, z), new THREE.Vector3(x * 0.8, 0.6, z * 0.8), 0.03, m.black),
+      strut(
+        new THREE.Vector3(x * 1.1, 0, z * 1.3),
+        new THREE.Vector3(x, cy - 0.3, z),
+        0.04,
+        m.black,
+      ),
     );
+  // Stovepipe with a cap.
   g.add(
-    new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1.9, 10), m.rust)
-      .translateX(0.25)
-      .translateY(2.2),
+    new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 2.4, 12), m.rust)
+      .translateX(0.4)
+      .translateY(cy + r + 1.15),
   );
-  const door = new THREE.Mesh(new THREE.CircleGeometry(0.22, 14), m.black);
+  g.add(
+    new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.18, 12), m.rust)
+      .translateX(0.4)
+      .translateY(cy + r + 2.45),
+  );
+  // Big hinged feed door on the end, with a latch.
+  const door = new THREE.Mesh(new THREE.CircleGeometry(0.3, 18), m.black);
   door.rotation.y = -Math.PI / 2;
-  door.position.set(-0.51, 0.95, 0);
-  g.add(door);
+  door.position.set(-len / 2 - 0.01, cy, 0);
+  g.add(door, box(0.04, 0.05, 0.22, m.galv, -len / 2 - 0.04, cy, 0.18));
   for (let i = 0; i < 6; i++) {
     const p = boxM(
       1.1 + Math.random() * 0.6,
@@ -1198,6 +1276,75 @@ function ramp(): THREE.Mesh {
   return new THREE.Mesh(g, mat);
 }
 
+/** The grassy mounds rounding off both sides of the ramp, sprinkled with wildflowers. */
+function rampBerms(): THREE.Group {
+  const g = new THREE.Group();
+  const NT = 28,
+    NE = 10;
+  const green = new THREE.Color(0x6fa645);
+  for (const side of [-1, 1]) {
+    const pos: number[] = [],
+      col: number[] = [],
+      idx: number[] = [];
+    for (let i = 0; i <= NT; i++) {
+      const t = i / NT;
+      const half = rampFrame(...rampPoint(t, 0)).half;
+      for (let j = 0; j <= NE; j++) {
+        const e = j / NE;
+        const p = rampPoint(t, side * (half + e * BERM * 0.999));
+        const h = rampHeight(p[0], p[1]) ?? groundHeight(p[0], p[1]);
+        pos.push(p[0], h + (j === NE ? -0.03 : 0.01), -p[1]);
+        const c = green.clone().multiplyScalar(0.88 + ((i * 7 + j * 13) % 9) * 0.03);
+        col.push(c.r, c.g, c.b);
+      }
+    }
+    for (let i = 0; i < NT; i++)
+      for (let j = 0; j < NE; j++) {
+        const a = i * (NE + 1) + j,
+          b = a + 1,
+          c = a + NE + 1,
+          d = c + 1;
+        if (side > 0) idx.push(a, c, b, b, c, d);
+        else idx.push(a, b, c, b, d, c);
+      }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    geo.setIndex(idx);
+    geo.computeVertexNormals();
+    const mesh = new THREE.Mesh(
+      geo,
+      new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, side: THREE.DoubleSide }),
+    );
+    mesh.receiveShadow = true;
+    g.add(mesh);
+  }
+  // Wildflowers on the mounds.
+  const n = 260;
+  const fl = new THREE.InstancedMesh(
+    new THREE.IcosahedronGeometry(1, 0),
+    new THREE.MeshStandardMaterial({ roughness: 0.8 }),
+    n,
+  );
+  const mt = new THREE.Matrix4();
+  const cols = [0xffffff, 0xf4d23a, 0xb28ad8, 0xf0a0c0, 0xffffff];
+  let seed = 9;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (let k = 0; k < n; k++) {
+    const t = 0.08 + rnd() * 0.9;
+    const half = rampFrame(...rampPoint(t, 0)).half;
+    const side = rnd() < 0.5 ? -1 : 1;
+    const p = rampPoint(t, side * (half + (0.15 + rnd() * 0.8) * BERM));
+    const h = rampHeight(p[0], p[1]) ?? groundHeight(p[0], p[1]);
+    const r = 0.05 + rnd() * 0.04;
+    mt.makeScale(r, r * 0.7, r).setPosition(p[0], h + r * 0.6, -p[1]);
+    fl.setMatrixAt(k, mt);
+    fl.setColorAt(k, new THREE.Color(cols[k % cols.length]!));
+  }
+  g.add(fl);
+  return g;
+}
+
 // ---------------------------------------------------------------- all
 
 export interface Buildings {
@@ -1228,6 +1375,7 @@ export function buildBuildings(): Buildings {
   add(place(mailbox(), F.mailbox, F.farmGridDeg - 90));
   for (const w of F.wagons) add(place(wagon(), w.c, w.angle));
   add(ramp());
+  group.add(rampBerms());
 
   const rooster = rg.userData.rooster as THREE.Object3D;
   const wheel = wm.userData.wheel as THREE.Object3D;

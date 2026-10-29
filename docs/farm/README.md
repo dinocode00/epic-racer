@@ -7,7 +7,7 @@ routes are deliberately not designed yet.
 | File | What it is |
 | --- | --- |
 | `sketch.jpg` | The hand-drawn master sketch with the 17 numbered landmarks. It wins every disagreement. |
-| `blueprint.png` | The current blueprint (v11): landmarks on the real outline, contours every 2 ft. |
+| `blueprint.png` | The current blueprint (v12): landmarks on the real outline, contours every 2 ft. |
 | `blueprint.json` | The same blueprint as data, in metres (x east, y north, origin at the SW property corner): every confirmed fact, the open questions, the terrain model and all 913 Christmas trees. |
 
 ## Landmarks

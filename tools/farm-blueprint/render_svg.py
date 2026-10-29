@@ -12,6 +12,9 @@ import terrain
 rng = np.random.default_rng(7)
 # Everything placed by render(), recorded for the game export (metres, x east, y north).
 LAYOUT: dict = {}
+# The old hay wagons stay where they were placed in v10 (map metres).
+WAGON_A = np.array([73.4, 103.0])
+WAGON_B = np.array([78.9, 99.0])
 GRID = 50.0  # farm grid: long axis of barn, perpendicular to the NE property line (deg)
 K = b.M_PER_PX / 0.19  # hand-placed metre positions below were set at the old 0.19 scale
 U = np.array([math.cos(math.radians(GRID)), math.sin(math.radians(GRID))])  # farm "north"
@@ -392,8 +395,9 @@ def render():
     out.append(f'<g id="lm-well"><circle class="well" cx="{well[0]:.1f}" cy="{-well[1]:.1f}" r="1.22"/>'
                f'<circle class="well-in" cx="{well[0]:.1f}" cy="{-well[1]:.1f}" r=".92"/></g>')
     sand = bcen + V * 8.0 - U * 8.4
-    LAYOUT['sandbox'] = {'c': sand.tolist(), 'w': 2.44, 'h': 1.22, 'angle': GRID}
-    out.append(f'<g id="lm-sandbox"><path class="sandbox" d="{poly_d(rect(sand, 2.44, 1.22, GRID))}"/></g>')
+    # v12: a bit bigger west to east (the V direction)
+    LAYOUT['sandbox'] = {'c': sand.tolist(), 'w': 2.44, 'h': 2.1, 'angle': GRID}
+    out.append(f'<g id="lm-sandbox"><path class="sandbox" d="{poly_d(rect(sand, 2.44, 2.1, GRID))}"/></g>')
 
     # Buildings, snapped to the farm grid
     house_c = P([F['farmhouse']['centre']])[0]
@@ -406,7 +410,7 @@ def render():
     main = rect(hc, 10.0, 6.4, GRID)
     wing = rect(hc + U * 2.2 + V * 4.45, 5.4, 2.5, GRID)
     porch = rect(hc - U * 2.6 + V * 4.25, 4.6, 2.1, GRID)
-    LAYOUT['house'] = {'main': {'c': hc.tolist(), 'w': 10.0, 'h': 6.4}, 'wing': {'c': (hc + U * 2.2 + V * 4.45).tolist(), 'w': 5.4, 'h': 2.5}, 'porch': {'c': (hc - U * 2.6 + V * 4.25).tolist(), 'w': 4.6, 'h': 2.1}, 'steps': {'c': (hc - U * 5.8).tolist(), 'w': 1.6, 'h': 2.6}, 'chimney': (hc + U * 0.9).tolist(), 'bench': (hc - U * 5.45 - V * 0.95).tolist(), 'front_door': (hc - U * 5.0 + V * 0.3).tolist(), 'porch_door': (hc + V * 3.2 - U * 2.5).tolist(), 'angle': GRID}
+    LAYOUT['house'] = {'main': {'c': hc.tolist(), 'w': 10.0, 'h': 6.4}, 'wing': {'c': (hc + U * 2.2 + V * 4.45).tolist(), 'w': 5.4, 'h': 2.5}, 'porch': {'c': (hc - U * 2.6 + V * 4.25).tolist(), 'w': 4.6, 'h': 2.1}, 'steps': {'c': (hc - U * 6.28 - V * 0.9).tolist(), 'w': 2.56, 'h': 4.6}, 'chimney': (hc + U * 0.9).tolist(), 'bench': (hc - U * 5.75 - V * 1.3).tolist(), 'front_door': (hc - U * 5.0 + V * 0.3).tolist(), 'porch_door': (hc + V * 3.2 - U * 2.5).tolist(), 'angle': GRID}
     for q in (main, wing):
         out.append(f'<path class="stone" d="{poly_d(rect(np.mean(q, axis=0), np.linalg.norm(q[1] - q[0]) + .5, np.linalg.norm(q[3] - q[0]) + .5, GRID))}"/>')
     out.append(f'<path class="porch-floor" d="{poly_d(porch)}"/>')
@@ -423,15 +427,16 @@ def render():
     # Front steps on the south end, railings both sides, door slightly left, bench to the right
     # Concrete pad ~15 ft out from the front door, the steps on it, a sidewalk round to the
     # west porch, and grandpa's grill on the pad in front of the steps toward its west-north corner.
-    pad = rect(hc - U * 7.3, 4.6, 5.0, GRID)
+    # v12: the stoop and steps now run to the house's east corner, so the pad widens to hold them
+    pad = rect(hc - U * 7.3 - V * 0.6, 4.6, 6.2, GRID)
     walk = [hc - U * 6.0 + V * 2.5, hc - U * 6.0 + V * 4.3, hc - U * 4.9 + V * 4.3]
-    grill = hc - U * 7.3 + V * 1.9
-    LAYOUT['house_pad'] = {'c': (hc - U * 7.3).tolist(), 'w': 4.6, 'h': 5.0, 'angle': GRID}
+    grill = hc - U * 8.6 + V * 1.9
+    LAYOUT['house_pad'] = {'c': (hc - U * 7.3 - V * 0.6).tolist(), 'w': 4.6, 'h': 6.2, 'angle': GRID}
     LAYOUT['house_walk'] = {'pts': [p.tolist() for p in walk], 'width': 1.0}
     LAYOUT['grill'] = grill.tolist()
     out.append(f'<path class="concrete" d="{poly_d(pad)}"/>')
     out.append(f'<path class="walk" d="{poly_d(walk, False)}"/>')
-    out.append(f'<path class="concrete" d="{poly_d(rect(hc - U * 5.8, 1.6, 2.6, GRID))}"/>')
+    out.append(f'<path class="concrete" d="{poly_d(rect(hc - U * 6.28 - V * 0.9, 2.56, 4.6, GRID))}"/>')
     out.append(f'<circle class="grill" cx="{grill[0]:.1f}" cy="{-grill[1]:.1f}" r=".4"/>')
     for s in (-1, 1):
         out.append(seg(hc - U * 5.0 + V * 1.3 * s, hc - U * 6.6 + V * 1.3 * s, 'rail'))
@@ -489,21 +494,23 @@ def render():
     out.append('</g>')
 
     # Corn crib (8 ft wire crib) with the garden-tool shed right beside it
-    bc = P([F['grain_bin']['centre']])[0]
+    # v12: the corn crib and shed stand right by the barn's southeast corner
+    barn_se = bcen - U * 11.25 - V * 5.75
+    bc = barn_se - U * 1.9 - V * 1.0
     out.append(f'<g id="lm-10"><circle class="crib" cx="{bc[0]:.1f}" cy="{-bc[1]:.1f}" r="1.4"/>'
                f'<circle class="crib-cap" cx="{bc[0]:.1f}" cy="{-bc[1]:.1f}" r=".45"/></g>')
-    sh = bc - U * (1.4 + 0.3 + 3.0)
+    sh = bc - V * 3.5
     out.append(f'<g id="lm-11"><path class="bld roof-black wall-red" d="{poly_d(rect(sh, 6, 3.6, GRID))}"/>'
                f'{seg(sh - U * 3, sh + U * 3, "ridge")}</g>')
-    gh = sh - V * 3.9  # right beside the shed, on its east side
+    gh = sh - V * 6.0 - U * 2.6  # a little east and south of the shed
     LAYOUT['corn_crib'] = bc.tolist()
     LAYOUT['shed'] = {'c': sh.tolist(), 'w': 6.0, 'h': 3.6, 'angle': GRID}
     LAYOUT['greenhouse'] = {'c': gh.tolist(), 'w': 3.05, 'h': 1.83, 'angle': GRID}
     out.append(f'<g id="lm-12"><path class="bld glass" d="{poly_d(rect(gh, 3.05, 1.83, GRID))}"/>'
                f'{seg(gh - U * 1.52, gh + U * 1.52, "ridge")}</g>')
     # Old flat wooden wagons parked in the grass east of the shed, one with pumpkins on it
-    out.append(f'<g id="lm-wagons">{wagon(sh + np.array([9.5, -7.5]), GRID + 14)}{wagon(sh + np.array([15.0, -11.5]), GRID - 20, load=7)}</g>')
-    LAYOUT['wagons'] = [{'c': (sh + np.array([9.5, -7.5])).tolist(), 'angle': GRID + 14, 'load': 0}, {'c': (sh + np.array([15.0, -11.5])).tolist(), 'angle': GRID - 20, 'load': 7}]
+    out.append(f'<g id="lm-wagons">{wagon(WAGON_A, GRID + 14)}{wagon(WAGON_B, GRID - 20, load=7)}</g>')
+    LAYOUT['wagons'] = [{'c': WAGON_A.tolist(), 'angle': GRID + 14, 'load': 0}, {'c': WAGON_B.tolist(), 'angle': GRID - 20, 'load': 7}]
     pl = house_c + np.array([8.0, 1.5]) - V * 9.5 + np.array([3.2, 0.0])  # just east of the clothes lines' east end
     LAYOUT['playhouse'] = {'c': pl.tolist(), 'w': 2.44, 'h': 2.44, 'angle': GRID}
     out.append(f'<g id="lm-17"><path class="bld roof-black wall-red" d="{poly_d(rect(pl, 2.44, 2.44, GRID))}"/>'
@@ -577,7 +584,7 @@ def render():
     out.append(tag(ent + nrm * 2.4, 'mailbox'))
     out.append(tag(P([(866, 296)])[0] + V * 2.6 + U * 1, 'arborvitae'))
     out.append(tag(g9c + np.array([1.5, -6.0]), 'rooster vane'))
-    out.append(tag(sh + np.array([20.5, -5.0]), 'old hay wagons'))
+    out.append(tag(WAGON_B + np.array([5.5, 6.5]), 'old hay wagons'))
 
     # Property line on top
     out.append(f'<path class="propline" d="{poly_d(bd)}"/>')
@@ -586,7 +593,7 @@ def render():
     spots = {
         1: house_c + U * 9.5, 2: g2 + U * 6, 3: bcen - V * 2.8 - U * 4, 4: bcen + V * 19.5, 5: K * np.array([34, 146]),
         6: wm + (-5.5, 1.5), 7: K * np.array([14, 117]), 8: P([(912, 770)])[0] + (-3, -3.5), 9: g9c + (7.5, -1),
-        10: bc + (-1.0, 4.6), 11: sh + (-5.2, 0.5), 12: gh + (-2.6, -3.6),
+        10: bc + (-4.6, -0.5), 11: sh + (4.2, -2.6), 12: gh + (3.6, -2.6),
         13: K * np.array([49, 50]), 14: K * np.array([39, 6]), 15: wb + (0, 4.6), 16: (e0 + e1) / 2 - n_ * 3.8, 17: pl + (4.6, 1.2),
     }
     for n, p in spots.items():

@@ -153,17 +153,60 @@ export function inside(x: number, y: number, poly: XY[]): boolean {
 
 /** Barn ramp: an asphalt wedge from the ground up 8 ft to the barn's upper doors. */
 export const RAMP_RISE = 2.44;
-export function rampHeight(x: number, y: number): number | null {
-  const [w0, w1, o1, o0] = FARM.ramp; // wall edge (w0,w1), outer edge (o1,o0)
-  if (!inside(x, y, [w0!, w1!, o1!, o0!])) return null;
-  // Fraction of the way from the outer edge (0) to the barn wall (1).
-  const wall = mid(w0!, w1!);
-  const outer = mid(o0!, o1!);
+/** Width of the grassy mound that rounds off each side of the ramp down to the ground (m). */
+export const BERM = 2.3;
+
+/** Where a point sits relative to the ramp: t = 0 at the outer end, 1 at the barn wall. */
+export function rampFrame(x: number, y: number): { t: number; lat: number; half: number } {
+  const [w0, w1, o1, o0] = FARM.ramp as [XY, XY, XY, XY];
+  const wall = mid(w0, w1),
+    outer = mid(o0, o1);
   const ax = wall[0] - outer[0],
     ay = wall[1] - outer[1];
-  const t = clamp01(((x - outer[0]) * ax + (y - outer[1]) * ay) / (ax * ax + ay * ay));
+  const L2 = ax * ax + ay * ay,
+    L = Math.sqrt(L2);
+  const t = ((x - outer[0]) * ax + (y - outer[1]) * ay) / L2;
+  const lat = (-(x - outer[0]) * ay + (y - outer[1]) * ax) / L;
+  const hOuter = Math.hypot(o1[0] - o0[0], o1[1] - o0[1]) / 2;
+  const hWall = Math.hypot(w1[0] - w0[0], w1[1] - w0[1]) / 2;
+  return { t, lat, half: hOuter + (hWall - hOuter) * clamp01(t) };
+}
+
+/** Map point at ramp coordinates (t along, lat across). */
+export function rampPoint(t: number, lat: number): XY {
+  const [w0, w1, o1, o0] = FARM.ramp as [XY, XY, XY, XY];
+  const wall = mid(w0, w1),
+    outer = mid(o0, o1);
+  const ax = wall[0] - outer[0],
+    ay = wall[1] - outer[1];
+  const L = Math.hypot(ax, ay);
+  return [outer[0] + ax * t - (ay / L) * lat, outer[1] + ay * t + (ax / L) * lat];
+}
+
+/** Height of the asphalt top at a fraction t of the way up the ramp. */
+export function rampTop(t: number): number {
+  const [w0, w1, o1, o0] = FARM.ramp as [XY, XY, XY, XY];
+  const wall = mid(w0, w1),
+    outer = mid(o0, o1);
   const base = groundHeight(outer[0], outer[1]);
-  return base + (groundHeight(wall[0], wall[1]) + RAMP_RISE - base) * t;
+  return base + (groundHeight(wall[0], wall[1]) + RAMP_RISE - base) * clamp01(t);
+}
+
+/**
+ * Barn ramp: an asphalt top from the ground up 8 ft to the barn's upper doors, its sides
+ * rounded off into grassy mounds that droop down to the ground.
+ */
+export function rampHeight(x: number, y: number): number | null {
+  const f = rampFrame(x, y);
+  if (f.t < 0 || f.t > 1) return null;
+  const top = rampTop(f.t);
+  const a = Math.abs(f.lat);
+  if (a <= f.half) return top;
+  const e = (a - f.half) / BERM;
+  if (e >= 1) return null;
+  const g = groundHeight(x, y);
+  if (top <= g) return null;
+  return g + (top - g) * (1 - smooth(e));
 }
 export const mid = (a: XY, b: XY): XY => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
 

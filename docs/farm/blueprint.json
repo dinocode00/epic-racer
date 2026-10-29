@@ -883,13 +883,15 @@
   }
  },
  "acres": 4.76,
- "farm_compass": "In the answers, \"north\" means along the barn toward the wooden garage (bearing ~40°) and \"west\" means the barn's ramp side.",
+ "farm_compass": "In the answers, \"north\" means along the barn toward the wooden garage (bearing ~40\u00b0) and \"west\" means the barn's ramp side.",
  "confirmed": {
   "Farmhouse": [
    "Same place as today's house. Two storeys.",
    "Porch on the west side with a door, but everyone used the south-facing front door.",
    "Front door: up a few concrete steps covered in black outdoor carpet, railings on both sides. The door is slightly left of the middle of the steps, with a white metal bench to its right.",
    "A concrete pad reaches about 15 ft out from the front door; the steps sit on it, a concrete sidewalk links it to the west porch, and grandpa's simple grill stands on the pad in front of the steps, toward its west-north corner.",
+   "The front steps have a small stoop at the top next to the door, and the stoop and steps run from the door all the way to the house's right-hand (east) corner. The concrete pad is level with the ground.",
+   "Windows: on the east side one downstairs and one upstairs, both centred; on the north side two downstairs and one upstairs.",
    "From the photo: white horizontal siding, slate-blue window trim, corner boards and roof edges, dark charcoal shingles, a buff brick chimney at the ridge, and a rounded fieldstone foundation like the barn's.",
    "From the photo: a steep front gable with an octagonal vent near the peak, and a one-storey porch with white posts, white railings, a white lattice skirt and a gooseneck light by its door."
   ],
@@ -907,12 +909,14 @@
   "Ramp, well and sandbox": [
    "The ramp was black asphalt. Everything else around it was gravel.",
    "North of the ramp: the remains of an old stone well, an open ring about 3 ft high, 1 ft thick and 8 ft across, with no lid.",
-   "South of the ramp: an open sandbox of plain wood, about 8 × 4 ft, with a blue plastic cover.",
+   "South of the ramp: an open sandbox of plain wood, about 8 \u00d7 4 ft, with a blue plastic cover.",
    "No drive-around loop.",
    "The sandbox sat on a small grass patch touching both the barn and the ramp, and the well had a matching grassy patch on the other side.",
    "Grass on each side of the ramp, with a mature bush on each side at the bottom.",
+   "The ramp's top is black asphalt; its sides are rounded grassy mounds with flowers, drooping down to the ground.",
    "The bushes grew out of the grass at the very bottom of the ramp sides and did not extend past the end of the ramp.",
-   "They are lilacs, shown with purple blossoms."
+   "They are lilacs, shown with purple blossoms.",
+   "The sandbox is a bit bigger west to east than first drawn."
   ],
   "Gravel driveway": [
    "All open gravel, graded for driving and parking. No grass inside it.",
@@ -936,7 +940,7 @@
   ],
   "Grape vines and garden": [
    "4 rows. Shortened by 20% at the north end.",
-   "A small garden of vegetables and flowers, about 10 × 7 ft, in that space."
+   "A small garden of vegetables and flowers, about 10 \u00d7 7 ft, in that space."
   ],
   "Red wooden garage": [
    "Door faces north. Black shingle roof. White trim like the barn.",
@@ -947,6 +951,7 @@
   ],
   "Red wooden shed": [
    "The circle you drew at its corner was the corn crib, so the shed sits right beside it.",
+   "The shed and corn crib stand right next to the barn, close to touching its southeast corner.",
    "Used for garden tools.",
    "Same red and trim as the barn."
   ],
@@ -957,7 +962,7 @@
   "Clear plexiglass greenhouse": [
    "Peaked roof. Aluminum frame and plexiglass.",
    "Small: about 10 ft long and 6 ft wide.",
-   "Much closer to the shed."
+   "A little away from the shed, to its east and south."
   ],
   "Christmas tree rows": [
    "Scotch pine, Douglas fir, white pine and blue spruce, in bands from west to east.",
@@ -971,11 +976,13 @@
    "Fills the full width of the south end.",
    "Gourds grew there too.",
    "The patch hugs the mowed grass lane along its north side.",
-   "Past the south line: a rising hill of grass, wildflowers and weeds."
+   "Past the south line: a rising hill of grass, wildflowers and weeds.",
+   "A real variety of pumpkins, with a few giant ones far bigger than the rest."
   ],
   "Old rusted barrel stove": [
    "Used to burn garbage.",
-   "A small pile of scrap wood next to it."
+   "A small pile of scrap wood next to it.",
+   "A big barrel, larger than first drawn."
   ],
   "Clothes lines": [
    "Three lines, two sets of posts.",
@@ -984,7 +991,7 @@
   "Kids' small playhouse": [
    "Coloured to match the barn.",
    "Black shingle roof, nothing on top.",
-   "About 8 × 8 ft, with a window on the left side, one on the right side and two in front.",
+   "About 8 \u00d7 8 ft, with a window on the left side, one on the right side and two in front.",
    "Much closer to the farmhouse, just east of the clothes lines."
   ],
   "Trees, paths and fields": [
@@ -993,7 +1000,7 @@
    "Dashed lines and the south lane were mowed grass paths, often with tractor tyre marks.",
    "The field of weeds, grass and wildflowers lies outside the east property line. Inside, the far east side is mowed grass running down to the pumpkins.",
    "The five evergreens between the road and the house were very large spruces, 10 to 20 ft taller than the house.",
-   "A row of mature arborvitae, about 11 ft tall, ran along the north edge of the driveway from the road to the windmill, with no big tree in the line."
+   "A row of mature arborvitae, about 11 ft tall, ran along the north edge of the driveway from the road to the windmill, with no big tree in the line. They were fairly thick."
   ],
   "The land as a whole": [
    "About 5 acres. Same property line as the red line today, except on the east: from where the Christmas trees start, the line comes in to run just outside the east mowed path (about 4.8 acres in all).",
@@ -7458,13 +7465,17 @@
   "east": "field of weeds, grass and wildflowers outside the east line"
  },
  "placed_in_metres": {
+  "corn_crib_centre": [
+   65.0,
+   122.5
+  ],
   "red_shed_centre": [
-   63.9,
-   110.5
+   67.7,
+   120.2
   ],
   "greenhouse_centre": [
-   66.9,
-   108.0
+   70.6,
+   114.4
   ],
   "hay_wagons": [
    [
@@ -7499,6 +7510,30 @@
     62.1,
     151.7
    ]
+  ],
+  "sandbox": {
+   "centre": [
+    56.7,
+    135.6
+   ],
+   "size_m": [
+    2.44,
+    2.1
+   ]
+  },
+  "front_pad": {
+   "centre": [
+    38.9,
+    166.9
+   ],
+   "size_m": [
+    4.6,
+    6.2
+   ]
+  },
+  "grill": [
+   36.1,
+   167.5
   ]
  },
  "boundary_note": "Satellite parcel outline, except the east line south of the Christmas trees' top edge, which follows the owner's memory: just outside the east mowed path."
