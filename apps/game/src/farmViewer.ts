@@ -375,6 +375,7 @@ function frame(now: number): void {
     const d = camera.position.distanceTo(controls.target);
     farm.focusSun(controls.target, Math.min(2600, Math.max(160, d * 0.85)));
   }
+  farm.pressGrass(car.pos);
   farm.update(dt, camera);
   view.render(farm.scene, [{ x: 0, y: 0, w: 1, h: 1, camera }]);
   requestAnimationFrame(frame);

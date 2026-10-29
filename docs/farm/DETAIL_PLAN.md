@@ -44,6 +44,8 @@ as each item lands, so the work can be picked up from here at any time.
 - [~] Instanced lawn grass around the camera (`farm/grass.ts`): short and mowed, with colour variation and a lighter tip, fading out by distance and bending in the breeze.
 - [~] Tall grass in the wild fields and on the berms: seed heads, waving visibly in gusts.
 - [~] Late-summer wildflowers in the fields (Queen Anne's lace, chicory, black-eyed Susans, goldenrod), plus clover and the odd dandelion in the lawn.
+- [~] Loose gravel stones (instanced pebbles) on the yard, driveway, apron and lane near the camera.
+- [~] The kart presses the grass down and out of its way.
 - [ ] A richer ground texture: lawn colour varying in soft patches, worn spots along the paths, wheel ruts in the gravel.
 - [~] Soft contact shadows under every building, wagon and tree.
 
@@ -78,9 +80,9 @@ as each item lands, so the work can be picked up from here at any time.
 
 - [ ] Arborvitae: soft scale-leaf texture instead of smooth columns (now built from the conifer kit, check).
 - [ ] Orchard: some fruit on the outside of the crown so it reads from a distance.
-- [ ] Check the barn roof for an odd green patch seen in the orchard view.
 
 - [ ] Walk every landmark view and fix anything that looks off.
+- [ ] Load time: the ground canvas is painted with ~600k small fills plus blurs, which takes about 70 s on the software renderer used for screenshots. Paint the speckle with ImageData instead.
 - [ ] Check frame time and draw calls at low and high quality; instance or merge anything that got expensive.
 - [ ] Republish the explorer.
 

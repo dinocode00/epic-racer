@@ -332,56 +332,63 @@ export function scotchGiant(): TreeGeo {
   const leaves: THREE.BufferGeometry[] = [];
   const pad = (c: THREE.Vector3, r: number, k: number) => {
     const cols = [0x2f5a46, 0x3a6a52, 0x45745a];
-    solid.push(blob(c, r, C(cols[k % 3]!), 40 + k, 0.42));
-    leaves.push(cards(c, r * 0.95, Math.round(r * 18), 1.3, C(cols[(k + 1) % 3]!)));
+    solid.push(blob(c, r, C(cols[Math.abs(k) % 3]!), 40 + k, 0.34));
+    leaves.push(cards(c, r * 0.95, Math.round(r * 16), 1.2, C(cols[(Math.abs(k) + 1) % 3]!)));
   };
   // Limbs: angled up out of the orange trunk, levelling out, each ending in needle pads.
   // The crown leans to one side and is flat on top.
+  // Limbs: angled up out of the orange trunk, levelling out, carrying flat plates of needles
+  // along their outer half. The crown is broad, open, lopsided and flat on top.
   const limbs: [number, number, number, number][] = [
     // angle, height on trunk, reach, rise
-    [0.3, 8.8, 5.8, 2.6],
-    [2.0, 9.6, 5.0, 3.0],
-    [3.5, 10.4, 5.4, 2.8],
-    [5.0, 11.2, 4.6, 3.0],
-    [1.1, 12.2, 4.4, 2.8],
-    [4.2, 13.0, 4.0, 2.6],
-    [2.7, 13.9, 3.6, 2.4],
-    [5.8, 14.8, 3.2, 2.2],
-    [0.7, 15.6, 2.6, 1.8],
+    [0.3, 8.6, 6.6, 2.4],
+    [1.5, 9.3, 5.4, 2.8],
+    [2.6, 9.9, 6.2, 2.6],
+    [3.8, 10.6, 5.8, 2.9],
+    [5.0, 11.3, 6.0, 2.6],
+    [0.9, 12.2, 5.0, 2.8],
+    [2.1, 12.9, 4.6, 2.6],
+    [4.4, 13.6, 4.8, 2.5],
+    [5.6, 14.4, 4.0, 2.3],
+    [3.2, 15.2, 3.4, 2.0],
+    [1.2, 15.9, 2.8, 1.6],
   ];
   limbs.forEach(([a, y, reach, rise], k) => {
     const dx = Math.cos(a),
       dz = Math.sin(a);
-    const end = V(dx * reach + 0.5, y + rise, dz * reach);
+    const at = (t: number, up = 0) =>
+      V(dx * reach * t + 0.3, y + rise * Math.sin(t * Math.PI * 0.5) + up, dz * reach * t);
     solid.push(
       branch(
-        [
-          V(0.2, y, 0.1),
-          V(dx * reach * 0.35 + 0.2, y + rise * 0.75, dz * reach * 0.35),
-          V(dx * reach * 0.7 + 0.4, y + rise * 0.9 + (rnd() - 0.5) * 0.6, dz * reach * 0.7),
-          end,
-        ],
-        0.2 - k * 0.012,
+        [V(0.2, y, 0.1), at(0.35, (rnd() - 0.5) * 0.4), at(0.7, (rnd() - 0.5) * 0.5), at(1)],
+        0.2 - k * 0.011,
         limbCol,
       ),
     );
-    // A big pad at the tip, one part way along, and a side shoot with its own pad.
-    pad(end, 2.5 - k * 0.1, k);
-    pad(V(dx * reach * 0.55 + 0.35, y + rise * 0.85, dz * reach * 0.55), 1.8, k + 1);
-    const sa = a + (k % 2 ? 0.7 : -0.7);
-    pad(
-      V(
-        dx * reach * 0.6 + Math.cos(sa) * 1.6,
-        y + rise * 0.8,
-        dz * reach * 0.6 + Math.sin(sa) * 1.6,
+    // Plates of needles along the outer limb, and a side shoot carrying its own.
+    pad(at(1, 0.2), 2.2 - k * 0.06, k);
+    pad(at(0.72, 0.35), 1.7, k + 1);
+    if (reach > 4) pad(at(0.48, 0.45), 1.3, k + 2);
+    const sa = a + (k % 2 ? 0.8 : -0.8);
+    const side = at(0.65);
+    solid.push(
+      branch(
+        [side, side.clone().add(V(Math.cos(sa) * 1.8, 0.6, Math.sin(sa) * 1.8))],
+        0.07,
+        limbCol,
       ),
-      1.6,
-      k + 2,
     );
+    pad(side.clone().add(V(Math.cos(sa) * 2.0, 0.8, Math.sin(sa) * 2.0)), 1.5, k + 3);
   });
-  pad(V(0.4, 18.0, -0.2), 2.4, 9);
-  pad(V(2.2, 17.6, 1.6), 2.1, 10);
-  pad(V(-1.6, 17.4, -1.4), 2.0, 11);
+  // The flat top.
+  for (const [x, yy, z, r] of [
+    [0.4, 18.0, -0.2, 2.3],
+    [2.4, 17.6, 1.6, 2.0],
+    [-1.8, 17.5, -1.4, 1.9],
+    [-0.6, 17.8, 2.0, 1.7],
+    [1.8, 17.4, -2.0, 1.7],
+  ] as const)
+    pad(V(x, yy, z), r, Math.round(x * 3 + z));
   return { solid: merge(solid), leaves: merge(leaves), needles: true };
 }
 
@@ -444,70 +451,64 @@ function broadleaf(s: BroadSpec, sd: number): TreeGeo {
 }
 
 /** Trained apple: short, crooked trunk and a wide, low, spreading crown. */
-export const appleTree = (): TreeGeo =>
-  broadleaf(
-    {
-      trunkH: 1.3,
-      trunkR: 0.17,
-      trunk: 0x5a4434,
-      lean: 0.2,
-      limbs: 4,
-      squash: 0.7,
-      leaves: [0x4a8a3a, 0x3d7a33, 0x56984a],
-      clumps: [
-        [1.5, 2.4, 0.3, 1.3],
-        [-1.4, 2.5, -0.4, 1.25],
-        [0.2, 2.6, 1.5, 1.2],
-        [-0.2, 2.4, -1.5, 1.2],
-        [0.1, 3.2, 0, 1.4],
-        [1.0, 3.0, -1.0, 0.9],
-        [-1.0, 3.0, 1.0, 0.9],
-      ],
-    },
-    5,
-  );
+const APPLE: BroadSpec = {
+  trunkH: 1.3,
+  trunkR: 0.17,
+  trunk: 0x5a4434,
+  lean: 0.2,
+  limbs: 4,
+  squash: 0.7,
+  leaves: [0x4a8a3a, 0x3d7a33, 0x56984a],
+  clumps: [
+    [1.5, 2.4, 0.3, 1.3],
+    [-1.4, 2.5, -0.4, 1.25],
+    [0.2, 2.6, 1.5, 1.2],
+    [-0.2, 2.4, -1.5, 1.2],
+    [0.1, 3.2, 0, 1.4],
+    [1.0, 3.0, -1.0, 0.9],
+    [-1.0, 3.0, 1.0, 0.9],
+  ],
+};
+export const appleTree = (): TreeGeo => broadleaf(APPLE, 5);
 
 /** Pear: upright and pyramid-shaped, taller than wide. */
-export const pearTree = (): TreeGeo =>
-  broadleaf(
-    {
-      trunkH: 1.8,
-      trunkR: 0.15,
-      trunk: 0x4d3c30,
-      limbs: 3,
-      squash: 1.05,
-      leaves: [0x3f7f3a, 0x4b8c40, 0x356f33],
-      clumps: [
-        [0.6, 2.6, 0.2, 1.0],
-        [-0.6, 2.7, -0.3, 1.0],
-        [0, 2.8, 0.7, 0.95],
-        [0, 3.6, 0, 1.0],
-        [0.2, 4.4, -0.1, 0.8],
-        [0, 5.0, 0.1, 0.55],
-      ],
-    },
-    11,
-  );
+const PEAR: BroadSpec = {
+  trunkH: 1.8,
+  trunkR: 0.15,
+  trunk: 0x4d3c30,
+  limbs: 3,
+  squash: 1.05,
+  leaves: [0x3f7f3a, 0x4b8c40, 0x356f33],
+  clumps: [
+    [0.6, 2.6, 0.2, 1.0],
+    [-0.6, 2.7, -0.3, 1.0],
+    [0, 2.8, 0.7, 0.95],
+    [0, 3.6, 0, 1.0],
+    [0.2, 4.4, -0.1, 0.8],
+    [0, 5.0, 0.1, 0.55],
+  ],
+};
+export const pearTree = (): TreeGeo => broadleaf(PEAR, 11);
 
 /** Cherry: reddish banded bark and a rounded crown. */
-export const cherryTree = (): TreeGeo =>
-  broadleaf(
-    {
-      trunkH: 1.5,
-      trunkR: 0.14,
-      trunk: 0x6a3a30,
-      limbs: 3,
-      squash: 0.85,
-      leaves: [0x4e8f3c, 0x5c9c48, 0x437f36],
-      clumps: [
-        [0.9, 2.5, 0.2, 1.05],
-        [-0.8, 2.6, -0.3, 1.05],
-        [0.1, 2.7, 0.9, 1.0],
-        [0, 3.4, -0.2, 1.15],
-      ],
-    },
-    17,
-  );
+const CHERRY: BroadSpec = {
+  trunkH: 1.5,
+  trunkR: 0.14,
+  trunk: 0x6a3a30,
+  limbs: 3,
+  squash: 0.85,
+  leaves: [0x4e8f3c, 0x5c9c48, 0x437f36],
+  clumps: [
+    [0.9, 2.5, 0.2, 1.05],
+    [-0.8, 2.6, -0.3, 1.05],
+    [0.1, 2.7, 0.9, 1.0],
+    [0, 3.4, -0.2, 1.15],
+  ],
+};
+export const cherryTree = (): TreeGeo => broadleaf(CHERRY, 17);
+
+/** Crown clumps of the orchard trees, so fruit can hang on the outside of the leaves. */
+export const CROWNS = { apple: APPLE, pear: PEAR, cherry: CHERRY };
 
 /** Woods: a broad oak, a tall rounded maple and an open, airy ash. */
 export const WOODS: (() => TreeGeo)[] = [

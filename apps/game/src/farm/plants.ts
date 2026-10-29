@@ -22,6 +22,7 @@ import {
   rampPoint,
 } from './layout.ts';
 import {
+  CROWNS,
   WOODS,
   appleTree,
   arborvitaeTree,
@@ -203,10 +204,15 @@ export function buildPlants(): THREE.Group {
   // ---- Orchard: trained trees about 13 ft tall; apples hang at about 5 ft.
   const orchKinds = { apple: appleTree, pear: pearTree, cherry: cherryTree } as const;
   type Fruit = keyof typeof orchKinds;
+  const norms = {
+    apple: normalise(appleTree),
+    pear: normalise(pearTree),
+    cherry: normalise(cherryTree),
+  };
   const orch = Object.fromEntries(
     (Object.keys(orchKinds) as Fruit[]).map((k) => [
       k,
-      new TreeBatch(normalise(orchKinds[k]), FARM.orchard.filter((o) => o[2] === k).length, true),
+      new TreeBatch(norms[k], FARM.orchard.filter((o) => o[2] === k).length, true),
     ]),
   ) as Record<Fruit, TreeBatch>;
   // How far out from the trunk fruit hangs, to stay inside each kind's crown.
@@ -219,7 +225,7 @@ export function buildPlants(): THREE.Group {
   const fruit = new THREE.InstancedMesh(
     fruitGeo,
     new THREE.MeshStandardMaterial({ roughness: 0.45 }),
-    FARM.orchard.length * 36,
+    FARM.orchard.length * 44,
   );
   fruit.castShadow = true;
   let nf = 0;
@@ -231,11 +237,31 @@ export function buildPlants(): THREE.Group {
   };
   for (const [x, y, kind] of FARM.orchard) {
     const h = kind === 'apple' ? 13 * FT : kind === 'pear' ? 15 * FT : 12 * FT;
-    orch[kind].add(x, y, h, 0.95 + rnd() * 0.1, vary(0.08));
+    const yaw = rnd() * Math.PI * 2,
+      wd = 0.95 + rnd() * 0.1;
+    orch[kind].add(x, y, h, wd, vary(0.08), yaw);
     const [col, r] = FRUIT[kind]!;
     const [d0, d1] = REACH[kind];
     const g0 = groundHeight(x, y);
-    for (let i = 0; i < 26; i++) {
+    // Fruit showing on the outside of the leaves, round the sides and lower crown.
+    const sc = h / norms[kind].height;
+    const crown = CROWNS[kind];
+    const rot = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
+    for (let i = 0; i < 16; i++) {
+      const [cx, cy, cz, cr] = crown.clumps[(rnd() * crown.clumps.length) | 0]!;
+      const a = rnd() * Math.PI * 2,
+        dy = -0.6 + rnd() * 0.9;
+      const k = Math.sqrt(1 - dy * dy);
+      const v = new THREE.Vector3(
+        (cx + Math.cos(a) * k * cr * 0.95) * sc * wd,
+        (cy + dy * cr * 0.95 * crown.squash) * sc,
+        (cz + Math.sin(a) * k * cr * 0.95) * sc * wd,
+      ).applyQuaternion(rot);
+      mtx.makeScale(r, r * 1.05, r).setPosition(x + v.x, g0 - 0.05 + v.y, -y + v.z);
+      fruit.setMatrixAt(nf, mtx);
+      fruit.setColorAt(nf++, new THREE.Color(col).multiplyScalar(0.85 + rnd() * 0.3));
+    }
+    for (let i = 0; i < (kind === 'apple' ? 16 : 8); i++) {
       const a = rnd() * Math.PI * 2;
       const d = d0 + rnd() * (d1 - d0);
       const fy = kind === 'apple' ? 5 * FT + (rnd() - 0.4) * 0.6 : 1.8 + rnd() * 1.6;

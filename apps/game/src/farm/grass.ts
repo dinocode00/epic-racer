@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { WIND_GLSL, windUniforms } from '../render/wind.ts';
-import { FARM, type RectDef, type XY, groundHeight, smoothLine, smoothRing } from './layout.ts';
+import { meshHeight } from './ground.ts';
+import { FARM, type RectDef, type XY, smoothLine, smoothRing } from './layout.ts';
 
 /**
  * Living grass, the way most good-looking outdoor games do it: a fixed set of grass tufts
@@ -33,7 +34,7 @@ export function heightTexture(): THREE.DataTexture {
   const d = new Uint16Array(nx * ny);
   for (let j = 0; j < ny; j++)
     for (let i = 0; i < nx; i++)
-      d[j * nx + i] = THREE.DataUtils.toHalfFloat(groundHeight(X0 + i, Y0 + j));
+      d[j * nx + i] = THREE.DataUtils.toHalfFloat(meshHeight(X0 + i, Y0 + j));
   const t = new THREE.DataTexture(d, nx, ny, THREE.RedFormat, THREE.HalfFloatType);
   t.magFilter = t.minFilter = THREE.LinearFilter;
   t.needsUpdate = true;
@@ -151,7 +152,58 @@ function maskTexture(): THREE.CanvasTexture {
   return t;
 }
 
+/** Where loose gravel lies: the yard, driveway, barn apron and lane (red channel). */
+function gravelMask(): THREE.CanvasTexture {
+  const PPM = 2;
+  const c = document.createElement('canvas');
+  c.width = (X1 - X0) * PPM;
+  c.height = (Y1 - Y0) * PPM;
+  const x = c.getContext('2d')!;
+  const P = (p: XY): [number, number] => [(p[0] - X0) * PPM, (Y1 - p[1]) * PPM];
+  const path = (pts: XY[], close = true) => {
+    x.beginPath();
+    pts.forEach((p, i) => (i ? x.lineTo(...P(p)) : x.moveTo(...P(p))));
+    if (close) x.closePath();
+  };
+  x.fillStyle = '#000';
+  x.fillRect(0, 0, c.width, c.height);
+  x.fillStyle = '#f00';
+  for (const g of [smoothRing(FARM.gravel, 6), smoothRing(FARM.gravel_apron, 6)]) {
+    path(g);
+    x.fill();
+  }
+  x.fillStyle = '#000';
+  for (const p of FARM.grass_patches) {
+    path(p);
+    x.fill();
+  }
+  x.strokeStyle = '#f00';
+  x.lineWidth = 3.6 * PPM;
+  path(FARM.lane, false);
+  x.stroke();
+  const t = new THREE.CanvasTexture(c);
+  t.magFilter = t.minFilter = THREE.LinearFilter;
+  t.generateMipmaps = false;
+  return t;
+}
+
 // ------------------------------------------------------------------ geometry
+
+/** A loose stone: a squashed, lumpy little rock (about unit size). */
+function pebbleGeometry() {
+  const g = new THREE.IcosahedronGeometry(0.5, 0);
+  const p = g.attributes.position!;
+  for (let i = 0; i < p.count; i++) {
+    const k = 0.75 + rnd() * 0.5;
+    p.setXYZ(i, p.getX(i) * k, Math.max(0, p.getY(i) + 0.15) * 0.7, p.getZ(i) * k);
+  }
+  g.computeVertexNormals();
+  const ig = new THREE.InstancedBufferGeometry();
+  ig.setAttribute('position', p);
+  ig.setAttribute('normal', g.attributes.normal!);
+  ig.setAttribute('aTip', new THREE.Float32BufferAttribute(new Array(p.count).fill(0.85), 1));
+  return ig;
+}
 
 /** A tuft of curved, tapering blades. y runs 0 (root) to 1 (tip); x/z within about ±0.5. */
 function tuftGeometry(blades: number, segs: number, spread: number, seedHead = false) {
@@ -283,6 +335,10 @@ interface Layer {
   groundTint: number;
   /** Lighten toward the tip. */
   tipLight: number;
+  /** A different mask texture (default: the grass mask). */
+  mask?: THREE.Texture;
+  /** Raise (+) or sink (-) the base relative to the ground, in metres. */
+  lift?: number;
 }
 
 /** The terrain height (1 m grid) for shaders that need to know where the ground is. */
@@ -300,6 +356,8 @@ vec2 terrainUv(vec2 p) {
 
 const shared = {
   uCenter: { value: new THREE.Vector2() },
+  /** Something pressing the grass flat: farm-local x, z, radius (m), strength. */
+  uPush: { value: new THREE.Vector4(0, 0, 0.35, 0) },
   uHeight: { value: null as THREE.Texture | null },
   uMask: { value: null as THREE.Texture | null },
   uGround: { value: null as THREE.Texture | null },
@@ -309,7 +367,7 @@ function grassMaterial(L: Layer): THREE.MeshStandardMaterial {
   const m = new THREE.MeshStandardMaterial({ roughness: 0.95, side: THREE.DoubleSide });
   const f = (n: number) => n.toFixed(4);
   m.onBeforeCompile = (sh) => {
-    Object.assign(sh.uniforms, shared, {
+    Object.assign(sh.uniforms, shared, L.mask ? { uMask: { value: L.mask } } : {}, {
       uTime: windUniforms.uTime,
       uWindDir: windUniforms.uWindDir,
       uWindScale: windUniforms.uWindScale,
@@ -321,6 +379,7 @@ function grassMaterial(L: Layer): THREE.MeshStandardMaterial {
         `#include <common>
         ${WIND_GLSL}
         uniform vec2 uCenter;
+        uniform vec4 uPush;
         uniform sampler2D uHeight, uMask, uGround;
         attribute vec4 aSeed;
         attribute vec3 aColor;
@@ -358,8 +417,14 @@ function grassMaterial(L: Layer): THREE.MeshStandardMaterial {
         transformed.xz += uWindDir * bend * tt * hgt;
         transformed.x += sin(uTime * 3.7 + ph * 2.0) * 0.06 * tt * hgt * (0.3 + g);
         transformed.y -= bend * bend * tt * hgt * 0.45;
+        // Pressed down and out of the way under and around a kart.
+        vec2 away = p - uPush.xy;
+        float pd = length(away);
+        float push = (1.0 - smoothstep(uPush.z * 0.4, uPush.z, pd)) * uPush.w * step(0.001, ${f(L.bend)});
+        transformed.xz += away / max(pd, 0.01) * push * tt * hgt * 0.9;
+        transformed.y -= push * tt * hgt * 0.55;
         vec2 hUv = terrainUv(p);
-        transformed += vec3(p.x, texture2D(uHeight, hUv).r - 0.01, p.y);
+        transformed += vec3(p.x, texture2D(uHeight, hUv).r + ${f(L.lift ?? -0.01)}, p.y);
         vec3 ground = texture2D(uGround, uv).rgb;
         vec3 base = mix(aColor, ground * 1.08, ${f(L.groundTint)});
         // Flowers: a green stem under the coloured head.
@@ -375,7 +440,7 @@ function grassMaterial(L: Layer): THREE.MeshStandardMaterial {
         '#include <color_fragment>\ndiffuseColor.rgb *= vGrass;',
       );
   };
-  m.customProgramCacheKey = () => `farm-grass-${L.channel}-${L.tile}`;
+  m.customProgramCacheKey = () => `farm-grass-${L.channel}-${L.tile}-${L.mask ? 'm' : ''}`;
   return m;
 }
 
@@ -401,6 +466,8 @@ export interface Grass {
   group: THREE.Group;
   /** Follow the camera: its position in the farm's own (real metre) frame. */
   update(localCamera: THREE.Vector3): void;
+  /** Flatten the grass round a point (farm frame), or stop with null. */
+  press(local: THREE.Vector3 | null): void;
 }
 
 export function buildGrass(groundMap: THREE.Texture): Grass {
@@ -435,6 +502,24 @@ export function buildGrass(groundMap: THREE.Texture): Grass {
       tipLight: 0.35,
     }),
   );
+  // Loose gravel stones on the yard and lane, right around the camera.
+  group.add(
+    layer(
+      pebbleGeometry(),
+      {
+        tile: 10,
+        count: 14000,
+        channel: 0,
+        height: [0.012, 0.03],
+        width: 0.035,
+        bend: 0,
+        groundTint: 0.55,
+        tipLight: 0.15,
+        mask: gravelMask(),
+      },
+      [0xb8ab95, 0x9c948a, 0xd2c4a8, 0x8a8178, 0xc9b896, 0xe0d6c4].map((h) => new THREE.Color(h)),
+    ),
+  );
   // Wildflowers among it: Queen Anne's lace, chicory, black-eyed Susans, goldenrod.
   group.add(
     layer(
@@ -444,7 +529,7 @@ export function buildGrass(groundMap: THREE.Texture): Grass {
         count: 5000,
         channel: 2,
         height: [0.35, 0.7],
-        width: 0.35,
+        width: 0.5,
         bend: 0.4,
         groundTint: 0,
         tipLight: 0.1,
@@ -456,6 +541,10 @@ export function buildGrass(groundMap: THREE.Texture): Grass {
     group,
     update(cam) {
       shared.uCenter.value.set(cam.x, cam.z);
+    },
+    press(p) {
+      if (p) shared.uPush.value.set(p.x, p.z, 0.35, 1);
+      else shared.uPush.value.w = 0;
     },
   };
 }

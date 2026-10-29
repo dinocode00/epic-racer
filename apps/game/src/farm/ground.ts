@@ -21,6 +21,28 @@ const MX0 = -320,
   MY1 = 520;
 const CELL = 2.5;
 
+/**
+ * Height of the terrain mesh itself at a point: linear across each cell's two triangles,
+ * exactly as drawn (groundHeight is the smooth curve the mesh samples), so things set on the
+ * ground in shaders sit on the surface you see.
+ */
+export function meshHeight(x: number, y: number): number {
+  const fc = (x - MX0) / CELL,
+    fr = (y - MY0) / CELL;
+  const c = Math.floor(fc),
+    r = Math.floor(fr);
+  const fx = fc - c,
+    fy = fr - r;
+  const X = MX0 + c * CELL,
+    Y = MY0 + r * CELL;
+  const ha = groundHeight(X, Y),
+    hb = groundHeight(X + CELL, Y),
+    hd = groundHeight(X, Y + CELL);
+  if (fx + fy <= 1) return ha + (hb - ha) * fx + (hd - ha) * fy;
+  const he = groundHeight(X + CELL, Y + CELL);
+  return he + (hd - he) * (1 - fx) + (hb - he) * (1 - fy);
+}
+
 let seed = 4242;
 const rnd = () => {
   seed = (seed * 16807) % 2147483647;
@@ -91,12 +113,24 @@ function paintGround(): THREE.CanvasTexture {
     x.beginPath();
     pts.forEach((p, i) => (i ? x.lineTo(...P(p)) : x.moveTo(...P(p))));
   };
+  // Speckle `n` dots over the whole canvas (inside the current clip). Painted once onto a
+  // 512 px tile at the same density and laid down as a pattern: a handful of fills instead of
+  // hundreds of thousands, which matters a lot for load time.
   const speckle = (n: number, cols: string[], s0: number, s1: number) => {
-    for (let i = 0; i < n; i++) {
-      x.fillStyle = cols[(rnd() * cols.length) | 0]!;
-      const s = s0 + rnd() * (s1 - s0);
-      x.fillRect(rnd() * W, rnd() * H, s, s);
+    const T = 512;
+    const tile = document.createElement('canvas');
+    tile.width = tile.height = T;
+    const t = tile.getContext('2d')!;
+    const m = Math.round((n * T * T) / (W * H));
+    for (let i = 0; i < m; i++) {
+      t.fillStyle = cols[(rnd() * cols.length) | 0]!;
+      const sz = s0 + rnd() * (s1 - s0);
+      t.fillRect(rnd() * T, rnd() * T, sz, sz);
     }
+    const pat = x.createPattern(tile, 'repeat')!;
+    pat.setTransform(new DOMMatrix().translate(rnd() * T, rnd() * T));
+    x.fillStyle = pat;
+    x.fillRect(0, 0, W, H);
   };
 
   // 1. Wild meadow everywhere: weeds, long grass and wildflowers.
@@ -265,6 +299,12 @@ function paintGround(): THREE.CanvasTexture {
 }
 
 function contactShadows(x: CanvasRenderingContext2D, P: (p: XY) => [number, number]): void {
+  // Shapes go onto a scratch layer unblurred, then the layer is blurred onto the ground once
+  // (blurring each shape separately on a canvas this size is far too slow).
+  const layer = document.createElement('canvas');
+  layer.width = x.canvas.width;
+  layer.height = x.canvas.height;
+  const l = layer.getContext('2d')!;
   const rect = (r: RectDef, angle: number, grow: number) => {
     const a = (angle * Math.PI) / 180;
     const u: XY = [Math.cos(a), Math.sin(a)],
@@ -273,21 +313,27 @@ function contactShadows(x: CanvasRenderingContext2D, P: (p: XY) => [number, numb
       r.c[0] + (u[0] * su * (r.w + grow)) / 2 + (v[0] * sv * (r.h + grow)) / 2,
       r.c[1] + (u[1] * su * (r.w + grow)) / 2 + (v[1] * sv * (r.h + grow)) / 2,
     ];
-    x.beginPath();
+    l.beginPath();
     [k(-1, -1), k(1, -1), k(1, 1), k(-1, 1)].forEach((p, i) =>
-      i ? x.lineTo(...P(p)) : x.moveTo(...P(p)),
+      i ? l.lineTo(...P(p)) : l.moveTo(...P(p)),
     );
-    x.closePath();
-    x.fill();
+    l.closePath();
+    l.fill();
   };
   const dot = (p: XY, r: number) => {
-    x.beginPath();
-    x.arc(...P(p), r * PPM, 0, Math.PI * 2);
-    x.fill();
+    l.beginPath();
+    l.arc(...P(p), r * PPM, 0, Math.PI * 2);
+    l.fill();
   };
-  x.save();
-  x.filter = `blur(${0.5 * PPM}px)`;
-  x.fillStyle = 'rgba(20,24,10,0.32)';
+  const blurOnto = (px: number) => {
+    x.save();
+    x.filter = `blur(${px}px)`;
+    x.drawImage(layer, 0, 0);
+    x.restore();
+    l.clearRect(0, 0, layer.width, layer.height);
+  };
+  // Round the buildings.
+  l.fillStyle = 'rgba(20,24,10,0.32)';
   const H = FARM.house;
   for (const r of [H.main, H.wing, H.porch]) rect(r, H.angle, 0.7);
   for (const r of [
@@ -302,15 +348,16 @@ function contactShadows(x: CanvasRenderingContext2D, P: (p: XY) => [number, numb
   for (const w of FARM.wagons) rect({ c: w.c, w: 4.2, h: 2.0 }, w.angle, 0);
   dot(FARM.corn_crib, 1.8);
   dot(FARM.well, 1.6);
-  x.filter = `blur(${0.8 * PPM}px)`;
-  x.fillStyle = 'rgba(20,30,10,0.22)';
+  blurOnto(0.5 * PPM);
+  // Under the trees.
+  l.fillStyle = 'rgba(20,30,10,0.22)';
   for (const t of FARM.christmas_trees) dot([t.x, t.y], 0.12 + t.heightFt * 0.3048 * 0.3);
   for (const [tx, ty] of FARM.orchard) dot([tx, ty], 1.7);
   for (const p of [...FARM.big_spruces, ...FARM.spruce_row]) dot(p, 2.6);
   for (const p of FARM.arborvitae) dot(p, 0.9);
   for (const p of FARM.lilacs) dot(p, 1.8);
   dot(FARM.big_scotch_pine, 3);
-  x.restore();
+  blurOnto(0.8 * PPM);
 }
 
 /** Grain, patches and a web of old cracks on the country road. */

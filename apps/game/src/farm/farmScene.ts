@@ -29,6 +29,7 @@ export class FarmScene {
   private critters: ReturnType<typeof buildCritters>;
   private farm: THREE.Group;
   private camLocal = new THREE.Vector3();
+  private pressLocal = new THREE.Vector3();
 
   constructor(renderer: THREE.WebGLRenderer) {
     const s = this.scene;
@@ -147,6 +148,11 @@ export class FarmScene {
       }
     }
     return hit;
+  }
+
+  /** The kart (game-world position) presses down the grass where it sits or drives. */
+  pressGrass(p: THREE.Vector3 | null): void {
+    this.grass.press(p ? this.farm.worldToLocal(this.pressLocal.copy(p)) : null);
   }
 
   /** Shadow map centred on a point, covering `half` game metres each way. */
