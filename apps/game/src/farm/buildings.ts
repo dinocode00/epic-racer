@@ -392,7 +392,11 @@ function farmhouse(): THREE.Group {
   // White wooden steps the full width of the porch off its south end, closed in and
   // running down onto the sidewalk (the ground there sits a little below the house).
   const pst = 4,
-    pfoot = -0.16,
+    pfoot = (() => {
+      const [fx, fz] = [px - pw / 2 - 1.12, pz];
+      const fp = addXY(addXY(H.main.c, U, fx), V, -fz);
+      return groundHeight(fp[0], fp[1]) - groundHeight(H.main.c[0], H.main.c[1]);
+    })(),
     prise = (1.01 - pfoot) / (pst + 1),
     ptread = 0.28,
     psw = pd;
@@ -424,7 +428,10 @@ function farmhouse(): THREE.Group {
   // steps both running from the door to the house's east (right-hand, +z) corner. Concrete
   // with black outdoor carpet, railings at both ends.
   const sill = 0.96; // stoop height = door sill
-  const z0 = -1.4,
+  // The front door and, just west of the steps, the door down to the basement.
+  const fdz = local(H.front_door, H.main.c, H.angle)[1];
+  const bdz = local(H.basement_door, H.main.c, H.angle)[1];
+  const z0 = bdz + 0.6,
     z1 = W / 2;
   const sw = z1 - z0,
     zc = (z0 + z1) / 2;
@@ -464,14 +471,14 @@ function farmhouse(): THREE.Group {
   }
   // The front door, slightly left of centre as you face it, with its storm door and light.
   const door = frontDoor();
-  door.position.set(wallX, sill, -0.3);
+  door.position.set(wallX, sill, fdz);
   g.add(door);
-  g.add(box(0.7, 0.02, 1.1, m.doormat, wallX - 0.45, sill + 0.025, -0.3));
+  g.add(box(0.7, 0.02, 1.1, m.doormat, wallX - 0.45, sill + 0.025, fdz));
   // White metal bench on the stoop, to the right of the door.
   const [, bz] = local(H.bench, H.main.c, H.angle);
   const bench = new THREE.Group();
   bench.add(box(0.45, 0.05, 1.2, m.trimWhite, 0, 0.45, 0));
-  bench.add(box(0.05, 0.5, 1.2, m.trimWhite, 0.2, 0.75, 0));
+  bench.add(box(0.05, 0.36, 1.2, m.trimWhite, 0.2, 0.66, 0));
   for (const z of [-0.55, 0.55]) bench.add(box(0.4, 0.45, 0.05, m.trimWhite, 0, 0.22, z));
   bench.position.set(wallX - 0.4, sill, bz);
   g.add(bench);
@@ -494,18 +501,23 @@ function farmhouse(): THREE.Group {
     w.rotation.y = [0, Math.PI, Math.PI / 2, -Math.PI / 2][f]!;
     g.add(w);
   }
-  // South (front) wall: a window either side of the front door, set high enough to clear the
-  // bench (the right-hand one a little wider), and one upstairs a bit left of centre.
-  for (const [z, y, w] of [
-    [1.75, 2.95, 1.4],
-    [-2.2, 2.95, 0.95],
-    [-0.7, 5.0, 0.95],
+  // South (front) wall, from the photo, west to east: two windows, the basement door at
+  // ground level, the steps up to the front door, then a wide two-sash window; upstairs, one
+  // window a bit left of centre.
+  for (const [z, y, w, h, n] of [
+    [bdz - 2.5, 2.3, 0.82, 1.45, 1],
+    [bdz - 1.25, 2.3, 0.82, 1.45, 1],
+    [fdz + 1.72, 2.48, 1.3, 1.25, 2],
+    [-0.6, 5.0, 0.95, 1.4, 1],
   ] as const) {
-    const fw = windowAt(w, 1.4, m.trimBlue, 1);
+    const fw = windowAt(w, h, m.trimBlue, n);
     fw.position.set(-L / 2, y, z);
     fw.rotation.y = -Math.PI / 2;
     g.add(fw);
   }
+  const bd = basementDoor();
+  bd.position.set(-L / 2, 0, bdz);
+  g.add(bd);
   // Slate-blue corner boards.
   for (const [x, z] of [
     [L / 2, W / 2],
@@ -514,7 +526,15 @@ function farmhouse(): THREE.Group {
     [-L / 2, -W / 2],
   ] as const)
     g.add(box(0.18, eave - base, 0.18, m.trimBlue, x, (eave + base) / 2, z));
-  g.add(eastPlanter(L, W / 2 + 0.13));
+  // Flower planter along the east wall, about 4.5 ft deep.
+  g.add(flowerPlanter(L - 0.3, 1.4).translateZ(W / 2 + 0.13));
+  // A thin planter along the south wall from the porch to the pad, beside the sidewalk.
+  const padEdge = local(addXY(FARM.house_pad.c, V, FARM.house_pad.h / 2), H.main.c, H.angle)[1];
+  const sLen = padEdge - -W / 2 - 0.1;
+  const sp = flowerPlanter(sLen, 0.8, 57);
+  sp.rotation.y = -Math.PI / 2;
+  sp.position.set(-L / 2 - 0.13, 0, -W / 2 + sLen / 2);
+  g.add(sp);
   g.add(
     gardenHose()
       .translateX(-L / 2 + 0.75)
@@ -529,20 +549,22 @@ function farmhouse(): THREE.Group {
   return g;
 }
 
-/** Flower planter along the east wall, about 4.5 ft deep, edged in timbers and full of flowers. */
-function eastPlanter(L: number, z0: number): THREE.Group {
+/**
+ * A flower bed `len` long (along x) and `d` deep (from z = 0 out to +z), edged in timbers on its
+ * three open sides and full of flowers.
+ */
+function flowerPlanter(len: number, d: number, seed0 = 31): THREE.Group {
   const m = mats();
   const g = new THREE.Group();
-  const d = 1.4,
-    len = L - 0.3,
-    zc = z0 + d / 2;
+  const z0 = 0,
+    zc = d / 2;
   g.add(box(len, 0.2, d, m.soil, 0, 0.0, zc));
   g.add(
     boxM(len + 0.2, 0.22, 0.12, m.wood, 0, 0.05, z0 + d + 0.06),
     boxM(0.12, 0.22, d + 0.12, m.wood, -len / 2 - 0.06, 0.05, zc),
     boxM(0.12, 0.22, d + 0.12, m.wood, len / 2 + 0.06, 0.05, zc),
   );
-  let seed = 31;
+  let seed = seed0;
   const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
   const leafy: THREE.Matrix4[] = [],
     blooms: THREE.Matrix4[] = [],
@@ -550,7 +572,8 @@ function eastPlanter(L: number, z0: number): THREE.Group {
   const palette = [0xe8384a, 0xf27aa6, 0xf6d02c, 0xffffff, 0x9b6ad6, 0xf28a2a, 0xd8344f];
   const mt = (x: number, y: number, z: number, sx: number, sy: number) =>
     new THREE.Matrix4().makeScale(sx, sy, sx).setPosition(x, y, z);
-  for (let i = 0; i < 70; i++) {
+  const n = Math.round((70 * len * d) / (9.7 * 1.4));
+  for (let i = 0; i < n; i++) {
     const x = -len / 2 + 0.2 + rnd() * (len - 0.4),
       z = z0 + 0.15 + rnd() * (d - 0.3);
     const s = 0.14 + rnd() * 0.12;
@@ -732,8 +755,9 @@ function bluebird(): THREE.Group {
 }
 
 /**
- * Front door facing -x: white six-panel door with small lights at the top, brass knob, slate-blue
- * casing, a full-view aluminum storm door in front, and a black porch lantern beside it.
+ * Front door facing -x, from the photo: a white door whose upper half is a twelve-light window
+ * (three across, four down) over a panelled lower half, brass knob on the right, slate-blue
+ * casing, and a lantern on the wall to the right of the door.
  */
 function frontDoor(): THREE.Group {
   const m = mats();
@@ -742,37 +766,56 @@ function frontDoor(): THREE.Group {
     h = 2.05;
   g.add(box(0.1, h + 0.3, w + 0.36, m.trimBlue, -0.02, h / 2 + 0.08, 0)); // casing
   g.add(box(0.06, h, w, m.trimWhite, -0.06, h / 2, 0)); // door slab
-  for (const [y, ph] of [
-    [0.45, 0.62],
-    [1.18, 0.62],
-  ] as const)
-    for (const z of [-0.22, 0.22]) g.add(box(0.03, ph, 0.34, m.panel, -0.1, y, z));
-  for (let i = 0; i < 3; i++) g.add(box(0.03, 0.26, 0.24, m.glass, -0.1, 1.78, -0.28 + i * 0.28));
+  // Twelve lights in a white grid over the top half.
+  const gw = 0.66,
+    gh = 0.86,
+    gy = 1.45;
+  g.add(box(0.03, gh, gw, m.glass, -0.095, gy, 0));
+  for (let i = 0; i <= 3; i++)
+    g.add(box(0.05, gh + 0.04, 0.035, m.trimWhite, -0.105, gy, -gw / 2 + (i * gw) / 3));
+  for (let j = 0; j <= 4; j++)
+    g.add(box(0.05, 0.035, gw + 0.04, m.trimWhite, -0.105, gy - gh / 2 + (j * gh) / 4, 0));
+  // Two raised panels below.
+  for (const z of [-0.2, 0.2]) g.add(box(0.03, 0.62, 0.3, m.panel, -0.1, 0.5, z));
   const knob = new THREE.Mesh(new THREE.SphereGeometry(0.04, 10, 8), m.brass);
   knob.position.set(-0.13, 1.0, 0.36);
-  g.add(knob);
-  // Storm door: thin white aluminum frame with a big glass panel, standing just proud of the door.
-  const storm = new THREE.Group();
-  storm.add(
-    box(0.04, h + 0.04, 0.06, m.trimWhite, 0, h / 2, -w / 2 + 0.03),
-    box(0.04, h + 0.04, 0.06, m.trimWhite, 0, h / 2, w / 2 - 0.03),
-  );
-  storm.add(
-    box(0.04, 0.06, w, m.trimWhite, 0, h, 0),
-    box(0.04, 0.22, w, m.trimWhite, 0, 0.11, 0),
-    box(0.04, 0.06, w, m.trimWhite, 0, 1.0, 0),
-  );
-  storm.add(box(0.015, h - 0.3, w - 0.1, m.plexi, 0, h / 2 + 0.1, 0));
-  storm.add(box(0.06, 0.03, 0.14, m.galv, -0.04, 1.0, w / 2 - 0.12));
-  storm.position.x = -0.22;
-  g.add(storm);
-  // Porch lantern on the wall beside the door.
+  g.add(knob, box(0.03, 0.16, 0.06, m.brass, -0.1, 1.05, 0.36));
+  // Lantern on the wall to the right of the door.
   const lamp = new THREE.Group();
-  lamp.add(box(0.12, 0.3, 0.12, m.black, 0, 0, 0));
+  lamp.add(box(0.14, 0.3, 0.14, m.black, -0.08, 0, 0));
   const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6), m.bulb);
-  lamp.add(bulb, box(0.05, 0.05, 0.12, m.black, 0.08, 0, 0));
-  lamp.position.set(-0.18, h - 0.05, -w / 2 - 0.45);
+  bulb.position.x = -0.08;
+  lamp.add(bulb, box(0.04, 0.4, 0.1, m.black, 0, 0, 0));
+  lamp.position.set(-0.02, h - 0.05, w / 2 + 0.33);
   g.add(lamp);
+  return g;
+}
+
+/**
+ * The door down to the basement, facing -x, at ground level just west of the front steps: a
+ * white door with a six-light window, wide slate-blue casing, a concrete step.
+ */
+function basementDoor(): THREE.Group {
+  const m = mats();
+  const g = new THREE.Group();
+  const w = 0.85,
+    h = 2.0,
+    y0 = 0.32;
+  g.add(box(0.45, y0, w + 0.3, m.concrete, -0.2, y0 / 2 - 0.02, 0));
+  g.add(box(0.1, h + 0.28, w + 0.36, m.trimBlue, -0.02, y0 + h / 2 + 0.06, 0));
+  g.add(box(0.06, h, w, m.trimWhite, -0.06, y0 + h / 2, 0));
+  const gw = 0.5,
+    gh = 0.66,
+    gy = y0 + 1.48;
+  g.add(box(0.03, gh, gw, m.glass, -0.095, gy, 0));
+  for (let i = 0; i <= 2; i++)
+    g.add(box(0.05, gh + 0.04, 0.035, m.trimWhite, -0.105, gy, -gw / 2 + (i * gw) / 2));
+  for (let j = 0; j <= 3; j++)
+    g.add(box(0.05, 0.035, gw + 0.04, m.trimWhite, -0.105, gy - gh / 2 + (j * gh) / 3, 0));
+  g.add(box(0.03, 0.7, 0.55, m.panel, -0.1, y0 + 0.5, 0));
+  const knob = new THREE.Mesh(new THREE.SphereGeometry(0.035, 10, 8), m.brass);
+  knob.position.set(-0.12, y0 + 0.98, 0.32);
+  g.add(knob);
   return g;
 }
 

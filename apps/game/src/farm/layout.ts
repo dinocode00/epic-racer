@@ -65,6 +65,7 @@ export interface FarmLayout {
     chimney: XY;
     bench: XY;
     front_door: XY;
+    basement_door: XY;
     porch_door: XY;
     angle: number;
   };

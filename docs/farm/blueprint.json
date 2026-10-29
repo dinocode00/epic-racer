@@ -899,7 +899,10 @@
    "A planter about 4\u20135 ft deep runs along the east wall, full of flowers.",
    "A garden hose hangs on the east wall near the southeast corner.",
    "About 10 ft out from the east downstairs window: a wooden birdhouse on a wooden post at window height, with a seed tray in front where bluebirds came to eat.",
-   "South side windows: one either side of the front door, set high enough to clear the bench (the right-hand one a little wider), and one upstairs a bit left of centre."
+   "Upstairs on the south side: one window a bit left of centre. The wide window right of the front door clears the bench.",
+   "From the south-side photo, west to east: the porch, two windows, a door at ground level down to the basement just left of the big concrete steps, the steps up to the front door (a white door with a twelve-light window, lantern on its right), then a wider two-sash window.",
+   "The house is wider than first drawn (about 27 ft along the south side): it grows toward the road, so the porch and the front gable wing sit farther west while the front steps, pad and east wall stay put.",
+   "A thin planter runs along the south wall between the porch and the pad, beside the sidewalk that joins the concrete steps to the porch's white steps."
   ],
   "Wooden garage": [
    "Attached to the barn. Roof slants down toward the north, black shingles.",
@@ -7560,7 +7563,29 @@
   "grill": [
    36.1,
    167.5
-  ]
+  ],
+  "farmhouse": {
+   "main_centre": [
+    42.5,
+    173.4
+   ],
+   "main_size_m": [
+    10.0,
+    8.1
+   ],
+   "porch_centre": [
+    36.9,
+    174.7
+   ],
+   "front_door": [
+    39.7,
+    169.3
+   ],
+   "basement_door": [
+    38.5,
+    170.2
+   ]
+  }
  },
  "boundary_note": "Satellite parcel outline, except the east line south of the Christmas trees' top edge, which follows the owner's memory: just outside the east mowed path."
 }

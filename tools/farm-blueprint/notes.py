@@ -53,7 +53,10 @@ CARDS = [
       "A planter about 4–5 ft deep runs along the east wall, full of flowers.",
       "A garden hose hangs on the east wall near the southeast corner.",
       "About 10 ft out from the east downstairs window: a wooden birdhouse on a wooden post at window height, with a seed tray in front where bluebirds came to eat.",
-      "South side windows: one either side of the front door, set high enough to clear the bench (the right-hand one a little wider), and one upstairs a bit left of centre."],
+      "Upstairs on the south side: one window a bit left of centre. The wide window right of the front door clears the bench.",
+      "From the south-side photo, west to east: the porch, two windows, a door at ground level down to the basement just left of the big concrete steps, the steps up to the front door (a white door with a twelve-light window, lantern on its right), then a wider two-sash window.",
+      "The house is wider than first drawn (about 27 ft along the south side): it grows toward the road, so the porch and the front gable wing sit farther west while the front steps, pad and east wall stay put.",
+      "A thin planter runs along the south wall between the porch and the pad, beside the sidewalk that joins the concrete steps to the porch's white steps."],
      []),
     ('2', 'Wooden garage',
      'A small square building at the north end of the barn.',
@@ -223,9 +226,5 @@ CARDS = [
 ]
 
 CHANGES = [
-    ("Farmhouse", "A window either side of the front door, both raised clear of the bench, plus one upstairs a bit left of centre. The west porch steps are the full width of the porch and reach the ground."),
-    ("Barn north end", "Gravel now runs up to the wooden garage's door, and the grass by the north lilac is trimmed back to make room."),
-    ("Grapes", "Many more bunches of small round purple grapes."),
-    ("Greenhouse", "A potting table along the east side holds the plants, and the door on the south end is easy to see."),
-    ("Pumpkin patch", "A third hay trailer out in the patch, piled with pumpkins."),
+    ("Farmhouse", "Rebuilt the south side to match your photo: wider house (growing toward the road, so the porch and wing moved west; the front steps, pad, grill and east wall stayed put), two windows and a ground-level basement door west of the steps, a twelve-light front door with the lantern on its right, a wide two-sash window, and a thin planter beside the sidewalk to the porch."),
 ]

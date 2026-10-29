@@ -417,44 +417,58 @@ def render():
     # the corner on the south half. Front steps on the south end (door a little left of centre,
     # white bench to its right). White siding, slate-blue trim, dark shingles, fieldstone base.
     hc = house_c
-    main = rect(hc, 10.0, 6.4, GRID)
-    wing = rect(hc + U * 2.2 + V * 4.45, 5.4, 2.5, GRID)
-    porch = rect(hc - U * 2.6 + V * 4.25, 4.6, 2.1, GRID)
-    LAYOUT['house'] = {'main': {'c': hc.tolist(), 'w': 10.0, 'h': 6.4}, 'wing': {'c': (hc + U * 2.2 + V * 4.45).tolist(), 'w': 5.4, 'h': 2.5}, 'porch': {'c': (hc - U * 2.6 + V * 4.25).tolist(), 'w': 4.6, 'h': 2.1}, 'steps': {'c': (hc - U * 6.28 - V * 0.9).tolist(), 'w': 2.56, 'h': 4.6}, 'chimney': (hc + U * 0.9).tolist(), 'bench': (hc - U * 5.75 - V * 1.3).tolist(), 'front_door': (hc - U * 5.0 + V * 0.3).tolist(), 'porch_door': (hc + V * 3.2 - U * 2.5).tolist(), 'angle': GRID}
+    # v15: from the south-side photo the house is wider (8.1 m): the front door, steps, pad and
+    # grill stay put and the east wall too, while the west wall, porch and wing move ~1.7 m west.
+    # South wall, west to east: porch, two windows, the basement door, the concrete steps up to
+    # the front door, then a wide window. A thin planter runs along the wall west of the pad,
+    # beside the sidewalk from the pad to the porch's white steps.
+    HW = 8.1
+    hm = hc + V * (HW / 2 - 3.2)
+    wing_c = hm + U * 2.2 + V * (HW / 2 + 1.25)
+    porch_c = hm - U * 2.6 + V * (HW / 2 + 1.05)
+    main = rect(hm, 10.0, HW, GRID)
+    wing = rect(wing_c, 5.4, 2.5, GRID)
+    porch = rect(porch_c, 4.6, 2.1, GRID)
+    steps_c = hc - U * 6.28 - V * 1.025
+    LAYOUT['house'] = {'main': {'c': hm.tolist(), 'w': 10.0, 'h': HW}, 'wing': {'c': wing_c.tolist(), 'w': 5.4, 'h': 2.5},
+                       'porch': {'c': porch_c.tolist(), 'w': 4.6, 'h': 2.1}, 'steps': {'c': steps_c.tolist(), 'w': 2.56, 'h': 4.35},
+                       'chimney': (hm + U * 0.9).tolist(), 'bench': (hc - U * 5.75 - V * 1.3).tolist(),
+                       'front_door': (hc - U * 5.0 + V * 0.3).tolist(), 'basement_door': (hc - U * 5.0 + V * 1.75).tolist(),
+                       'porch_door': (hm + V * (HW / 2) - U * 2.5).tolist(), 'angle': GRID}
     for q in (main, wing):
         out.append(f'<path class="stone" d="{poly_d(rect(np.mean(q, axis=0), np.linalg.norm(q[1] - q[0]) + .5, np.linalg.norm(q[3] - q[0]) + .5, GRID))}"/>')
     out.append(f'<path class="porch-floor" d="{poly_d(porch)}"/>')
     out.append(f'<path class="bld roof-black wall-white" d="{poly_d(porch)}"/>')
     for s in (-1, 1):  # the two outer porch posts
-        post = hc - U * (2.6 + 2.15 * s) + V * 5.15
+        post = hm - U * (2.6 + 2.15 * s) + V * (HW / 2 + 1.95)
         out.append(f'<circle class="post-white" cx="{post[0]:.1f}" cy="{-post[1]:.1f}" r=".2"/>')
     out.append(f'<path class="bld roof-black wall-white" d="{poly_d(main)}"/>')
     out.append(f'<path class="bld roof-black wall-white" d="{poly_d(wing)}"/>')
-    out.append(seg(hc - U * 5.0, hc + U * 5.0, 'ridge light'))
-    out.append(seg(hc + U * 2.2, hc + U * 2.2 + V * 5.7, 'ridge light'))
-    ch = hc + U * 0.9
+    out.append(seg(hm - U * 5.0, hm + U * 5.0, 'ridge light'))
+    out.append(seg(hm + U * 2.2, hm + U * 2.2 + V * (HW / 2 + 2.5), 'ridge light'))
+    ch = hm + U * 0.9
     out.append(f'<path class="chimney" d="{poly_d(rect(ch, 0.7, 0.7, GRID))}"/>')
-    # Front steps on the south end, railings both sides, door slightly left, bench to the right
-    # Concrete pad ~15 ft out from the front door, the steps on it, a sidewalk round to the
-    # west porch, and grandpa's grill on the pad in front of the steps toward its west-north corner.
-    # v12: the stoop and steps now run to the house's east corner, so the pad widens to hold them
-    # v13: the pad runs about 8 ft farther south (23 ft out from the house)
+    # Concrete pad ~23 ft out from the front door (v13), the steps on it, grandpa's grill on the
+    # pad in front of the steps toward its west-north corner, and the sidewalk to the porch.
     pad_c, pad_w = hc - U * 8.52 - V * 0.6, 7.04
     pad = rect(pad_c, pad_w, 6.2, GRID)
-    walk = [hc - U * 6.0 + V * 2.5, hc - U * 6.0 + V * 4.3, hc - U * 4.9 + V * 4.3]
+    walk = [hc - U * 6.4 + V * 2.4, hc - U * 6.4 + V * (HW - 3.2 + 2.1)]
     grill = hc - U * 8.6 + V * 1.9
+    planter = rect(hc - U * 5.5 + V * (2.5 + (HW - 3.2 - 2.5) / 2), 0.8, HW - 3.2 - 2.5, GRID)
     LAYOUT['house_pad'] = {'c': pad_c.tolist(), 'w': pad_w, 'h': 6.2, 'angle': GRID}
     LAYOUT['house_walk'] = {'pts': [p.tolist() for p in walk], 'width': 1.0}
     LAYOUT['grill'] = grill.tolist()
     out.append(f'<path class="concrete" d="{poly_d(pad)}"/>')
     out.append(f'<path class="walk" d="{poly_d(walk, False)}"/>')
-    out.append(f'<path class="concrete" d="{poly_d(rect(hc - U * 6.28 - V * 0.9, 2.56, 4.6, GRID))}"/>')
+    out.append(f'<path class="garden" d="{poly_d(planter)}"/>')
+    out.append(f'<path class="concrete" d="{poly_d(rect(steps_c, 2.56, 4.35, GRID))}"/>')
     out.append(f'<circle class="grill" cx="{grill[0]:.1f}" cy="{-grill[1]:.1f}" r=".4"/>')
-    for s in (-1, 1):
-        out.append(seg(hc - U * 5.0 + V * 1.3 * s, hc - U * 6.6 + V * 1.3 * s, 'rail'))
-    out.append(seg(hc - U * 5.0 + V * 0.85, hc - U * 5.0 - V * 0.25, 'door'))
+    for v in (1.1, -3.15):
+        out.append(seg(hc - U * 5.0 + V * v, hc - U * 6.6 + V * v, 'rail'))
+    out.append(seg(hc - U * 5.0 + V * 0.775, hc - U * 5.0 - V * 0.175, 'door'))
+    out.append(seg(hc - U * 5.0 + V * 2.17, hc - U * 5.0 + V * 1.33, 'door'))
     out.append(f'<path class="bench" d="{poly_d(rect(hc - U * 5.45 - V * 0.95, 0.35, 0.95, GRID))}"/>')
-    out.append(seg(hc + V * 3.2 - U * 2.0, hc + V * 3.2 - U * 3.0, 'door'))
+    out.append(seg(hm + V * (HW / 2) - U * 2.0, hm + V * (HW / 2) - U * 3.0, 'door'))
     out.append('</g>')
 
     # Barn: stone foundation rim, black shingle roof with the painted Christmas tree on the west slope
