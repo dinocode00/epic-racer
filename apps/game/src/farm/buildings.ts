@@ -150,7 +150,7 @@ function makeMats() {
     black: std({ color: 0x1c1d1f, roughness: 0.7 }),
     brick: std({ color: 0xc7a46c, roughness: 0.9 }),
     concrete: std({ color: 0xc9c6bd, roughness: 0.95 }),
-    carpet: std({ color: 0x232426, roughness: 1 }),
+    carpet: std({ color: 0x1e3c55, roughness: 1 }),
     blueCover: std({ color: 0x3f7fd0, roughness: 0.5 }),
     sand: std({ color: 0xe0cc95, roughness: 1 }),
     corn: std({ color: 0xe2b437, roughness: 0.8 }),
@@ -322,7 +322,7 @@ function shadow(o: THREE.Object3D, cast = true) {
  * From the owner's photo: an L-shaped two-storey house. Main block with its ridge along the
  * grid, a steep front gable (octagon vent) toward the road, a one-storey porch in the corner,
  * white siding, slate-blue trim, dark shingles, buff brick chimney, fieldstone foundation.
- * Front door on the south end up concrete steps with black outdoor carpet and railings.
+ * Front door on the south end up concrete steps with dark navy-blue outdoor carpet and railings.
  */
 function farmhouse(): THREE.Group {
   const H = FARM.house;
@@ -380,15 +380,23 @@ function farmhouse(): THREE.Group {
     pd = H.porch.h;
   const porch = new THREE.Group();
   porch.add(boxM(pw, 0.12, pd, m.wood, 0, 0.95, 0));
-  porch.add(box(pw, 0.85, pd - 0.1, m.trimWhite, 0, 0.45, 0.05)); // lattice skirt (white)
+  porch.add(box(pw, 1.45, pd - 0.1, m.trimWhite, 0, 0.15, 0.05)); // lattice skirt (white), down into the falling ground
   for (const x of [-pw / 2 + 0.12, 0, pw / 2 - 0.12])
     porch.add(box(0.16, 2.5, 0.16, m.trimWhite, x, 2.2, -pd / 2 + 0.12));
   porch.add(box(pw, 0.08, 0.08, m.trimWhite, 0, 1.9, -pd / 2 + 0.12));
   for (let x = -pw / 2 + 0.3; x < pw / 2 - 0.2; x += 0.2)
     porch.add(box(0.04, 0.85, 0.04, m.trimWhite, x, 1.45, -pd / 2 + 0.12));
   porch.add(shedRoofZ(pw, pd, 3.75, 3.35, m.shingle));
-  const pDoor = box(0.95, 2.1, 0.08, m.trimWhite, 0.4, 2.05, pd / 2 - 0.02);
+  // The door off the porch into the house, on the west-facing wall as far north as it goes,
+  // and a wide landscape window to its right.
+  const pDoor = sideDoor(2.05);
+  pDoor.rotation.y = -Math.PI / 2;
+  pDoor.position.set(pw / 2 - 0.7, 1.01, pd / 2);
   porch.add(pDoor);
+  const pWin = windowAt(1.6, 0.9, m.trimBlue, 2);
+  pWin.rotation.y = Math.PI;
+  pWin.position.set(pw / 2 - 2.55, 2.7, pd / 2);
+  porch.add(pWin);
   // White wooden steps the full width of the porch off its south end, closed in and
   // running down onto the sidewalk (the ground there sits a little below the house).
   const pst = 4,
@@ -426,7 +434,7 @@ function farmhouse(): THREE.Group {
   g.add(kettleGrill().translateX(grx).translateY(-0.02).translateZ(grz));
   // Front stoop and steps on the south end (-x): a small stoop by the door, and stoop and
   // steps both running from the door to the house's east (right-hand, +z) corner. Concrete
-  // with black outdoor carpet, railings at both ends.
+  // with dark navy-blue outdoor carpet, railings at both ends.
   const sill = 0.96; // stoop height = door sill
   // The front door and, just west of the steps, the door down to the basement.
   const fdz = local(H.front_door, H.main.c, H.angle)[1];
@@ -488,8 +496,9 @@ function farmhouse(): THREE.Group {
   // Windows round the main block (skipping where the wing and porch stand).
   const wins: [number, number, number, number][] = [
     // [x, z, facing (0 = +z east, 1 = -z west, 2 = +x north, 3 = -x south), y]
-    [0, W / 2, 0, 2.4], // east: one window downstairs, centred
-    [0, W / 2, 0, 5.0], // east: one window upstairs, centred
+    [-3.3, W / 2, 0, 2.4], // east: a window downstairs just right of the hose
+    [0.6, W / 2, 0, 2.4], // east: a window downstairs a little north of centre
+    [0.6, W / 2, 0, 5.0], // east: the upstairs window lined up above it
     [-3.6, -W / 2, 1, 5.0],
     [L / 2, -1.6, 2, 2.4], // north: two windows downstairs
     [L / 2, 1.6, 2, 2.4],
@@ -515,8 +524,10 @@ function farmhouse(): THREE.Group {
     fw.rotation.y = -Math.PI / 2;
     g.add(fw);
   }
-  const bd = basementDoor();
-  bd.position.set(-L / 2, 0, bdz);
+  // The basement door stands proud of the fieldstone so none of it shows where the door is,
+  // its sill right down at the concrete.
+  const bd = sideDoor(2.15);
+  bd.position.set(-L / 2 - 0.13, -0.04, bdz);
   g.add(bd);
   // Slate-blue corner boards.
   for (const [x, z] of [
@@ -793,15 +804,14 @@ function frontDoor(): THREE.Group {
 
 /**
  * The door down to the basement, facing -x, at ground level just west of the front steps: a
- * white door with a six-light window, wide slate-blue casing, a concrete step.
+ * white door with a six-light window and wide slate-blue casing, opening straight onto the
+ * concrete. Also used for the porch door, standing on the porch floor.
  */
-function basementDoor(): THREE.Group {
+function sideDoor(h = 2.0): THREE.Group {
   const m = mats();
   const g = new THREE.Group();
   const w = 0.85,
-    h = 2.0,
-    y0 = 0.32;
-  g.add(box(0.45, y0, w + 0.3, m.concrete, -0.2, y0 / 2 - 0.02, 0));
+    y0 = 0;
   g.add(box(0.1, h + 0.28, w + 0.36, m.trimBlue, -0.02, y0 + h / 2 + 0.06, 0));
   g.add(box(0.06, h, w, m.trimWhite, -0.06, y0 + h / 2, 0));
   const gw = 0.5,

@@ -270,12 +270,12 @@ export function buildPlants(): THREE.Group {
   return root;
 }
 
-/** Mature arborvitae, about 11 ft: narrow, dense columns. */
+/** Mature arborvitae, about 11 ft: full, dense columns that nearly meet along the row. */
 function arborvitae(): THREE.InstancedMesh {
   const prof: THREE.Vector2[] = [];
   for (let i = 0; i <= 12; i++) {
     const t = i / 12;
-    const r = 0.78 * Math.sin(Math.min(1, t * 1.35) * Math.PI * 0.62) * (1 - t * 0.55) + 0.02;
+    const r = 1.0 * Math.sin(Math.min(1, t * 1.35) * Math.PI * 0.62) * (1 - t * 0.55) + 0.02;
     prof.push(new THREE.Vector2(r, t * 11 * FT));
   }
   prof.push(new THREE.Vector2(0, 11 * FT));

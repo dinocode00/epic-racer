@@ -42,10 +42,10 @@ CARDS = [
      'From your photo: an L-shaped house about 33 × 21 ft with a front gable wing toward the road, the porch in the corner on its south half, and the front steps on the south end.',
      ['Same place as today\'s house. Two storeys.',
       'Porch on the west side with a door, but everyone used the south-facing front door.',
-      'Front door: up a few concrete steps covered in black outdoor carpet, railings on both sides. The door is slightly left of the middle of the steps, with a white metal bench to its right.',
+      'Front door: up a few concrete steps covered in dark navy-blue outdoor carpet (as in the photo), railings on both sides. The door is slightly left of the middle of the steps, with a white metal bench to its right.',
       'A concrete pad reaches about 23 ft out from the front door; the steps sit on it, a concrete sidewalk links it to the west porch, and grandpa\'s simple grill stands on the pad in front of the steps, toward its west-north corner.',
       "The front steps have a small stoop at the top next to the door, and the stoop and steps run from the door all the way to the house's right-hand (east) corner. The concrete pad is level with the ground.",
-      "Windows: on the east side one downstairs and one upstairs, both centred; on the north side two downstairs and one upstairs.",
+      "Windows on the north side: two downstairs and one upstairs.",
       'From the photo: white horizontal siding, slate-blue window trim, corner boards and roof edges, dark charcoal shingles, a buff brick chimney at the ridge, and a rounded fieldstone foundation like the barn\'s.',
       'From the photo: a steep front gable with an octagonal vent near the peak, and a one-storey porch with white posts, white railings, a white lattice skirt and a gooseneck light by its door.',
       "The front door's right-hand window is a little wider than normal.",
@@ -56,7 +56,10 @@ CARDS = [
       "Upstairs on the south side: one window a bit left of centre. The wide window right of the front door clears the bench.",
       "From the south-side photo, west to east: the porch, two windows, a door at ground level down to the basement just left of the big concrete steps, the steps up to the front door (a white door with a twelve-light window, lantern on its right), then a wider two-sash window.",
       "The house is wider than first drawn (about 27 ft along the south side): it grows toward the road, so the porch and the front gable wing sit farther west while the front steps, pad and east wall stay put.",
-      "A thin planter runs along the south wall between the porch and the pad, beside the sidewalk that joins the concrete steps to the porch's white steps."],
+      "A thin planter runs along the south wall between the porch and the pad, beside the sidewalk that joins the concrete steps to the porch's white steps.",
+      "On the porch, the door into the house is on the west-facing wall as far north as it goes, with a wide landscape window to its right.",
+      "The basement door opens straight onto the concrete: no step, and no foundation showing where the door is.",
+      "East side downstairs: one window just right (north) of the hose, and another a little north of centre with the upstairs window lined up above it."],
      []),
     ('2', 'Wooden garage',
      'A small square building at the north end of the barn.',
@@ -227,4 +230,7 @@ CARDS = [
 
 CHANGES = [
     ("Farmhouse", "Rebuilt the south side to match your photo: wider house (growing toward the road, so the porch and wing moved west; the front steps, pad, grill and east wall stayed put), two windows and a ground-level basement door west of the steps, a twelve-light front door with the lantern on its right, a wide two-sash window, and a thin planter beside the sidewalk to the porch."),
+    ("Front steps", "The outdoor carpet on the stoop and steps is dark navy blue, as in the photo, rather than black."),
+    ("Porch and east side", "A door on the porch's west-facing wall at its north end with a landscape window beside it; the basement door sits flush on the concrete; a second downstairs window on the east side by the hose, the other one nudged north with the upstairs window above it."),
+    ("Arborvitae", "Fuller, so the row by the entrance reads as a thick hedge of columns."),
 ]
