@@ -5,6 +5,7 @@ import {
   VEHICLE_ICONS as ICONS,
   WS_PATH,
   encodeInput,
+  howToHtml,
   neutralPad,
 } from '@epic/shared';
 
@@ -243,6 +244,26 @@ function onHost(m: HostToPad): void {
   }
 }
 
+// ---------- how to play ----------
+// Over the join and lobby screens, outside #app so lobby updates don't close it.
+const howTo = document.createElement('div');
+howTo.className = 'howto-sheet';
+howTo.hidden = true;
+howTo.innerHTML = `<button class="big howto-back">BACK</button>${howToHtml()}<button class="big howto-back">BACK</button>`;
+howTo.querySelectorAll<HTMLElement>('.howto-back').forEach((b) => {
+  b.onclick = () => (howTo.hidden = true);
+});
+document.body.appendChild(howTo);
+const howToButton = '<button class="howto-open" id="howto">? HOW TO PLAY</button>';
+function bindHowTo(): void {
+  const b = document.getElementById('howto');
+  if (b)
+    b.onclick = () => {
+      howTo.hidden = false;
+      howTo.scrollTop = 0;
+    };
+}
+
 // ---------- screens ----------
 function showJoin(): void {
   mode = 'join';
@@ -251,7 +272,9 @@ function showJoin(): void {
     <div class="sub">Type your racer name</div>
     <input id="nm" type="text" maxlength="10" autocomplete="off" value="${name}" placeholder="NAME" />
     <button class="big" id="go">JOIN</button>
+    ${howToButton}
   </div>`;
+  bindHowTo();
   const input = document.getElementById('nm') as HTMLInputElement;
   document.getElementById('go')!.onclick = () => {
     name = (input.value.trim() || 'Player').toUpperCase().slice(0, 10);
@@ -285,7 +308,9 @@ function renderLobby(): void {
     ${tilt.note ? `<div class="sub warn">${tilt.note}</div>` : ''}
     <button class="big ${ready ? 'ready' : ''}" id="ready">${ready ? 'READY!' : 'READY?'}</button>
     <div class="sub">Watch the TV. The race starts when everyone is ready.</div>
+    ${howToButton}
   </div>`;
+  bindHowTo();
   app.querySelectorAll<HTMLElement>('.car').forEach((el) => {
     el.onclick = () => {
       vehicle = el.dataset.id!;
@@ -314,6 +339,7 @@ let hudEls: { place: HTMLElement; lap: HTMLElement; item: HTMLElement; flash: HT
 
 function showRace(): void {
   mode = 'race';
+  howTo.hidden = true;
   Object.assign(pad, neutralPad());
   if (tilt.on) {
     tilt.center = null; // each race starts with level as straight

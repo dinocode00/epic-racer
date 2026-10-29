@@ -401,3 +401,105 @@ button.big.ready {
 .drive .knob > * {
   pointer-events: none;
 }
+
+/* ---------- how to play ---------- */
+.howto-open {
+  font: inherit;
+  font-weight: 800;
+  padding: 10px 18px;
+  border-radius: 12px;
+  border: 2px solid var(--gold);
+  background: transparent;
+  color: var(--gold);
+}
+.howto-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  padding: 16px 16px 24px;
+  background: var(--bg);
+  color: var(--ink);
+}
+.howto-sheet[hidden] {
+  display: none;
+}
+.howto-sheet .howto-back {
+  display: block;
+  margin: 8px auto;
+}
+.howto h2 {
+  margin: 8px 0 12px;
+  text-align: center;
+  color: var(--gold);
+  font-style: italic;
+}
+.howto section {
+  margin-bottom: 18px;
+}
+.howto h3 {
+  margin: 0 0 6px;
+  color: var(--gold);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 16px;
+}
+.howto h4 {
+  margin: 10px 0 4px;
+}
+.howto ul {
+  margin: 0;
+  padding-left: 20px;
+}
+.howto li,
+.howto p {
+  font-size: 15px;
+  line-height: 1.4;
+  margin: 0 0 6px;
+}
+.howto small {
+  color: var(--muted);
+}
+.howto table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+.howto td,
+.howto th {
+  padding: 6px 4px;
+  vertical-align: middle;
+  text-align: left;
+}
+.howto th {
+  font-size: 10px;
+  color: var(--muted);
+}
+.howto tr + tr td {
+  border-top: 1px solid var(--panel);
+}
+.howto .howto-ic {
+  font-size: 24px;
+  width: 32px;
+  text-align: center;
+}
+.howto .howto-icon svg {
+  width: 64px;
+  height: auto;
+  display: block;
+}
+.howto-bar {
+  display: block;
+  width: 44px;
+  height: 7px;
+  border-radius: 4px;
+  background: var(--panel);
+  overflow: hidden;
+}
+.howto-bar > i {
+  display: block;
+  height: 100%;
+  background: #3fbf5f;
+}

@@ -2,6 +2,7 @@ import {
   PLAYER_COLORS,
   type PadState,
   VEHICLES,
+  howToHtml,
   VEHICLE_ICONS,
   neutralPad,
   vehicleById,
@@ -177,7 +178,37 @@ function edges(key: string, now: LocalPad) {
   };
 }
 
+// ---------------- how to play ----------------
+// A full-screen guide over the lobby: the button, H or Y opens it; H, Y, B or Esc closes it.
+const howTo = document.createElement('div');
+howTo.className = 'howto-overlay';
+howTo.hidden = true;
+howTo.innerHTML = `${howToHtml()}<div class="howto-close">Press H, Y or B to close · or click</div>`;
+howTo.addEventListener('click', () => toggleHowTo(false));
+document.body.appendChild(howTo);
+function toggleHowTo(open = howTo.hidden): void {
+  howTo.hidden = !open || state !== 'lobby';
+}
+const padWas = new Map<number, { y: boolean; b: boolean }>();
+function pollHowToButtons(): void {
+  for (const gp of connectedGamepads()) {
+    const raw = gamepads()[gp.index];
+    if (!raw) continue;
+    const y = !!raw.buttons[3]?.pressed,
+      b = !!raw.buttons[1]?.pressed;
+    const was = padWas.get(gp.index) ?? { y, b };
+    if (y && !was.y) toggleHowTo();
+    if (b && !was.b) toggleHowTo(false);
+    padWas.set(gp.index, { y, b });
+  }
+}
+
 function pollLocal(): void {
+  const guideUp = !howTo.hidden;
+  pollHowToButtons();
+  // While the guide is up (and on the press that closes it) lobby buttons don't join, ready or
+  // leave behind it.
+  if (guideUp) return;
   // Keyboard player 1: Enter joins / readies, arrows change ride, Backspace leaves.
   const kb = {
     ...kbArrows.poll(),
@@ -335,8 +366,9 @@ function renderLobby(): void {
     </div>`
     }
     <div class="slots">${slots}</div>
-    <div class="foot"><span class="track">Track: <b>${track().def.name}</b> · ${track().def.laps} laps · ${track().blurb} <i class="hint">(LB/RB or T to change)</i></span><span class="go" id="go">${allReady ? 'Starting…' : members.length ? 'Waiting for everyone to be ready' : ''}</span></div>
+    <div class="foot"><span class="track">Track: <b>${track().def.name}</b> · ${track().def.laps} laps · ${track().blurb} <i class="hint">(LB/RB or T to change)</i></span><span class="howto-btn" id="howto-btn">? HOW TO PLAY <i class="hint">(H / Y)</i></span><span class="go" id="go">${allReady ? 'Starting…' : members.length ? 'Waiting for everyone to be ready' : ''}</span></div>
   </div>`;
+  document.getElementById('howto-btn')!.onclick = () => toggleHowTo(true);
 }
 net.onInfo = () => renderLobby();
 
@@ -344,6 +376,7 @@ net.onInfo = () => renderLobby();
 function startRace(players: PlayerSetup[], laps = track().def.laps): void {
   showroom = null;
   state = 'race';
+  howTo.hidden = true;
   ui.innerHTML = '';
   session = new RaceSession(view, track().def, players, laps, 8, track().theme);
   applyQuality();
@@ -497,6 +530,8 @@ requestAnimationFrame(loop);
 
 window.addEventListener('keydown', (e) => {
   if (e.code === 'F2') view.setLook(view.look === 'modern' ? 'retro' : 'modern');
+  if (e.code === 'KeyH') toggleHowTo();
+  if (e.code === 'Escape') toggleHowTo(false);
 });
 
 // Keys only reach the page once it has focus (e.g. when embedded): say so until it does.
