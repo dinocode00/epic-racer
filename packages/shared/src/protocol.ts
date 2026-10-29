@@ -96,7 +96,11 @@ export type PadToHost =
   | { t: 'hello'; playerId: string; name: string }
   | { t: 'pickVehicle'; vehicle: string }
   | { t: 'ready'; ready: boolean }
-  | { t: 'menu'; action: 'next' | 'prev' | 'confirm' | 'back' };
+  | { t: 'menu'; action: 'next' | 'prev' | 'confirm' | 'back' }
+  | { t: 'pause'; action: PauseAction };
+
+/** What a player can do from the pause menu (or 'toggle' to open / close it). */
+export type PauseAction = 'toggle' | 'resume' | 'restart' | 'exit';
 
 /** Host -> server -> phone */
 export type HostToPad =
@@ -111,7 +115,8 @@ export type HostToPad =
     }
   | { t: 'race' }
   | { t: 'hud'; place: number; lap: number; laps: number; item: string | null; boost: number }
-  | { t: 'results'; place: number };
+  | { t: 'results'; place: number }
+  | { t: 'paused'; on: boolean };
 
 /** Server <-> host envelope */
 export type ServerToHost =

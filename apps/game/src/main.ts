@@ -2,6 +2,7 @@ import {
   PLAYER_COLORS,
   type PadState,
   VEHICLES,
+  type PauseAction,
   howToHtml,
   VEHICLE_ICONS,
   neutralPad,
@@ -140,6 +141,7 @@ net.onMsg = (slot, msg) => {
     m.vehicle = msg.vehicle;
   if (msg.t === 'ready' && state === 'lobby') m.ready = msg.ready;
   if (msg.t === 'menu' && msg.action === 'confirm' && state === 'results') toLobby();
+  if (msg.t === 'pause') pauseAction(msg.action);
   if (
     msg.t === 'menu' &&
     state === 'lobby' &&
@@ -147,7 +149,9 @@ net.onMsg = (slot, msg) => {
     (msg.action === 'next' || msg.action === 'prev')
   )
     cycleTrack(msg.action === 'next' ? 1 : -1);
-  syncPhone(m);
+  // Only in the lobby: mid-race (pause menu messages) a lobby update would pull the phone
+  // off its controller.
+  if (state === 'lobby') syncPhone(m);
   renderLobby();
 };
 function syncPhone(m: Member): void {
@@ -187,28 +191,107 @@ howTo.innerHTML = `${howToHtml()}<div class="howto-close">Press H, Y or B to clo
 howTo.addEventListener('click', () => toggleHowTo(false));
 document.body.appendChild(howTo);
 function toggleHowTo(open = howTo.hidden): void {
-  howTo.hidden = !open || state !== 'lobby';
+  howTo.hidden = !open || !(state === 'lobby' || paused);
 }
-const padWas = new Map<number, { y: boolean; b: boolean }>();
-function pollHowToButtons(): void {
+
+// ---------------- pause ----------------
+// Esc / P, Start on a pad, or the phone's pause button. The race freezes; the menu offers
+// resume, restart (same players, rides and track), the guide, and exit to the lobby.
+let paused = false;
+let lastRace: { players: PlayerSetup[]; laps: number } | null = null;
+const PAUSE_ITEMS: [string, () => void][] = [
+  ['RESUME', () => setPaused(false)],
+  ['RESTART RACE', () => restartRace()],
+  ['HOW TO PLAY', () => toggleHowTo(true)],
+  ['EXIT TO LOBBY', () => exitRace()],
+];
+let pauseSel = 0;
+const pauseEl = document.createElement('div');
+pauseEl.className = 'pause-overlay';
+pauseEl.hidden = true;
+document.body.appendChild(pauseEl);
+function renderPause(): void {
+  pauseEl.innerHTML = `<div class="pause-menu"><h2>PAUSED</h2>${PAUSE_ITEMS.map(
+    ([label], i) =>
+      `<div class="pause-item ${i === pauseSel ? 'sel' : ''}" data-i="${i}">${label}</div>`,
+  ).join('')}<div class="pause-hint">↑ ↓ choose · A / Enter select · B / Esc resume</div></div>`;
+  pauseEl.querySelectorAll<HTMLElement>('.pause-item').forEach((el) => {
+    el.onclick = () => PAUSE_ITEMS[Number(el.dataset.i)]![1]();
+  });
+}
+function setPaused(on: boolean): void {
+  if (on && (state !== 'race' || !session)) return;
+  paused = on;
+  if (session) session.paused = on;
+  pauseSel = 0;
+  pauseEl.hidden = !on;
+  if (on) renderPause();
+  else howTo.hidden = true;
+  for (const m of members)
+    if (m.kind === 'phone' && m.slot !== undefined) net.send(m.slot, { t: 'paused', on });
+}
+function restartRace(): void {
+  if (!lastRace) return;
+  setPaused(false);
+  session?.dispose();
+  session = null;
+  startRace(lastRace.players, lastRace.laps);
+}
+function exitRace(): void {
+  setPaused(false);
+  toLobby();
+}
+function pauseAction(a: PauseAction): void {
+  if (a === 'toggle') setPaused(!paused);
+  else if (a === 'resume') setPaused(false);
+  else if (paused && a === 'restart') restartRace();
+  else if (paused && a === 'exit') exitRace();
+}
+function movePause(d: number): void {
+  pauseSel = (pauseSel + d + PAUSE_ITEMS.length) % PAUSE_ITEMS.length;
+  renderPause();
+}
+
+// Menu buttons on the Xbox pads: the guide and the pause menu take them first.
+const padWas = new Map<number, Record<string, boolean>>();
+function pollMenuButtons(): void {
   for (const gp of connectedGamepads()) {
     const raw = gamepads()[gp.index];
     if (!raw) continue;
-    const y = !!raw.buttons[3]?.pressed,
-      b = !!raw.buttons[1]?.pressed;
-    const was = padWas.get(gp.index) ?? { y, b };
-    if (y && !was.y) toggleHowTo();
-    if (b && !was.b) toggleHowTo(false);
-    padWas.set(gp.index, { y, b });
+    const y0 = raw.axes[1] ?? 0;
+    const now: Record<string, boolean> = {
+      a: !!raw.buttons[0]?.pressed,
+      b: !!raw.buttons[1]?.pressed,
+      y: !!raw.buttons[3]?.pressed,
+      start: !!raw.buttons[9]?.pressed,
+      up: !!raw.buttons[12]?.pressed || y0 < -0.6,
+      down: !!raw.buttons[13]?.pressed || y0 > 0.6,
+    };
+    const was = padWas.get(gp.index) ?? now;
+    padWas.set(gp.index, now);
+    const hit = (k: string) => now[k] && !was[k];
+    if (!howTo.hidden) {
+      if (hit('y') || hit('b') || hit('start')) toggleHowTo(false);
+      continue;
+    }
+    if (state === 'lobby' && hit('y')) toggleHowTo(true);
+    if (state !== 'race') continue;
+    if (hit('start')) setPaused(!paused);
+    else if (paused) {
+      if (hit('up')) movePause(-1);
+      if (hit('down')) movePause(1);
+      if (hit('a')) PAUSE_ITEMS[pauseSel]![1]();
+      else if (hit('b')) setPaused(false);
+    }
   }
 }
 
 function pollLocal(): void {
-  const guideUp = !howTo.hidden;
-  pollHowToButtons();
-  // While the guide is up (and on the press that closes it) lobby buttons don't join, ready or
-  // leave behind it.
-  if (guideUp) return;
+  const menuUp = !howTo.hidden || paused;
+  pollMenuButtons();
+  // While the guide or pause menu is up (and on the press that closes it) lobby buttons don't
+  // join, ready or leave behind it.
+  if (menuUp) return;
   // Keyboard player 1: Enter joins / readies, arrows change ride, Backspace leaves.
   const kb = {
     ...kbArrows.poll(),
@@ -377,10 +460,12 @@ function startRace(players: PlayerSetup[], laps = track().def.laps): void {
   showroom = null;
   state = 'race';
   howTo.hidden = true;
+  lastRace = { players, laps };
   ui.innerHTML = '';
   session = new RaceSession(view, track().def, players, laps, 8, track().theme);
   applyQuality();
   session.onFinished = (order) => {
+    setPaused(false);
     state = 'results';
     resultsAt = performance.now();
     ui.innerHTML = `<div class="results"><h2>RESULTS</h2>${order
@@ -530,8 +615,22 @@ requestAnimationFrame(loop);
 
 window.addEventListener('keydown', (e) => {
   if (e.code === 'F2') view.setLook(view.look === 'modern' ? 'retro' : 'modern');
-  if (e.code === 'KeyH') toggleHowTo();
-  if (e.code === 'Escape') toggleHowTo(false);
+  if (!howTo.hidden) {
+    if (e.code === 'KeyH' || e.code === 'Escape') toggleHowTo(false);
+    return;
+  }
+  if (state === 'lobby' && e.code === 'KeyH') toggleHowTo(true);
+  if (state !== 'race') return;
+  if (!paused) {
+    if (e.code === 'Escape' || e.code === 'KeyP') setPaused(true);
+    return;
+  }
+  if (e.code === 'ArrowUp' || e.code === 'KeyW') movePause(-1);
+  else if (e.code === 'ArrowDown' || e.code === 'KeyS') movePause(1);
+  else if (e.code === 'Enter' || e.code === 'NumpadEnter' || e.code === 'Space')
+    PAUSE_ITEMS[pauseSel]![1]();
+  else if (e.code === 'Escape' || e.code === 'KeyP' || e.code === 'Backspace') setPaused(false);
+  else if (e.code === 'KeyH') toggleHowTo(true);
 });
 
 // Keys only reach the page once it has focus (e.g. when embedded): say so until it does.

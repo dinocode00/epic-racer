@@ -225,6 +225,7 @@ function onHost(m: HostToPad): void {
       if (mode === 'join') showLobby();
       break;
     case 'lobby':
+      showPause(false);
       vehicle = m.vehicle;
       ready = m.ready;
       trackName = m.track ?? '';
@@ -233,6 +234,7 @@ function onHost(m: HostToPad): void {
       else renderLobby();
       break;
     case 'race':
+      showPause(false);
       if (mode !== 'race') showRace(); // a repeat must not rebuild the pad and drop held buttons
       break;
     case 'hud':
@@ -240,6 +242,9 @@ function onHost(m: HostToPad): void {
       break;
     case 'results':
       showResults(m.place);
+      break;
+    case 'paused':
+      showPause(m.on);
       break;
   }
 }
@@ -262,6 +267,32 @@ function bindHowTo(): void {
       howTo.hidden = false;
       howTo.scrollTop = 0;
     };
+}
+
+// ---------- pause ----------
+// The TV's pause menu, mirrored as big buttons. Outside #app, so the pad's touch handling
+// (which swallows taps) doesn't reach it.
+const pauseSheet = document.createElement('div');
+pauseSheet.className = 'pause-sheet';
+pauseSheet.hidden = true;
+pauseSheet.innerHTML = `<h1>PAUSED</h1>
+  <button class="big" data-a="resume">RESUME</button>
+  <button class="big alt" data-a="restart">RESTART RACE</button>
+  <button class="big alt" data-a="howto">HOW TO PLAY</button>
+  <button class="big alt" data-a="exit">EXIT TO LOBBY</button>`;
+pauseSheet.querySelectorAll<HTMLElement>('button').forEach((b) => {
+  b.onclick = () => {
+    const a = b.dataset.a!;
+    if (a === 'howto') {
+      howTo.hidden = false;
+      howTo.scrollTop = 0;
+    } else send({ t: 'pause', action: a as 'resume' | 'restart' | 'exit' });
+  };
+});
+document.body.appendChild(pauseSheet);
+function showPause(on: boolean): void {
+  pauseSheet.hidden = !on;
+  if (!on) howTo.hidden = true;
 }
 
 // ---------- screens ----------
@@ -346,7 +377,7 @@ function showRace(): void {
     tilt.angle = null;
   }
   app.innerHTML = `<div class="pad">
-    <div class="bar"><span>${name}</span><span class="place">-</span><span class="lap">LAP 1</span><span class="item" hidden></span><span class="dot"></span></div>
+    <div class="bar"><span>${name}</span><span class="place">-</span><span class="lap">LAP 1</span><span class="item" hidden></span><span class="dot"></span><span class="pausebtn">❚❚</span></div>
     <div class="zones">
       <div class="btns">
         <div class="btn item" data-b="item">ITEM</div>
@@ -525,7 +556,10 @@ function bindPad(): void {
     e.preventDefault();
     forgetLost(e);
     for (const t of Array.from(e.changedTouches)) {
-      if (center && t.target instanceof Node && center.contains(t.target)) {
+      if (t.target instanceof Element && t.target.closest('.pausebtn')) {
+        send({ t: 'pause', action: 'toggle' });
+        navigator.vibrate?.(15);
+      } else if (center && t.target instanceof Node && center.contains(t.target)) {
         tilt.center = tilt.angle; // however the phone is held right now is straight
         navigator.vibrate?.(15);
       } else if (inDrive(t.clientX, t.clientY)) {

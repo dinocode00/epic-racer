@@ -662,3 +662,49 @@ body {
   font-size: 2vh;
   opacity: 0.7;
 }
+
+/* ---------- pause (TV) ---------- */
+.pause-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 35;
+  display: grid;
+  place-items: center;
+  background: rgba(10, 8, 24, 0.6);
+  color: #fff;
+}
+.pause-overlay[hidden] {
+  display: none;
+}
+.pause-menu {
+  min-width: 42vh;
+  padding: 4vh 5vh;
+  border-radius: 2vh;
+  background: rgba(18, 16, 34, 0.95);
+  border: 0.4vh solid rgba(255, 255, 255, 0.12);
+  text-align: center;
+}
+.pause-menu h2 {
+  margin: 0 0 3vh;
+  font-size: 6vh;
+  font-style: italic;
+  color: var(--gold);
+}
+.pause-item {
+  margin: 1.2vh 0;
+  padding: 1.6vh 3vh;
+  border-radius: 1.4vh;
+  font-size: 3.2vh;
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+}
+.pause-item.sel {
+  background: var(--gold);
+  color: #1a1426;
+}
+.pause-hint {
+  margin-top: 3vh;
+  font-size: 1.9vh;
+  opacity: 0.65;
+}

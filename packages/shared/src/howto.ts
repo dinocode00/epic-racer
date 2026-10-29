@@ -52,6 +52,7 @@ export function howToHtml(): string {
       <li><b>Tilt</b> steering (choose in the lobby): hold the phone like a wheel and turn it. CENTER sets straight.</li>
       <li><b>Left thumb:</b> DRIFT and ITEM.</li>
       <li>Let go of the gas to slow down.</li>
+      <li><b>❚❚</b> (top right) pauses: resume, restart the race or exit to the lobby.</li>
     </ul></div>
     <div><h4>🎮 Xbox pad</h4><ul>
       <li>Left stick: steer</li><li>RT: gas · LT: brake / reverse</li>

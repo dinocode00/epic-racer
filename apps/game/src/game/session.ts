@@ -217,12 +217,18 @@ export class RaceSession {
     this.race.step(pads);
   }
 
+  /** Frozen: the race clock and everything on screen stand still, but it keeps rendering. */
+  paused = false;
+
   frame(dt: number): void {
-    this.pads = this.players.map((p) => p.source.poll());
-    this.acc += Math.min(dt, 0.1);
-    while (this.acc >= STEP) {
-      this.stepSim();
-      this.acc -= STEP;
+    if (this.paused) dt = 0;
+    else {
+      this.pads = this.players.map((p) => p.source.poll());
+      this.acc += Math.min(dt, 0.1);
+      while (this.acc >= STEP) {
+        this.stepSim();
+        this.acc -= STEP;
+      }
     }
     const alpha = this.acc / STEP;
 
