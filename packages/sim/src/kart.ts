@@ -360,7 +360,8 @@ export function stepKart(
     const n = scale(p2.frame.right, side);
     const into = dot(fwd, n);
     if (into > 0) {
-      fwd = norm(addScaled(fwd, n, -into * 1.15));
+      // Turned to run along the wall, plus a small kick away from it.
+      fwd = norm(addScaled(fwd, n, -into * 1.07));
       spd *= 1 - 0.55 * into;
       k.bump = Math.max(k.bump, into);
       if (into > 0.5 && k.drift.active) k.drift = { active: false, dir: 0, charge: 0 };
