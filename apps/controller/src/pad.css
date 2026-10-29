@@ -235,7 +235,7 @@ button.big.ready {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: calc(30% + 40vmin); /* the knob plus its full-lock travel each way */
+  width: calc(50% + 40vmin); /* the knob plus its full-lock travel each way */
   height: 10px;
   margin-top: -5px;
   border-radius: 5px;

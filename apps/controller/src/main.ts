@@ -274,24 +274,25 @@ function bindPad(): void {
   let originX = 0;
   let box = drive.getBoundingClientRect();
   const btnTouches = new Map<number, HTMLElement | null>();
-  // A short slide reaches full lock, so the thumb barely has to move.
-  const range = () => box.width * 0.15;
+  // Full lock sits about 1.5 cm either side of where the thumb landed: enough travel to hold a
+  // gentle line without the thumb wandering into a full turn.
+  const range = () => box.width * 0.25;
 
   const steerTo = (x: number) => {
     const r = range();
-    // Past full lock the start point follows the thumb, so turning back answers at once.
-    originX = Math.max(x - r, Math.min(x + r, originX));
-    const v = (x - originX) / r;
-    // Curved so a small slide already turns firmly; the last stretch tops up to full lock.
-    pad.steer = Math.abs(v) < 0.06 ? 0 : Math.sign(v) * Math.abs(v) ** 0.6;
-    rail.style.left = `${originX - box.left}px`;
-    knob.style.left = `${originX - box.left}px`;
+    // The landing spot stays the centre, so putting the thumb back there is always straight.
+    const v = Math.max(-1, Math.min(1, (x - originX) / r));
+    // Small dead zone for thumb jitter, then a curve that is gentle near the middle for small
+    // corrections and builds to full lock at the end of the travel.
+    const a = Math.max(0, (Math.abs(v) - 0.05) / 0.95);
+    pad.steer = Math.sign(v) * a * (0.5 + 0.5 * a);
     knob.style.transform = `translateX(${v * r}px)`;
   };
   const startDrive = (id: number, x: number, y: number) => {
     driveTouch = id;
     box = drive.getBoundingClientRect();
     originX = x;
+    rail.style.left = knob.style.left = `${x - box.left}px`;
     rail.style.width = `${2 * range() + knob.offsetWidth}px`;
     rail.style.top = knob.style.top = `${y - box.top}px`;
     drive.classList.add('on');
