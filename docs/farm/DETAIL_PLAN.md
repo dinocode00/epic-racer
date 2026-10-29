@@ -1,0 +1,85 @@
+# Farm detail pass: plan and progress
+
+This file tracks the graphics and animation pass over the whole farm. It is kept up to date
+as each item lands, so the work can be picked up from here at any time.
+
+- **Status keys:** `[x]` done and pushed · `[~]` in progress · `[ ]` not started · `[?]` needs the owner's say-so first (it would add something to the farm that isn't in the blueprint).
+- **Code:** apps/game/src/farm/* (farm-only) and apps/game/src/render/foliage.ts (shared with the other tracks).
+- **Check:** every item gets a screenshot from the explorer before it is ticked.
+
+## What good-looking simple games do (and what we take from them)
+
+| Idea | Seen in | What it means here |
+| --- | --- | --- |
+| One wind for everything: a single breeze direction with gusts that travel across the land, sampled by grass, trees, cloth and particles alike | Ghost of Tsushima ("Blowing from the West"), A Short Hike, Breath of the Wild | One `wind` module. Trees, grass, flowers, laundry, the windmill and the weathervane all read the same gusts, so a gust visibly rolls across the farm. |
+| Grass is mostly a shader trick: lots of cheap instanced blades near the camera that fade out with distance, bending more at the tip, lighter at the tip, with a sheen where the wind presses it flat | Ghost of Tsushima, Zelda, countless indie games | Instanced lawn and field grass around the camera, painted ground beyond. |
+| Silhouette before detail: a tree species is recognised by its outline and colour first | Every stylised game; tree ID guides | Separate shapes for Scotch pine, Douglas fir, white pine, blue spruce, the big spruces, and for apple/pear/cherry. |
+| Shadows must move with the mesh | Valve's tree-sway write-up (the shadow pass ignored the sway) | The depth materials get the same wind as the visible ones. |
+| Soft contact darkening and grime where things meet the ground; trim, gutters and small fixtures make buildings read as real | Stylised architecture kits, Animal Crossing, Tiny Glade | Ground contact shadows, a dirt band on walls near the ground, gutters and downspouts, sills, curtains behind the glass, roof ridge caps. |
+| Small life everywhere | A Short Hike, Alba, Animal Crossing | Butterflies, swallows round the barn, drifting seed fluff, the odd falling leaf, laundry flapping. |
+| Drifting cloud shadows | Most outdoor stylised games | Slow, soft cloud shadows sliding across the farm on the breeze. |
+
+## Phase 1: one summer breeze
+
+- [ ] A `farm/wind.ts` module: a breeze from the south-west plus gust bands that roll across the land. The same function runs in the shaders (GLSL) and on the CPU (TS).
+- [ ] Trees bend downwind and flutter harder inside a gust. The shared `windPatch` gets the gust field, and the leaf/needle depth materials get the same motion so the shadows sway too.
+- [ ] Arborvitae, lilacs, grape leaves and pumpkin leaves sway (they are plain meshes today).
+- [ ] The windmill wheel speeds up and slows with the gusts at the tower, and the head turns into the wind.
+- [ ] The rooster weathervane points into the wind with a little jitter.
+- [ ] Laundry on the clothes lines flaps: pinned along the top, billowing downwind.
+
+## Phase 2: trees that read as their species
+
+- [ ] **Scotch pine (the giant by the stove):** a tall, bare orange-red upper trunk with flaky bark, grey plated bark low down, a few big crooked limbs, and an irregular, flat-topped crown of separate blue-green needle pads.
+- [ ] **Scotch pine (young, in the Christmas-tree grid):** a sheared, dense cone with a tufty, twisted-needle texture, yellow-green to blue-green.
+- [ ] **Douglas fir:** a soft, dense, dark green cone with a pointed top and slightly drooping branch tips.
+- [ ] **White pine:** soft and feathery, with tiered horizontal whorls and gaps between them, blue-green with long needles.
+- [ ] **Blue spruce:** a stiff, symmetric, spiky cone in silvery blue, with upturned branch tips.
+- [ ] **Big spruces by the road:** tall and dark, with drooping curtain branchlets.
+- [ ] **Orchard:** apples get a short, crooked trunk and a wide, spreading crown; pears grow upright and pyramid-shaped; cherries get a rounded crown and reddish banded bark.
+- [ ] **Woods beyond the line:** three or four broadleaf shapes (oak, maple, ash) so the tree line isn't one tree repeated.
+
+## Phase 3: grass and ground
+
+- [ ] Instanced lawn grass around the camera: short and mowed, with colour variation and a lighter tip, fading out by distance and bending in the breeze.
+- [ ] Tall grass in the wild fields and on the berms: seed heads, waving visibly in gusts.
+- [ ] Late-summer wildflowers in the fields (Queen Anne's lace, chicory, black-eyed Susans, goldenrod), plus clover and the odd dandelion in the lawn.
+- [ ] A richer ground texture: lawn colour varying in soft patches, worn spots along the paths, wheel ruts in the gravel.
+- [ ] Soft contact shadows under every building, wagon and tree.
+
+## Phase 4: buildings
+
+- [ ] Grime: a dirt band on the walls near the ground, rain streaks under windows and eaves, weathering on the barn boards.
+- [ ] Gutters and downspouts on the farmhouse and the red garage, plus fascia and soffit boards.
+- [ ] Ridge caps and drip edges on the roofs; shingle rows with relief.
+- [ ] Windows: sills, curtains or blinds behind the glass, and a sky reflection.
+- [ ] Siding and boards with real relief (bump maps), so light rakes across the lap siding.
+- [ ] Small fixtures: an electric meter, an outdoor spigot, a porch light, door hardware.
+- [ ] Barn: hay visible in the loft door, rust and dents on the metal, the board-and-batten shadow lines.
+
+## Phase 5: life and atmosphere
+
+- [ ] Cloud shadows drifting across the farm on the breeze.
+- [ ] Butterflies around the flowers: monarchs and cabbage whites.
+- [ ] Barn swallows swooping around the barn and over the lawn.
+- [ ] Seed fluff and pollen drifting in the sunlight, carried by the breeze.
+- [ ] Now and then a leaf falling from the orchard and the woods.
+- [ ] The light: a warm summer grade, a soft haze in the distance, and a check that the shadows aren't too hard.
+
+## Ideas to ask the owner about (not added until confirmed)
+
+- [?] A mercury-vapour yard light on a pole (very common on farms of that era).
+- [?] Power poles along the road, with a drop to the house.
+- [?] A TV antenna on the house roof.
+- [?] Farm animals or pets: barn cats, chickens, a dog.
+- [?] Mowing stripes on the lawn.
+
+## Phase 6: polish and performance
+
+- [ ] Walk every landmark view and fix anything that looks off.
+- [ ] Check frame time and draw calls at low and high quality; instance or merge anything that got expensive.
+- [ ] Republish the explorer.
+
+## Progress log
+
+- Plan written; baseline screenshots taken.
