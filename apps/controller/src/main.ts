@@ -274,18 +274,19 @@ function bindPad(): void {
   let originX = 0;
   let box = drive.getBoundingClientRect();
   const btnTouches = new Map<number, HTMLElement | null>();
-  // Full lock sits about 1.5 cm either side of where the thumb landed: enough travel to hold a
+  // Full lock sits about 1.3 cm either side of where the thumb landed: enough travel to hold a
   // gentle line without the thumb wandering into a full turn.
-  const range = () => box.width * 0.25;
+  const range = () => box.width * 0.22;
 
   const steerTo = (x: number) => {
     const r = range();
     // The landing spot stays the centre, so putting the thumb back there is always straight.
     const v = Math.max(-1, Math.min(1, (x - originX) / r));
-    // Small dead zone for thumb jitter, then a curve that is gentle near the middle for small
-    // corrections and builds to full lock at the end of the travel.
-    const a = Math.max(0, (Math.abs(v) - 0.05) / 0.95);
-    pad.steer = Math.sign(v) * a * (0.5 + 0.5 * a);
+    // Small dead zone for thumb jitter. Near the middle a slight slide gives a usable
+    // correction straight away; further out the curve steepens, so the turn gets sharper the
+    // further the thumb goes, up to full lock at the end of the travel.
+    const a = Math.max(0, (Math.abs(v) - 0.04) / 0.96);
+    pad.steer = Math.sign(v) * (0.6 * a + 0.4 * a ** 3);
     knob.style.transform = `translateX(${v * r}px)`;
   };
   const startDrive = (id: number, x: number, y: number) => {

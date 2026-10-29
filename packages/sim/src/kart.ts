@@ -312,8 +312,10 @@ export function stepKart(
     k.drift.charge += dt * (0.7 + 0.5 * Math.abs(steer));
   } else {
     const lowSpeed = clamp(Math.abs(spd) / 5, 0, 1);
-    // Grip fades with speed: at full tilt the tightest corners need a lift or a drift.
-    const highSpeed = 1 - 0.42 * clamp(Math.abs(spd) / P.topSpeed, 0, 1);
+    // Grip fades with speed: at full tilt the tightest corners need a lift or a drift. Cranking
+    // the wheel over claws some of it back, so the turn sharpens the further you steer.
+    const highSpeed =
+      1 - 0.42 * clamp(Math.abs(spd) / P.topSpeed, 0, 1) * (1 - 0.4 * steer * steer);
     yawRate = steer * P.turnRate * lowSpeed * highSpeed * Math.sign(spd || 1);
   }
   if (stunned) yawRate = 0; // spinning on screen only: the kart keeps its heading
