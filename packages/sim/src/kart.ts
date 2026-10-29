@@ -42,9 +42,6 @@ export interface KartParams {
   turnRate: number;
   mass: number;
   rideHeight: number;
-  /** Gravity in the air and the kick of a launch: light karts fly higher and hang longer. */
-  gravity: number;
-  pop: number;
 }
 
 export function paramsFor(v: VehicleDef): KartParams {
@@ -54,8 +51,6 @@ export function paramsFor(v: VehicleDef): KartParams {
     turnRate: 2.3 + (v.handling - 3) * 0.17,
     mass: 1 + (v.weight - 3) * 0.3,
     rideHeight: v.hover ? 0.7 : 0,
-    gravity: GRAVITY * (0.8 + (v.weight - 1) * 0.1),
-    pop: 1 + (3 - v.weight) * 0.12,
   };
 }
 
@@ -67,6 +62,9 @@ export const DRIFT_LEVELS = [0.7, 1.5, 2.5];
 const BOOST_FOR_LEVEL = [0, 0.5, 1.0, 1.6];
 /** Gravity in the air. Heavier than real life so jumps feel snappy. */
 export const GRAVITY = 21;
+/** Big air for every kart, whatever it weighs: floatier than GRAVITY, with a harder kick. */
+const AIR_GRAVITY = GRAVITY * 0.8;
+const AIR_POP = 1.24;
 /** How long the Great Eagle rescue takes after a fall. */
 export const RESCUE_TIME = 1.8;
 
@@ -235,7 +233,7 @@ export function driftLevel(charge: number): number {
 /** Launch a kart into the air with its current motion plus `pop` m/s upward. */
 export function launch(k: KartState, pop: number): void {
   const right = cross(k.fwd, k.up);
-  k.vel = add(add(scale(k.fwd, k.speed), scale(right, k.slide)), scale(k.up, pop * k.params.pop));
+  k.vel = add(add(scale(k.fwd, k.speed), scale(right, k.slide)), scale(k.up, pop * AIR_POP));
   k.air = true;
   k.airTime = 0;
   k.launchS = k.s;
@@ -458,7 +456,7 @@ function stepAir(k: KartState, pad: PadState, track: Track, dt: number, rules: T
   const worldUp = v3(0, 1, 0);
   const yaw = -pad.steer * 0.9 * dt;
   k.vel = rotateAround(k.vel, worldUp, yaw);
-  k.vel.y -= k.params.gravity * dt;
+  k.vel.y -= AIR_GRAVITY * dt;
   const pos = add(k.pos, scale(k.vel, dt));
   const p = track.project(pos, k.hint, 40);
   k.hint = p.index;
