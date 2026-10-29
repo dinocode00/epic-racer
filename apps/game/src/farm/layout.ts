@@ -42,6 +42,8 @@ export interface FarmLayout {
   christmas_block: XY[];
   christmas_trees: { x: number; y: number; species: Species; heightFt: number }[];
   gravel: XY[];
+  /** Gravel in front of the wooden garage's door. */
+  gravel_apron: XY[];
   mailbox: XY;
   orchard: [number, number, 'apple' | 'pear' | 'cherry'][];
   grape_rows: [XY, XY][];

@@ -894,16 +894,18 @@
    "Windows: on the east side one downstairs and one upstairs, both centred; on the north side two downstairs and one upstairs.",
    "From the photo: white horizontal siding, slate-blue window trim, corner boards and roof edges, dark charcoal shingles, a buff brick chimney at the ridge, and a rounded fieldstone foundation like the barn's.",
    "From the photo: a steep front gable with an octagonal vent near the peak, and a one-storey porch with white posts, white railings, a white lattice skirt and a gooseneck light by its door.",
-   "Front (south) wall: no upstairs windows, just one window a little wider than normal, to the right of the front door.",
-   "Small white steps run north to south from the west porch down onto the sidewalk; smaller than the front steps.",
+   "The front door's right-hand window is a little wider than normal.",
+   "White steps the full width of the porch run north to south from the west porch down onto the sidewalk; smaller than the front steps.",
    "A planter about 4\u20135 ft deep runs along the east wall, full of flowers.",
    "A garden hose hangs on the east wall near the southeast corner.",
-   "About 10 ft out from the east downstairs window: a wooden birdhouse on a wooden post at window height, with a seed tray in front where bluebirds came to eat."
+   "About 10 ft out from the east downstairs window: a wooden birdhouse on a wooden post at window height, with a seed tray in front where bluebirds came to eat.",
+   "South side windows: one either side of the front door, set high enough to clear the bench (the right-hand one a little wider), and one upstairs a bit left of centre."
   ],
   "Wooden garage": [
    "Attached to the barn. Roof slants down toward the north, black shingles.",
    "Door faces west. Painted red to match the barn.",
-   "The overhead door is shown most of the way up, with an early-1990s sky-blue Chevrolet pickup parked inside."
+   "The overhead door is shown most of the way up, with an early-1990s sky-blue Chevrolet pickup parked inside.",
+   "Gravel runs right up to the garage door, wide enough to drive a car or truck in."
   ],
   "Large red barn": [
    "Same barn, same place as today. Rounded fieldstone foundation about 8 ft high.",
@@ -950,7 +952,8 @@
   ],
   "Grape vines and garden": [
    "4 rows. Shortened by 20% at the north end.",
-   "A small garden of vegetables and flowers, about 10 \u00d7 7 ft, in that space."
+   "A small garden of vegetables and flowers, about 10 \u00d7 7 ft, in that space.",
+   "Heavy with bunches of small round purple grapes."
   ],
   "Red wooden garage": [
    "Door faces north. Black shingle roof. White trim like the barn.",
@@ -975,7 +978,8 @@
   "Clear plexiglass greenhouse": [
    "Peaked roof. Aluminum frame and plexiglass.",
    "Small: about 10 ft long and 6 ft wide.",
-   "A little away from the shed, to its east and south."
+   "A little away from the shed, to its east and south.",
+   "A wooden potting table runs along the east side with the potted plants on it; the door is on the south end."
   ],
   "Christmas tree rows": [
    "Scotch pine, Douglas fir, white pine and blue spruce, in bands from west to east.",
@@ -993,7 +997,8 @@
    "A real variety of pumpkins, with a few giant ones far bigger than the rest.",
    "Thick pumpkin vines with yellow flowers run all through the patch.",
    "The gourds are horn-shaped: a round bottom tapering and curling up to a thin stem.",
-   "The pumpkins run a bit bigger, and there are more pumpkins and gourds."
+   "The pumpkins run a bit bigger, and there are more pumpkins and gourds.",
+   "A hay trailer like the ones by the greenhouse sits out in the patch, piled with pumpkins."
   ],
   "Old rusted barrel stove": [
    "Used to burn garbage.",
@@ -7502,6 +7507,10 @@
    [
     78.9,
     99.0
+   ],
+   [
+    47.0,
+    13.5
    ]
   ],
   "clothes_lines": [

@@ -15,6 +15,7 @@ LAYOUT: dict = {}
 # The old hay wagons stay where they were placed in v10 (map metres).
 WAGON_A = np.array([73.4, 103.0])
 WAGON_B = np.array([78.9, 99.0])
+WAGON_C = np.array([47.0, 13.5])  # v14: a third trailer out in the pumpkin patch, piled with pumpkins
 GRID = 50.0  # farm grid: long axis of barn, perpendicular to the NE property line (deg)
 K = b.M_PER_PX / 0.19  # hand-placed metre positions below were set at the old 0.19 scale
 U = np.array([math.cos(math.radians(GRID)), math.sin(math.radians(GRID))])  # farm "north"
@@ -260,6 +261,8 @@ def render():
             out.append(f'<path class="vine" d="M{svgpt(row[0])} L{svgpt(row[-1])}"/>')
         for x, yy in row:
             jx, jy = rng.normal(0, 0.5, 2)
+            if np.hypot(x + jx - WAGON_C[0], yy + jy - WAGON_C[1]) < 3.6:
+                continue
             gourd = rng.uniform() < 0.28  # v13: more pumpkins and gourds
             cls, r = ('gourd', rng.uniform(0.35, 0.5)) if gourd else ('pumpkin', rng.uniform(0.55, 0.9))
             LAYOUT.setdefault('pumpkins', []).append([round(float(x + jx), 2), round(float(yy + jy), 2), round(float(r), 2), cls])
@@ -371,9 +374,16 @@ def render():
     ramp = [bcen + V * 5.75 - U * 4.6, bcen + V * 5.75 + U * 4.6, bcen + V * 16 + U * 5.4, bcen + V * 16 - U * 5.4]
     LAYOUT['ramp'] = [p.tolist() for p in ramp]
     # Grass patches on both sides of the ramp, touching the barn and the ramp
+    # v14: gravel apron in front of the wooden garage's door, wide enough to drive a truck in
+    apron = [bcen + U * u + V * v for u, v in
+             ((9.4, 5.75), (17.4, 5.75), (18.0, 9.0), (17.4, 13.0), (15.2, 16.6), (9.4, 17.2))]
+    LAYOUT['gravel_apron'] = [p.tolist() for p in apron]
+    out.append(f'<path class="gravel" style="stroke:none" d="{smooth_d(np.array(apron), True, 0.35)}"/>')
     for s in (-1, 1):
-        patch = [bcen + V * 5.75 + U * 4.6 * s, bcen + V * 5.75 + U * 10.8 * s,
-                 bcen + V * 16 + U * 10.8 * s, bcen + V * 16 + U * 5.4 * s]
+        # v14: the north patch is trimmed back by the lilac to leave room for the gravel
+        far = 10.8 if s < 0 else 9.6
+        patch = [bcen + V * 5.75 + U * 4.6 * s, bcen + V * 5.75 + U * far * s,
+                 bcen + V * 16 + U * (far - 0.4 * (s > 0)) * s, bcen + V * 16 + U * 5.4 * s]
         LAYOUT.setdefault('grass_patches', []).append([p.tolist() for p in patch])
         out.append(f'<path class="grass-patch" d="{poly_d(patch)}"/>')
     out.append(f'<path class="blacktop" d="{poly_d(ramp)}"/>')
@@ -512,8 +522,10 @@ def render():
     out.append(f'<g id="lm-12"><path class="bld glass" d="{poly_d(rect(gh, 3.05, 1.83, GRID))}"/>'
                f'{seg(gh - U * 1.52, gh + U * 1.52, "ridge")}</g>')
     # Old flat wooden wagons parked in the grass east of the shed, one with pumpkins on it
-    out.append(f'<g id="lm-wagons">{wagon(WAGON_A, GRID + 14)}{wagon(WAGON_B, GRID - 20, load=7)}</g>')
-    LAYOUT['wagons'] = [{'c': WAGON_A.tolist(), 'angle': GRID + 14, 'load': 0}, {'c': WAGON_B.tolist(), 'angle': GRID - 20, 'load': 7}]
+    out.append(f'<g id="lm-wagons">{wagon(WAGON_A, GRID + 14)}{wagon(WAGON_B, GRID - 20, load=7)}'
+               f'{wagon(WAGON_C, 8, load=14)}</g>')
+    LAYOUT['wagons'] = [{'c': WAGON_A.tolist(), 'angle': GRID + 14, 'load': 0}, {'c': WAGON_B.tolist(), 'angle': GRID - 20, 'load': 7},
+                        {'c': WAGON_C.tolist(), 'angle': 8, 'load': 37}]
     pl = house_c + np.array([8.0, 1.5]) - V * 9.5 + np.array([3.2, 0.0])  # just east of the clothes lines' east end
     LAYOUT['playhouse'] = {'c': pl.tolist(), 'w': 2.44, 'h': 2.44, 'angle': GRID}
     out.append(f'<g id="lm-17"><path class="bld roof-black wall-red" d="{poly_d(rect(pl, 2.44, 2.44, GRID))}"/>'

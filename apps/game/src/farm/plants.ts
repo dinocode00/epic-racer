@@ -404,7 +404,9 @@ function grapes(): THREE.Group {
   const g = new THREE.Group();
   const post = new THREE.MeshStandardMaterial({ color: 0x7a5a3a, roughness: 0.9 });
   const vine = new THREE.MeshStandardMaterial({ color: 0x4e8a34, roughness: 0.9 });
-  const grape = new THREE.MeshStandardMaterial({ color: 0x4a2a5e, roughness: 0.5 });
+  const grape = new THREE.MeshStandardMaterial({ roughness: 0.35 });
+  const berry = new THREE.IcosahedronGeometry(1, 1);
+  const purples = [0x4a2a5e, 0x5b2d73, 0x3d2050, 0x6a3a82];
   for (const [a, b] of FARM.grape_rows) {
     const L = Math.hypot(b[0] - a[0], b[1] - a[1]);
     const row = new THREE.Group();
@@ -417,13 +419,43 @@ function grapes(): THREE.Group {
       o.position.set(s, 1.35 + (rnd() - 0.5) * 0.3, (rnd() - 0.5) * 0.25);
       o.scale.set(1, 0.9, 0.7);
       row.add(o);
-      if (rnd() < 0.5) {
-        const c = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.2, 6), grape);
-        c.rotation.x = Math.PI;
-        c.position.set(s + 0.1, 1.0, (rnd() - 0.5) * 0.5);
-        row.add(c);
+    }
+    // Bunches of round purple grapes hanging below the leaves on both sides of the row: each
+    // a tapering heap of small berries, widest at the top.
+    const at: THREE.Matrix4[] = [],
+      cols: THREE.Color[] = [];
+    for (let s = 0.3; s < L - 0.3; s += 0.24) {
+      for (const side of [-1, 1]) {
+        if (rnd() < 0.25) continue;
+        const cx = s + (rnd() - 0.5) * 0.15,
+          cz = side * (0.28 + rnd() * 0.1),
+          top = 1.12 + (rnd() - 0.5) * 0.12;
+        const col = new THREE.Color(purples[(rnd() * purples.length) | 0]!);
+        for (let i = 0; i < 22; i++) {
+          const d = rnd();
+          const spread = 0.07 * (1 - d * 0.75);
+          const a = rnd() * Math.PI * 2;
+          const r = 0.022 + rnd() * 0.006;
+          at.push(
+            new THREE.Matrix4()
+              .makeScale(r, r, r)
+              .setPosition(
+                cx + Math.cos(a) * spread * Math.sqrt(rnd()),
+                top - d * 0.2,
+                cz + Math.sin(a) * spread * Math.sqrt(rnd()),
+              ),
+          );
+          cols.push(col.clone().multiplyScalar(0.8 + rnd() * 0.4));
+        }
       }
     }
+    const bunch = new THREE.InstancedMesh(berry, grape, at.length);
+    at.forEach((m, i) => {
+      bunch.setMatrixAt(i, m);
+      bunch.setColorAt(i, cols[i]!);
+    });
+    bunch.castShadow = true;
+    row.add(bunch);
     row.position.set(a[0], groundHeight(a[0], a[1]), -a[1]);
     row.rotation.y = Math.atan2(b[1] - a[1], b[0] - a[0]);
     g.add(row);
@@ -740,16 +772,36 @@ function pumpkins(): THREE.Group {
   }
   for (const w of FARM.wagons) {
     const a = (w.angle * Math.PI) / 180;
-    for (let i = 0; i < w.load; i++) {
-      const lx = -1.8 + rnd() * 3.6,
-        lz = (rnd() - 0.5) * 1.6;
-      const x = w.c[0] + lx * Math.cos(a) - lz * Math.sin(a);
-      const y = w.c[1] + lx * Math.sin(a) + lz * Math.cos(a);
-      const base = groundHeight(w.c[0], w.c[1]) + 1.01;
-      const rr = 0.16 + rnd() * 0.08;
-      if (rnd() < 0.8) put(S.field, x, y, base, rr, 0xe0661c, 0.1);
+    const deck = groundHeight(w.c[0], w.c[1]) + 1.01;
+    const at = (lx: number, lz: number): XY => [
+      w.c[0] + lx * Math.cos(a) - lz * Math.sin(a),
+      w.c[1] + lx * Math.sin(a) + lz * Math.cos(a),
+    ];
+    const one = (lx: number, lz: number, base: number, rr: number) => {
+      const [x, y] = at(lx, lz);
+      if (rnd() < 0.82) put(S.field, x, y, base, rr, 0xe0661c, 0.1);
       else put(S.field, x, y, base, rr, 0xeeeadc, 0.05);
-    }
+    };
+    if (w.load >= 20) {
+      // A big load stacked up in layers, each one nested into the gaps of the one below.
+      const layers: [number, number, number, number][] = [
+        // [columns, rows, spacing, height above the deck]
+        [7, 3, 0.6, 0],
+        [6, 2, 0.6, 0.3],
+        [4, 1, 0.6, 0.56],
+      ];
+      for (const [nc, nr, sp, lift] of layers)
+        for (let i = 0; i < nc; i++)
+          for (let j = 0; j < nr; j++)
+            one(
+              (i - (nc - 1) / 2) * sp + (rnd() - 0.5) * 0.08,
+              (j - (nr - 1) / 2) * 0.58 + (rnd() - 0.5) * 0.08,
+              deck + lift,
+              0.19 + rnd() * 0.05,
+            );
+    } else
+      for (let i = 0; i < w.load; i++)
+        one(-1.8 + rnd() * 3.6, (rnd() - 0.5) * 1.6, deck, 0.16 + rnd() * 0.08);
   }
   const skin = new THREE.MeshStandardMaterial({ roughness: 0.55 });
   for (const s of Object.values(S)) {

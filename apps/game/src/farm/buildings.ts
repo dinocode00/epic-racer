@@ -389,27 +389,31 @@ function farmhouse(): THREE.Group {
   porch.add(shedRoofZ(pw, pd, 3.75, 3.35, m.shingle));
   const pDoor = box(0.95, 2.1, 0.08, m.trimWhite, 0.4, 2.05, pd / 2 - 0.02);
   porch.add(pDoor);
-  // Small white wooden steps off the porch's south end, down onto the sidewalk.
+  // White wooden steps the full width of the porch off its south end, closed in and
+  // running down onto the sidewalk (the ground there sits a little below the house).
   const pst = 4,
-    prise = 1.01 / (pst + 1),
+    pfoot = -0.16,
+    prise = (1.01 - pfoot) / (pst + 1),
     ptread = 0.28,
-    psw = 1.0;
+    psw = pd;
   for (let i = 1; i <= pst; i++) {
     const top = 1.01 - i * prise;
-    porch.add(box(ptread + 0.03, 0.05, psw, m.trimWhite, -pw / 2 - (i - 0.5) * ptread, top, 0));
-    porch.add(
-      box(0.03, prise, psw, m.trimWhite, -pw / 2 - (i - 1) * ptread - 0.015, top + prise / 2, 0),
-    );
+    const x = -pw / 2 - (i - 0.5) * ptread;
+    porch.add(boxM(ptread, top + 0.4, psw, m.trimWhite, x, (top - 0.4) / 2, 0));
+    porch.add(box(ptread + 0.04, 0.04, psw + 0.04, m.trimWhite, x - 0.02, top + 0.02, 0));
   }
-  for (const z of [-psw / 2, psw / 2])
+  const pend = -pw / 2 - pst * ptread;
+  for (const z of [-psw / 2 + 0.06, psw / 2 - 0.06]) {
     porch.add(
       strut(
-        new THREE.Vector3(-pw / 2, 0.98, z),
-        new THREE.Vector3(-pw / 2 - pst * ptread, 0.0, z),
-        0.045,
+        new THREE.Vector3(-pw / 2, 1.01 + 0.85, z),
+        new THREE.Vector3(pend + ptread / 2, 1.01 - pst * prise + 0.85, z),
+        0.035,
         m.trimWhite,
       ),
     );
+    porch.add(box(0.09, 0.95, 0.09, m.trimWhite, pend + ptread / 2, 1.01 - pst * prise + 0.45, z));
+  }
   porch.position.set(px, 0, pz);
   g.add(porch);
   // The concrete pad and the sidewalk to the porch lie flush in the ground (painted there);
@@ -490,11 +494,18 @@ function farmhouse(): THREE.Group {
     w.rotation.y = [0, Math.PI, Math.PI / 2, -Math.PI / 2][f]!;
     g.add(w);
   }
-  // South (front) wall: no upstairs windows, just one wider window right of the front door.
-  const fw = windowAt(1.4, 1.5, m.trimBlue, 1);
-  fw.position.set(-L / 2, 2.4, 1.75);
-  fw.rotation.y = -Math.PI / 2;
-  g.add(fw);
+  // South (front) wall: a window either side of the front door, set high enough to clear the
+  // bench (the right-hand one a little wider), and one upstairs a bit left of centre.
+  for (const [z, y, w] of [
+    [1.75, 2.95, 1.4],
+    [-2.2, 2.95, 0.95],
+    [-0.7, 5.0, 0.95],
+  ] as const) {
+    const fw = windowAt(w, 1.4, m.trimBlue, 1);
+    fw.position.set(-L / 2, y, z);
+    fw.rotation.y = -Math.PI / 2;
+    g.add(fw);
+  }
   // Slate-blue corner boards.
   for (const [x, z] of [
     [L / 2, W / 2],
@@ -1312,14 +1323,37 @@ function greenhouse(): THREE.Group {
       new THREE.Vector3(R.w / 2, eave, (s * R.h) / 2),
     );
   f(new THREE.Vector3(-R.w / 2, ridge, 0), new THREE.Vector3(R.w / 2, ridge, 0));
-  // A few pots and seedlings inside.
-  for (let i = 0; i < 8; i++) {
-    const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.09, 0.2, 8), m.rust);
-    pot.position.set(-1.2 + i * 0.34, 0.3, 0.5 - (i % 2) * 0.9);
-    const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.16, 6, 5), mats().tree);
-    leaf.position.set(pot.position.x, 0.5, pot.position.z);
+  // A wooden potting table running the length of the east side (+z), the pots on it.
+  const tz = R.h / 2 - 0.36,
+    th = 0.78;
+  g.add(boxM(R.w - 0.5, 0.05, 0.55, m.wood, 0.1, th, tz));
+  g.add(boxM(R.w - 0.5, 0.03, 0.5, m.wood, 0.1, 0.35, tz));
+  for (const x of [-R.w / 2 + 0.38, R.w / 2 - 0.18])
+    for (const dz of [-0.22, 0.22]) g.add(box(0.06, th, 0.06, m.wood, x, th / 2, tz + dz));
+  for (let i = 0; i < 12; i++) {
+    const x = -R.w / 2 + 0.55 + (i >> 1) * 0.42,
+      z = tz + ((i & 1) - 0.5) * 0.26;
+    const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.07, 0.15, 8), m.rust);
+    pot.position.set(x, th + 0.1, z);
+    const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.11 + (i % 3) * 0.02, 6, 5), mats().tree);
+    leaf.position.set(x, th + 0.25, z);
     g.add(pot, leaf);
   }
+  // Door on the south end (-x): a framed aluminum door with a kick panel and a handle.
+  const dx = -R.w / 2 - 0.02,
+    dw = 0.75,
+    dh = 1.8;
+  const door = new THREE.Group();
+  door.add(
+    box(0.05, dh, 0.06, m.galv, 0, dh / 2 + 0.18, -dw / 2),
+    box(0.05, dh, 0.06, m.galv, 0, dh / 2 + 0.18, dw / 2),
+    box(0.05, 0.06, dw + 0.06, m.galv, 0, dh + 0.18, 0),
+    box(0.05, 0.06, dw, m.galv, 0, 0.95, 0),
+    box(0.04, 0.32, dw, m.galv, 0, 0.36, 0),
+    box(0.06, 0.16, 0.03, m.black, -0.03, 1.05, dw / 2 - 0.1),
+  );
+  door.position.x = dx;
+  g.add(door);
   return g;
 }
 

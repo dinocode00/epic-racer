@@ -144,15 +144,16 @@ function paintGround(): THREE.CanvasTexture {
   x.restore();
 
   // 4. Gravel yard and driveway.
-  const gravel = smoothRing(FARM.gravel, 6);
-  x.fillStyle = '#c4ad84';
-  poly(gravel);
-  x.fill();
-  x.save();
-  poly(gravel);
-  x.clip();
-  speckle(160000, ['#b39c74', '#d3bf98', '#a89071', '#e0cfa9', '#9c876b'], 1.2, 3);
-  x.restore();
+  for (const gravel of [smoothRing(FARM.gravel, 6), smoothRing(FARM.gravel_apron, 6)]) {
+    x.fillStyle = '#c4ad84';
+    poly(gravel);
+    x.fill();
+    x.save();
+    poly(gravel);
+    x.clip();
+    speckle(160000, ['#b39c74', '#d3bf98', '#a89071', '#e0cfa9', '#9c876b'], 1.2, 3);
+    x.restore();
+  }
   // Grass patches on both sides of the barn ramp.
   x.fillStyle = '#6fa645';
   for (const p of FARM.grass_patches) {
