@@ -1,5 +1,13 @@
 import * as THREE from 'three';
-import { TREES, type TreeGeo, barkMaterial, leafDepth, leafMaterial } from '../render/foliage.ts';
+import {
+  type TreeGeo,
+  barkDepth,
+  barkMaterial,
+  leafDepth,
+  leafMaterial,
+} from '../render/foliage.ts';
+import { windy } from '../render/wind.ts';
+import { bake } from './bake.ts';
 import { type BeeSpot, bees } from './bees.ts';
 import {
   BERM,
@@ -13,6 +21,7 @@ import {
   rampHeight,
   rampPoint,
 } from './layout.ts';
+import { WOODS, appleTree, cherryTree, pearTree, scotchGiant, spruce, xmasTree } from './trees.ts';
 
 /** Where the honeybees work: every flower patch and the windfalls in the orchard. */
 const SPOTS: BeeSpot[] = [];
@@ -54,6 +63,12 @@ const rnd = () => {
 };
 const FT = 0.3048;
 
+// How the farm's shrubs and low plants move in the breeze (object units: metres here).
+const LILAC_WIND = { lean: 0.018, sway: 0.014, speed: 1.6, flutter: 0.025, h0: 0.4 };
+const HEDGE_WIND = { lean: 0.012, sway: 0.01, speed: 1.2, flutter: 0.012, h0: 0.6 };
+const VINE_WIND = { lean: 0.03, sway: 0.03, speed: 2.1, flutter: 0.03, h0: 1.0 };
+const LEAF_FLUTTER = { lean: 0.12, sway: 0.12, speed: 2.6, flutter: 0.1, h0: -1 };
+
 interface Normalised {
   geo: TreeGeo;
   height: number;
@@ -88,6 +103,7 @@ class TreeBatch {
     private tintSolid = false,
   ) {
     this.solid = new THREE.InstancedMesh(t.geo.solid, barkMaterial(), count);
+    this.solid.customDepthMaterial = barkDepth();
     this.solid.castShadow = this.solid.receiveShadow = true;
     this.group.add(this.solid);
     this.leaves = null;
@@ -136,52 +152,61 @@ class TreeBatch {
   }
 }
 
-const TINT: Record<Species, [number, number, number]> = {
-  scotch: [1.45, 1.38, 0.5],
-  douglas: [0.55, 0.75, 0.6],
-  white: [0.95, 1.25, 1.2],
-  blue: [1.05, 1.35, 2.1],
+/** A little lighter or darker, a little warmer or cooler: no two trees quite alike. */
+const vary = (amount = 0.1) => {
+  const v = 1 - amount + rnd() * amount * 2;
+  return new THREE.Color(v * (0.97 + rnd() * 0.06), v, v * (0.96 + rnd() * 0.08));
 };
-const WIDTH: Record<Species, number> = { scotch: 1.05, douglas: 0.95, white: 1.12, blue: 0.9 };
 
 export function buildPlants(): THREE.Group {
   const root = new THREE.Group();
-  const pine = normalise(TREES.pine);
-  const broad = normalise(TREES.broad);
 
   // ---- Christmas trees: an orderly grid, four kinds west to east, random sizes.
-  const xmas = new TreeBatch(pine, FARM.christmas_trees.length, true);
-  for (const t of FARM.christmas_trees) {
-    const v = 0.9 + rnd() * 0.2;
-    const c = TINT[t.species];
-    xmas.add(
+  const kinds: Species[] = ['scotch', 'douglas', 'white', 'blue'];
+  const xmas = Object.fromEntries(
+    kinds.map((k) => [
+      k,
+      new TreeBatch(
+        normalise(() => xmasTree(k)),
+        FARM.christmas_trees.filter((t) => t.species === k).length,
+        true,
+      ),
+    ]),
+  ) as Record<Species, TreeBatch>;
+  for (const t of FARM.christmas_trees)
+    xmas[t.species].add(
       t.x,
       t.y,
       t.heightFt * FT * (0.92 + rnd() * 0.16),
-      WIDTH[t.species] * 0.9,
-      new THREE.Color(c[0] * v, c[1] * v, c[2] * v),
+      0.94 + rnd() * 0.12,
+      vary(0.08),
     );
-  }
-  root.add(xmas.done());
+  for (const k of kinds) root.add(xmas[k].done());
 
   // ---- Big spruces by the road (10-20 ft over the house), the spruce row, the giant Scotch pine.
-  const big = new TreeBatch(pine, 30, true);
-  for (const p of FARM.big_spruces)
-    big.add(p[0], p[1], 12 + rnd() * 3, 1.05, new THREE.Color(0.66, 0.84, 0.74));
-  for (const p of FARM.spruce_row)
-    big.add(p[0], p[1], 9 + rnd() * 2.5, 0.95, new THREE.Color(0.66, 0.84, 0.74));
-  big.add(
-    FARM.big_scotch_pine[0],
-    FARM.big_scotch_pine[1],
-    19,
-    1.55,
-    new THREE.Color(1.15, 1.12, 0.66),
-    0.3,
-  );
+  const big = new TreeBatch(normalise(spruce), 30, true);
+  for (const p of FARM.big_spruces) big.add(p[0], p[1], 12 + rnd() * 3, 1, vary(0.08));
+  for (const p of FARM.spruce_row) big.add(p[0], p[1], 9 + rnd() * 2.5, 0.95, vary(0.08));
   root.add(big.done());
+  const giant = new TreeBatch(normalise(scotchGiant), 1);
+  giant.add(FARM.big_scotch_pine[0], FARM.big_scotch_pine[1], 19, 1, undefined, 0.3);
+  root.add(giant.done());
 
   // ---- Orchard: trained trees about 13 ft tall; apples hang at about 5 ft.
-  const orch = new TreeBatch(broad, FARM.orchard.length);
+  const orchKinds = { apple: appleTree, pear: pearTree, cherry: cherryTree } as const;
+  type Fruit = keyof typeof orchKinds;
+  const orch = Object.fromEntries(
+    (Object.keys(orchKinds) as Fruit[]).map((k) => [
+      k,
+      new TreeBatch(normalise(orchKinds[k]), FARM.orchard.filter((o) => o[2] === k).length, true),
+    ]),
+  ) as Record<Fruit, TreeBatch>;
+  // How far out from the trunk fruit hangs, to stay inside each kind's crown.
+  const REACH: Record<Fruit, [number, number]> = {
+    apple: [0.7, 1.4],
+    pear: [0.35, 0.8],
+    cherry: [0.45, 1.0],
+  };
   const fruitGeo = new THREE.SphereGeometry(1, 10, 8);
   const fruit = new THREE.InstancedMesh(
     fruitGeo,
@@ -198,18 +223,13 @@ export function buildPlants(): THREE.Group {
   };
   for (const [x, y, kind] of FARM.orchard) {
     const h = kind === 'apple' ? 13 * FT : kind === 'pear' ? 15 * FT : 12 * FT;
-    orch.add(
-      x,
-      y,
-      h,
-      kind === 'apple' ? 1.35 : 1.05,
-      kind === 'apple' ? undefined : new THREE.Color(0.9, 1.0, 0.85),
-    );
+    orch[kind].add(x, y, h, 0.95 + rnd() * 0.1, vary(0.08));
     const [col, r] = FRUIT[kind]!;
+    const [d0, d1] = REACH[kind];
     const g0 = groundHeight(x, y);
     for (let i = 0; i < 26; i++) {
       const a = rnd() * Math.PI * 2;
-      const d = 0.7 + rnd() * 1.1;
+      const d = d0 + rnd() * (d1 - d0);
       const fy = kind === 'apple' ? 5 * FT + (rnd() - 0.4) * 0.6 : 1.8 + rnd() * 1.6;
       mtx
         .makeScale(r, r * 1.05, r)
@@ -236,13 +256,21 @@ export function buildPlants(): THREE.Group {
     SPOTS.push({ x, y: g0 + 0.12, z: -y, r: 1.3, n: 2 });
   }
   fruit.count = nf;
-  root.add(orch.done(), fruit);
+  for (const b of Object.values(orch)) root.add(b.done());
+  root.add(fruit);
 
   // ---- Woods beyond the line, and neighbouring farms behind the trees (NE and SW).
-  const woods = new TreeBatch(broad, 160);
+  const woods = WOODS.map((make) => new TreeBatch(normalise(make), 60, true));
+  const wood = () => woods[(rnd() * woods.length) | 0]!;
   for (const c of FARM.neighbourWoods)
     for (let i = 0; i < 14; i++)
-      woods.add(c[0] + (rnd() - 0.5) * 22, c[1] + (rnd() - 0.5) * 22, 9 + rnd() * 6, 1.3);
+      wood().add(
+        c[0] + (rnd() - 0.5) * 22,
+        c[1] + (rnd() - 0.5) * 22,
+        9 + rnd() * 6,
+        0.9 + rnd() * 0.25,
+        vary(0.12),
+      );
   // A loose band of trees across the road and along the west, prairie between.
   const road = FARM.road as [XY, XY];
   for (let i = 0; i < 60; i++) {
@@ -250,9 +278,9 @@ export function buildPlants(): THREE.Group {
     const px = road[0][0] + (road[1][0] - road[0][0]) * t;
     const py = road[0][1] + (road[1][1] - road[0][1]) * t;
     const out = 16 + rnd() * 50;
-    woods.add(px - 0.64 * out, py + 0.77 * out, 8 + rnd() * 7, 1.2 + rnd() * 0.4);
+    wood().add(px - 0.64 * out, py + 0.77 * out, 8 + rnd() * 7, 0.9 + rnd() * 0.3, vary(0.12));
   }
-  root.add(woods.done());
+  for (const w of woods) root.add(w.done());
   root.add(neighbourFarm([FARM.neighbourWoods[0]![0] + 26, FARM.neighbourWoods[0]![1] + 4], 0.3));
   root.add(neighbourFarm([FARM.neighbourWoods[1]![0] - 28, FARM.neighbourWoods[1]![1] - 6], 2.1));
 
@@ -303,7 +331,7 @@ function arborvitae(): THREE.InstancedMesh {
     m.setColorAt(i, new THREE.Color().setHSL(0.31, 0.38, 0.27 + rnd() * 0.05));
   });
   m.castShadow = m.receiveShadow = true;
-  return m;
+  return windy(m, HEDGE_WIND, 'hedge');
 }
 
 /**
@@ -336,6 +364,9 @@ function lilacs(): THREE.Group {
     panicle.computeVertexNormals();
   }
   const up = new THREE.Vector3(0, 1, 0);
+  const bushLeaf = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 });
+  const bushBloom = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8 });
+  const bushBark = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95 });
   for (const p of FARM.lilacs) {
     const b = new THREE.Group();
     const clumps: { c: THREE.Vector3; r: number }[] = [];
@@ -391,10 +422,19 @@ function lilacs(): THREE.Group {
         b.add(stem(mid, tip, r0 * 0.75, r0 * 0.45));
       }
     }
-    b.position.set(p[0], driveHeight(p[0], p[1]) - 0.15, -p[1]);
-    SPOTS.push({ x: p[0], y: b.position.y + 2.6, z: -p[1], r: 2.0, n: 7 });
-    b.rotation.y = rnd() * 6;
-    g.add(b);
+    // One mesh each for leaves, blooms and stems, all sharing the bush's origin so the whole
+    // bush leans and sways together in the breeze.
+    const baked = bake(b, [
+      { from: [leaf, leafDark], to: bushLeaf },
+      { from: [bloom, bloomPale], to: bushBloom },
+      { from: [bark], to: bushBark },
+    ]);
+    const bush = new THREE.Group();
+    for (const mesh of baked) bush.add(windy(mesh, LILAC_WIND, 'lilac'));
+    bush.position.set(p[0], driveHeight(p[0], p[1]) - 0.15, -p[1]);
+    SPOTS.push({ x: p[0], y: bush.position.y + 2.6, z: -p[1], r: 2.0, n: 7 });
+    bush.rotation.y = rnd() * 6;
+    g.add(bush);
   }
   return g;
 }
@@ -404,6 +444,7 @@ function grapes(): THREE.Group {
   const g = new THREE.Group();
   const post = new THREE.MeshStandardMaterial({ color: 0x7a5a3a, roughness: 0.9 });
   const vine = new THREE.MeshStandardMaterial({ color: 0x4e8a34, roughness: 0.9 });
+  const vineLeaf = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 });
   const grape = new THREE.MeshStandardMaterial({ roughness: 0.35 });
   const berry = new THREE.IcosahedronGeometry(1, 1);
   const purples = [0x4a2a5e, 0x5b2d73, 0x3d2050, 0x6a3a82];
@@ -414,12 +455,14 @@ function grapes(): THREE.Group {
       row.add(
         new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.8, 0.1), post).translateX(s).translateY(0.9),
       );
+    const foliage = new THREE.Group();
     for (let s = 0.4; s < L - 0.4; s += 0.55) {
       const o = new THREE.Mesh(new THREE.IcosahedronGeometry(0.42 + rnd() * 0.12, 0), vine);
       o.position.set(s, 1.35 + (rnd() - 0.5) * 0.3, (rnd() - 0.5) * 0.25);
       o.scale.set(1, 0.9, 0.7);
-      row.add(o);
+      foliage.add(o);
     }
+    row.add(windy(bake(foliage, [{ from: [vine], to: vineLeaf }])[0]!, VINE_WIND, 'vine'));
     // Bunches of round purple grapes hanging below the leaves on both sides of the row: each
     // a tapering heap of small berries, widest at the top.
     const at: THREE.Matrix4[] = [],
@@ -669,7 +712,7 @@ function pumpkinVines(): THREE.Group {
     () => new THREE.Color().setHSL(0.26 + rnd() * 0.04, 0.5, 0.26 + rnd() * 0.1),
   );
   leaf.castShadow = true;
-  g.add(leaf);
+  g.add(windy(leaf, LEAF_FLUTTER, 'pumpkin-leaf'));
   // Yellow trumpet flowers, open to the sky.
   const fl = new THREE.ConeGeometry(0.05, 0.1, 7, 1, true);
   fl.rotateX(Math.PI);

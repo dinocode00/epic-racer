@@ -4,6 +4,7 @@ import type { Track } from '@epic/sim';
 import * as tex from './textures.ts';
 import {
   TREES,
+  barkDepth,
   barkMaterial,
   grassMaterial,
   leafDepth,
@@ -500,9 +501,9 @@ export function buildFoliage(
     const list = placed[k];
     if (!list.length) continue;
     const geo = TREES[k]();
-    const meshes: THREE.InstancedMesh[] = [
-      new THREE.InstancedMesh(geo.solid, barkMat, list.length),
-    ];
+    const solid = new THREE.InstancedMesh(geo.solid, barkMat, list.length);
+    solid.customDepthMaterial = barkDepth();
+    const meshes: THREE.InstancedMesh[] = [solid];
     if (geo.leaves) {
       const lm = new THREE.InstancedMesh(geo.leaves, leafMaterial(geo.needles), list.length);
       lm.customDepthMaterial = leafDepth(geo.needles);

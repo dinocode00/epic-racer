@@ -1,8 +1,10 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import * as tex from '../render/textures.ts';
+import { windGust, windUniforms, windy } from '../render/wind.ts';
 import {
   BERM,
+  CENTRE,
   FARM,
   RAMP_RISE,
   type RectDef,
@@ -1620,22 +1622,30 @@ function clothesLines(): THREE.Group {
   for (const z of [-0.7, 0, 0.7]) {
     g.add(strut(new THREE.Vector3(0, 2.15, z), new THREE.Vector3(L, 2.15, z), 0.008, m.black));
   }
+  // Washing pegged along the top edge, swinging and rippling in the breeze.
+  const peg = new THREE.MeshStandardMaterial({ color: 0xc9b48a, roughness: 0.8 });
   for (let i = 0; i < 6; i++) {
-    const w = 0.5 + (i % 3) * 0.3;
-    const sheet = new THREE.Mesh(
-      new THREE.PlaneGeometry(w, 0.7 + (i % 2) * 0.4),
-      new THREE.MeshStandardMaterial({
-        color: cloth[i % cloth.length],
-        side: THREE.DoubleSide,
-        roughness: 0.9,
-      }),
+    const w = 0.5 + (i % 3) * 0.3,
+      h = 0.7 + (i % 2) * 0.4;
+    const geo = new THREE.PlaneGeometry(w, h, 8, 8).translate(0, -h / 2, 0);
+    const sheet = windy(
+      new THREE.Mesh(
+        geo,
+        new THREE.MeshStandardMaterial({
+          color: cloth[i % cloth.length],
+          side: THREE.DoubleSide,
+          roughness: 0.9,
+        }),
+      ),
+      { mode: 'hang', lean: 0.9, sway: 0.28, speed: 1.9, flutter: 0.05, h0: 0 },
+      'laundry',
     );
-    sheet.position.set(
-      1.4 + i * 1.3,
-      2.15 - sheet.geometry.parameters.height / 2,
-      [-0.7, 0, 0.7][i % 3]!,
-    );
+    const x = 1.4 + i * 1.3,
+      z = [-0.7, 0, 0.7][i % 3]!;
+    sheet.position.set(x, 2.15, z);
     g.add(sheet);
+    for (const px of [-w / 2 + 0.06, w / 2 - 0.06])
+      g.add(box(0.025, 0.08, 0.02, peg, x + px, 2.13, z));
   }
   const ang = Math.atan2(b[1] - a[1], b[0] - a[0]);
   g.position.set(a[0], groundHeight(a[0], a[1]), -a[1]);
@@ -1878,9 +1888,32 @@ export function buildBuildings(): Buildings {
 
   const rooster = rg.userData.rooster as THREE.Object3D;
   const wheel = wm.userData.wheel as THREE.Object3D;
+  const yawOf = (o: THREE.Object3D) => {
+    let y = 0;
+    for (let p = o.parent; p; p = p.parent) y += p.rotation.y;
+    return y;
+  };
+  // The breeze in wind metres at a map point (what the shaders see there).
+  const gustAt = (p: XY, t: number) => windGust(p[0] - CENTRE[0], -(p[1] - CENTRE[1]), t);
+  const head = wheel.parent!;
+  let last = 0,
+    spin = 0;
   const update = (t: number) => {
-    wheel.rotation.z = -t * 1.6;
-    rooster.rotation.y = Math.sin(t * 0.13) * 0.6 + Math.sin(t * 0.71) * 0.12;
+    const dt = Math.min(0.1, Math.max(0, t - last));
+    last = t;
+    const wd = windUniforms.uWindDir.value;
+    // The wheel faces into the wind (its -z toward where the breeze comes from), turning
+    // faster in each gust; the tail vane lets it hunt a little either side.
+    const gw = gustAt(F.windmill, t);
+    spin += dt * (0.5 + 3.6 * gw);
+    wheel.rotation.z = -spin;
+    head.rotation.y = Math.atan2(wd.x, wd.y) - yawOf(head) + Math.sin(t * 0.37) * 0.12 * (1.1 - gw);
+    // The rooster points his beak (+x) into the wind, swinging less as it freshens.
+    const gr = gustAt(F.red_garage.c, t);
+    rooster.rotation.y =
+      Math.atan2(wd.y, -wd.x) -
+      yawOf(rooster) +
+      (Math.sin(t * 0.9) * 0.18 + Math.sin(t * 2.3) * 0.06) * (1.15 - gr);
     // Bluebirds: the two at the tray keep dipping for seed; the one on the roof looks about.
     birds.forEach((b, i) => {
       const head = b.userData.head as THREE.Object3D;

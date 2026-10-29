@@ -29,7 +29,9 @@
   font-family: system-ui, sans-serif;
 }
 .farm-panel button {
-  font: 600 13px system-ui, sans-serif;
+  font:
+    600 13px system-ui,
+    sans-serif;
   color: #fff;
   background: rgba(20, 28, 22, 0.62);
   border: 1px solid rgba(255, 255, 255, 0.18);
@@ -53,7 +55,9 @@
   position: fixed;
   left: max(16px, env(safe-area-inset-left, 0px));
   bottom: max(14px, env(safe-area-inset-bottom, 0px));
-  font: 500 13px system-ui, sans-serif;
+  font:
+    500 13px system-ui,
+    sans-serif;
   text-shadow: 0 1px 4px var(--shadow);
   max-width: 60ch;
 }
@@ -83,7 +87,9 @@
   width: 70px;
   height: 70px;
   border-radius: 50%;
-  font: 700 22px system-ui, sans-serif;
+  font:
+    700 22px system-ui,
+    sans-serif;
   color: #fff;
   background: rgba(20, 28, 22, 0.55);
   border: 2px solid rgba(255, 255, 255, 0.35);

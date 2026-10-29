@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { windUniforms } from '../render/foliage.ts';
+import { setWind, windUniforms } from '../render/wind.ts';
 import { patchScene } from '../render/look.ts';
 import { buildSky } from '../render/scenery.ts';
 import { buildBuildings } from './buildings.ts';
@@ -24,6 +24,8 @@ export class FarmScene {
   constructor(renderer: THREE.WebGLRenderer) {
     const s = this.scene;
     const S = FARM_SCALE;
+    // A summer breeze out of the south-west (map +x +y is world +x -z), sized in real metres.
+    setWind(1, -1, 1 / S, 1);
     s.background = new THREE.Color(0xcfe3f2);
     s.fog = new THREE.Fog(0xd6e6ee, 2400, 14000);
     this.sky = buildSky(0x3f86d9, 0xd9ebf6, this.sunDir);
