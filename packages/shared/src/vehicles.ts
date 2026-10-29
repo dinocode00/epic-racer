@@ -9,11 +9,11 @@ export interface VehicleDef {
 }
 
 export const VEHICLES: VehicleDef[] = [
-  { id: 'pod', name: 'Pod Racer', speed: 5, handling: 2, weight: 2, hover: true },
-  { id: 'bat', name: 'Batmobile', speed: 4, handling: 4, weight: 4, hover: false },
-  { id: 'nazgul', name: 'Nazgûl', speed: 4, handling: 3, weight: 2, hover: false },
-  { id: 'mach5', name: 'Mach 5', speed: 4, handling: 4, weight: 1, hover: false },
-  { id: 'corolla', name: "'95 Corolla", speed: 4, handling: 3, weight: 1, hover: false },
+  { id: 'pod', name: 'Pod Racer', speed: 4.5, handling: 3, weight: 1.5, hover: true },
+  { id: 'bat', name: 'Batmobile', speed: 4.5, handling: 4, weight: 2.5, hover: false },
+  { id: 'nazgul', name: 'Nazgûl', speed: 4.5, handling: 4, weight: 1.5, hover: false },
+  { id: 'mach5', name: 'Mach 5', speed: 4.5, handling: 4, weight: 1, hover: false },
+  { id: 'corolla', name: "'95 Corolla", speed: 4, handling: 3.5, weight: 1, hover: false },
 ];
 
 export const vehicleById = (id: string): VehicleDef =>
