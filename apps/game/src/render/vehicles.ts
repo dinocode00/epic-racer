@@ -12,6 +12,7 @@ import {
 } from './modelKit.ts';
 import { nazgul } from './nazgul.ts';
 import { corolla } from './corolla.ts';
+import { landCruiser } from './landcruiser.ts';
 
 export type { VehicleModel } from './modelKit.ts';
 
@@ -474,6 +475,8 @@ export function buildVehicle(id: string, accent: string): VehicleModel {
       return nazgul(c);
     case 'corolla':
       return corolla(c);
+    case 'landcruiser':
+      return landCruiser(c);
     default:
       return batmobile(c);
   }

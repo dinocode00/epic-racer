@@ -14,6 +14,7 @@ export const VEHICLES: VehicleDef[] = [
   { id: 'nazgul', name: 'Nazgûl', speed: 4.5, handling: 4, weight: 2, hover: false },
   { id: 'mach5', name: 'Mach 5', speed: 4.5, handling: 4, weight: 1, hover: false },
   { id: 'corolla', name: "'95 Corolla", speed: 4, handling: 3.5, weight: 1, hover: false },
+  { id: 'landcruiser', name: "'89 Land Cruiser", speed: 4.5, handling: 4, weight: 4, hover: false },
 ];
 
 export const vehicleById = (id: string): VehicleDef =>
