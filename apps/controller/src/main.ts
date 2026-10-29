@@ -325,7 +325,6 @@ function showRace(): void {
       <div class="btns">
         <div class="btn item" data-b="item">ITEM</div>
         <div class="btn drift" data-b="drift">DRIFT</div>
-        <div class="btn brake" data-b="brake">BRAKE</div>
       </div>
       <div class="drive">
         <div class="rail"></div>
@@ -400,7 +399,7 @@ const ordinal = (n: number) =>
 // ---------- touch handling ----------
 // Right thumb: anywhere on the right half holds the gas, and sliding it sideways from where it
 // landed steers (or, with tilt on, turning the phone does), so the gas never has to be let go.
-// Left thumb: DRIFT, ITEM and BRAKE.
+// Left thumb: DRIFT and ITEM. There is no brake: letting go of the gas slows you down.
 function bindPad(): void {
   const drive = app.querySelector<HTMLElement>('.drive')!;
   const knob = drive.querySelector<HTMLElement>('.knob')!;
@@ -464,9 +463,7 @@ function bindPad(): void {
   const refreshButtons = () => {
     const held = new Set([...btnTouches.values()].filter(Boolean).map((b) => b!.dataset.b));
     btns.forEach((b) => b.classList.toggle('down', held.has(b.dataset.b)));
-    pad.brake = held.has('brake') ? 1 : 0;
-    // Braking wins over the gas: hold both to stop or reverse while still steering.
-    pad.throttle = driveTouch !== null && !pad.brake ? 1 : 0;
+    pad.throttle = driveTouch !== null ? 1 : 0;
     pad.drift = held.has('drift');
     const item = held.has('item');
     if (item && !pad.item) itemTap = true;

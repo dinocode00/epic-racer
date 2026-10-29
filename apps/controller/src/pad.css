@@ -204,7 +204,7 @@ button.big.ready {
   box-shadow: 0 2px 0 rgba(0, 0, 0, 0.35);
   filter: brightness(1.2);
 }
-/* Left thumb: big DRIFT and ITEM side by side along the thumb's arc, BRAKE in the corner. */
+/* Left thumb: big DRIFT and ITEM side by side along the thumb's arc. */
 .btn.drift {
   width: 38vmin;
   height: 38vmin;
@@ -221,14 +221,6 @@ button.big.ready {
   background: var(--gold);
   color: #222;
   font-size: 5vmin;
-}
-.btn.brake {
-  width: 25vmin;
-  height: 25vmin;
-  left: 4%;
-  bottom: 5%;
-  background: #c94040;
-  font-size: 4.2vmin;
 }
 /* Right thumb: the knob sits under the thumb wherever it lands and slides sideways to steer. */
 .drive {
