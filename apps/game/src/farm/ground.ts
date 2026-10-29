@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { FARM, type XY, groundHeight, smoothLine, smoothRing } from './layout.ts';
+import { FARM, type RectDef, type XY, groundHeight, smoothLine, smoothRing } from './layout.ts';
 
 /**
  * The farm's ground: one terrain mesh shaped by the slope model and painted from the map
@@ -249,6 +249,10 @@ function paintGround(): THREE.CanvasTexture {
   line(FARM.lane);
   x.stroke();
 
+  // 8. Soft contact shadow where things meet the ground: round every building and under
+  // every tree, the darkening you see in sheltered, rain-shadowed corners.
+  contactShadows(x, P);
+
   // A plain meadow rim, so the texture's clamped edge colour carries on smoothly to the horizon.
   x.strokeStyle = '#93a85e';
   x.lineWidth = 24;
@@ -258,6 +262,55 @@ function paintGround(): THREE.CanvasTexture {
   t.anisotropy = 16;
   t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
   return t;
+}
+
+function contactShadows(x: CanvasRenderingContext2D, P: (p: XY) => [number, number]): void {
+  const rect = (r: RectDef, angle: number, grow: number) => {
+    const a = (angle * Math.PI) / 180;
+    const u: XY = [Math.cos(a), Math.sin(a)],
+      v: XY = [-Math.sin(a), Math.cos(a)];
+    const k = (su: number, sv: number): XY => [
+      r.c[0] + (u[0] * su * (r.w + grow)) / 2 + (v[0] * sv * (r.h + grow)) / 2,
+      r.c[1] + (u[1] * su * (r.w + grow)) / 2 + (v[1] * sv * (r.h + grow)) / 2,
+    ];
+    x.beginPath();
+    [k(-1, -1), k(1, -1), k(1, 1), k(-1, 1)].forEach((p, i) =>
+      i ? x.lineTo(...P(p)) : x.moveTo(...P(p)),
+    );
+    x.closePath();
+    x.fill();
+  };
+  const dot = (p: XY, r: number) => {
+    x.beginPath();
+    x.arc(...P(p), r * PPM, 0, Math.PI * 2);
+    x.fill();
+  };
+  x.save();
+  x.filter = `blur(${0.5 * PPM}px)`;
+  x.fillStyle = 'rgba(20,24,10,0.32)';
+  const H = FARM.house;
+  for (const r of [H.main, H.wing, H.porch]) rect(r, H.angle, 0.7);
+  for (const r of [
+    FARM.barn,
+    FARM.wooden_garage,
+    FARM.red_garage,
+    FARM.shed,
+    FARM.greenhouse,
+    FARM.playhouse,
+  ])
+    rect(r, r.angle ?? 50, 0.7);
+  for (const w of FARM.wagons) rect({ c: w.c, w: 4.2, h: 2.0 }, w.angle, 0);
+  dot(FARM.corn_crib, 1.8);
+  dot(FARM.well, 1.6);
+  x.filter = `blur(${0.8 * PPM}px)`;
+  x.fillStyle = 'rgba(20,30,10,0.22)';
+  for (const t of FARM.christmas_trees) dot([t.x, t.y], 0.12 + t.heightFt * 0.3048 * 0.3);
+  for (const [tx, ty] of FARM.orchard) dot([tx, ty], 1.7);
+  for (const p of [...FARM.big_spruces, ...FARM.spruce_row]) dot(p, 2.6);
+  for (const p of FARM.arborvitae) dot(p, 0.9);
+  for (const p of FARM.lilacs) dot(p, 1.8);
+  dot(FARM.big_scotch_pine, 3);
+  x.restore();
 }
 
 /** Grain, patches and a web of old cracks on the country road. */

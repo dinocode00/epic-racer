@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import * as tex from '../render/textures.ts';
 import { windGust, windUniforms, windy } from '../render/wind.ts';
+import { addGrime } from './grime.ts';
 import {
   BERM,
   CENTRE,
@@ -125,9 +126,47 @@ function makeMats() {
     },
     1.5,
   );
+  // Window glass: a dim room behind, the sky caught in the top of the pane, and curtains
+  // drawn back to one or both sides.
+  const pane = (left: boolean, right: boolean) => {
+    const c = document.createElement('canvas');
+    c.width = 64;
+    c.height = 96;
+    const x = c.getContext('2d')!;
+    const sky = x.createLinearGradient(0, 0, 0, 96);
+    sky.addColorStop(0, '#9fb6c8');
+    sky.addColorStop(0.35, '#4a5d6c');
+    sky.addColorStop(1, '#27313a');
+    x.fillStyle = sky;
+    x.fillRect(0, 0, 64, 96);
+    const curtain = (x0: number, dir: number) => {
+      for (let i = 0; i < 18; i++) {
+        const v = 200 + ((i % 3) * 12 + Math.random() * 10);
+        x.fillStyle = `rgb(${v},${v - 6},${v - 18})`;
+        const xx = x0 + dir * i;
+        x.fillRect(xx, 4, 1, 92 - Math.abs(i - 9) * 0.6);
+      }
+      x.fillStyle = 'rgba(255,255,255,0.15)';
+      x.fillRect(x0 + dir * 6, 4, 2 * dir, 90);
+    };
+    if (left) curtain(0, 1);
+    if (right) curtain(63, -1);
+    x.fillStyle = 'rgba(255,255,255,0.18)';
+    x.beginPath();
+    x.moveTo(8, 0);
+    x.lineTo(30, 0);
+    x.lineTo(6, 40);
+    x.lineTo(0, 40);
+    x.fill();
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  };
+  const glassWith = (map: THREE.Texture) =>
+    std({ map, metalness: 0.35, roughness: 0.12, envMapIntensity: 1.1 });
   const planks = tex.planks();
   planks.repeat.set(1 / 1.6, 1 / 1.6);
-  return {
+  const all = {
     siding: std({ map: siding, roughness: 0.75 }),
     boards: std({ map: boards, roughness: 0.85 }),
     shingle: std({ map: shingle, roughness: 0.95 }),
@@ -138,6 +177,11 @@ function makeMats() {
     trimBlue: std({ color: 0x7d95ab, roughness: 0.6 }),
     red: std({ color: 0xa5312a, roughness: 0.8 }),
     glass: std({ color: 0x24323c, metalness: 0.5, roughness: 0.15, envMapIntensity: 1.2 }),
+    glassBoth: glassWith(pane(true, true)),
+    glassL: glassWith(pane(true, false)),
+    glassR: glassWith(pane(false, true)),
+    gutter: std({ color: 0xf2f1ec, roughness: 0.45, metalness: 0.2 }),
+    ridgeCap: std({ color: 0x232527, roughness: 0.9 }),
     plexi: std({
       color: 0xe8f6ff,
       roughness: 0.08,
@@ -167,6 +211,20 @@ function makeMats() {
     soil: std({ color: 0x4a3626, roughness: 1 }),
     grassMound: std({ color: 0x6fa645, roughness: 1 }),
   };
+  // Splash dirt and weathering on everything that stands on the ground.
+  for (const k of [
+    'siding',
+    'boards',
+    'stone',
+    'concrete',
+    'trimWhite',
+    'trimBlue',
+    'red',
+  ] as const)
+    addGrime(all[k]);
+  for (const k of ['wood', 'brick', 'panel', 'galv', 'alu', 'rust', 'black'] as const)
+    addGrime(all[k], 0.4, 0.25, 0.06);
+  return all;
 }
 
 // ---------------------------------------------------------------- helpers
@@ -280,16 +338,69 @@ function shedRoof(
   return slab;
 }
 
-/** Window with trim on a wall: wall normal along +z of the returned group. */
+/** Window with trim and a sill on a wall: wall normal along +z of the returned group. */
 function windowAt(w: number, h: number, trim: THREE.Material, panes = 1) {
   const g = new THREE.Group();
   const m = mats();
   g.add(box(w + 0.22, h + 0.22, 0.08, trim, 0, 0, 0.02));
   const pw = w / panes;
   for (let i = 0; i < panes; i++) {
-    g.add(box(pw - 0.08, h - 0.08, 0.1, m.glass, -w / 2 + pw * (i + 0.5), 0, 0.03));
+    // Curtains drawn back to the outside edges of the window.
+    const glass =
+      panes === 1 ? m.glassBoth : i === 0 ? m.glassL : i === panes - 1 ? m.glassR : m.glass;
+    g.add(box(pw - 0.08, h - 0.08, 0.1, glass, -w / 2 + pw * (i + 0.5), 0, 0.03));
   }
   g.add(box(w, 0.05, 0.12, trim, 0, 0, 0.05)); // meeting rail
+  g.add(box(w + 0.34, 0.06, 0.16, trim, 0, -h / 2 - 0.12, 0.06)); // sill
+  return g;
+}
+
+/**
+ * Roof trim along a gable roof's two eaves (ridge along x): fascia boards, white K-style
+ * gutters, and a ridge cap. Returns the eave edge height for downspouts.
+ */
+function roofTrim(
+  L: number,
+  W: number,
+  eave: number,
+  ridge: number,
+  over: number,
+  gutters = true,
+): { group: THREE.Group; edge: number; run: number } {
+  const m = mats();
+  const g = new THREE.Group();
+  const run = W / 2 + over;
+  const edge = ridge - ((ridge - eave) / (W / 2)) * run;
+  const len = L + over * 2;
+  for (const s of [-1, 1]) {
+    g.add(box(len, 0.2, 0.04, m.trimWhite, 0, edge - 0.08, s * (run + 0.01)));
+    if (gutters) {
+      g.add(box(len, 0.13, 0.14, m.gutter, 0, edge - 0.12, s * (run + 0.09)));
+      for (const e of [-1, 1])
+        g.add(box(0.02, 0.13, 0.15, m.gutter, (e * len) / 2, edge - 0.12, s * (run + 0.09)));
+    }
+  }
+  g.add(box(len, 0.07, 0.3, m.ridgeCap, 0, ridge + 0.13, 0));
+  return { group: g, edge, run };
+}
+
+/**
+ * A downspout from the gutter at (x, edge, zGutter) back to the wall at zWall and down to
+ * `bottom`, kicking out onto a concrete splash block.
+ */
+function downspout(x: number, zGutter: number, zWall: number, top: number, bottom: number) {
+  const m = mats();
+  const g = new THREE.Group();
+  const s = Math.sign(zGutter - zWall);
+  const zp = zWall + s * 0.08;
+  g.add(box(0.08, 0.08, Math.abs(zGutter - zp) + 0.04, m.gutter, x, top - 0.2, (zGutter + zp) / 2));
+  g.add(
+    box(0.08, top - 0.2 - bottom - 0.12, 0.08, m.gutter, x, (top - 0.2 + bottom + 0.12) / 2, zp),
+  );
+  const kick = box(0.08, 0.08, 0.32, m.gutter, x, bottom + 0.1, zp + s * 0.14);
+  kick.rotation.x = s * 0.5;
+  g.add(kick);
+  g.add(box(0.28, 0.05, 0.55, m.concrete, x, bottom + 0.02, zp + s * 0.42));
   return g;
 }
 
@@ -338,6 +449,17 @@ function farmhouse(): THREE.Group {
   g.add(boxM(L + 0.25, base + 1.2, W + 0.25, m.stone, 0, base / 2 - 0.6, 0));
   g.add(gableBody(L, W, base, eave, ridge, m.siding));
   g.add(gableRoof(L, W, eave, ridge, m.shingle, 0.4));
+  // Gutters and downspouts: both east corners (into the planter) and the north-west corner.
+  const hAt = (lx: number, lz: number) => {
+    const p = addXY(addXY(H.main.c, U, lx), V, -lz);
+    return groundHeight(p[0], p[1]) - groundHeight(H.main.c[0], H.main.c[1]);
+  };
+  const trim = roofTrim(L, W, eave, ridge, 0.4);
+  g.add(trim.group);
+  const gz = trim.run + 0.09;
+  for (const x of [-L / 2 + 0.15, L / 2 - 0.15])
+    g.add(downspout(x, gz, W / 2, trim.edge, hAt(x, W / 2) + 0.35));
+  g.add(downspout(L / 2 - 0.15, -gz, -W / 2, trim.edge, hAt(L / 2, -W / 2)));
   // Front gable wing toward the road (-z), ridge across the main one, steeper.
   const wl = H.wing.w,
     wd = H.wing.h + W / 2; // runs back into the main block
@@ -354,6 +476,21 @@ function farmhouse(): THREE.Group {
   wroof.rotation.y = Math.PI / 2;
   wroof.position.z = -wd / 2 - 0.15;
   wing.add(wroof);
+  {
+    const wt = roofTrim(wd + 0.3, wl, eave, wRidge, 0.45);
+    const tg = new THREE.Group();
+    tg.add(wt.group);
+    // Downspouts at the wing's two front corners (trim frame: x along the ridge, front at +x).
+    const xf = wd / 2 - 0.3;
+    const wx = H.wing.c ? local(H.wing.c, H.main.c, H.angle)[0] : 2.2;
+    for (const sd of [-1, 1])
+      tg.add(
+        downspout(xf, sd * (wt.run + 0.09), (sd * wl) / 2, wt.edge, hAt(wx + (sd * wl) / 2, -wd)),
+      );
+    tg.rotation.y = Math.PI / 2;
+    tg.position.z = -wd / 2 - 0.15;
+    wing.add(tg);
+  }
   // Octagonal gable vent and a paired window upstairs, triple window downstairs.
   const vent = new THREE.Mesh(new THREE.CircleGeometry(0.42, 8), m.trimWhite);
   vent.position.set(0, 8.4, -wd - 0.02);
@@ -902,6 +1039,7 @@ function barn(): THREE.Group {
   g.add(boxM(L, st + 1.5, W, m.stone, 0, (st - 1.5) / 2, 0));
   g.add(gableBody(L, W, st, eave, ridge, m.boards));
   g.add(gableRoof(L, W, eave, ridge, m.shingle, 0.55, 0.2));
+  g.add(roofTrim(L, W, eave, ridge, 0.55, false).group);
   // Painted tree on the west (-z) slope: base at the eave, star at the ridge.
   const slope = Math.atan2(ridge - eave, W / 2);
   const len = W / 2 / Math.cos(slope);
@@ -1217,6 +1355,10 @@ function redGarage(): THREE.Group {
   g.add(boxM(L, 0.8, W, m.concrete, 0, -0.3, 0));
   g.add(gableBody(L, W, 0, eave, ridge, m.boards));
   g.add(gableRoof(L, W, eave, ridge, m.shingle, 0.4));
+  const gt = roofTrim(L, W, eave, ridge, 0.4);
+  g.add(gt.group);
+  for (const sd of [-1, 1])
+    g.add(downspout(-L / 2 + 0.15, sd * (gt.run + 0.09), (sd * W) / 2, gt.edge, 0));
   for (const [x, z] of [
     [L / 2, W / 2],
     [-L / 2, W / 2],

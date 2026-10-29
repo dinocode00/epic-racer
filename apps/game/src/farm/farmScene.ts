@@ -2,10 +2,15 @@ import * as THREE from 'three';
 import { setWind, windUniforms } from '../render/wind.ts';
 import { patchScene } from '../render/look.ts';
 import { buildSky } from '../render/scenery.ts';
+import type { BeeSpot } from './bees.ts';
 import { buildBuildings } from './buildings.ts';
+import { buildCritters } from './critters.ts';
+import { type Grass, buildGrass } from './grass.ts';
+import { setGrimeFrame } from './grime.ts';
 import { buildGround } from './ground.ts';
 import { CENTRE, FARM, FARM_SCALE, type XY, driveHeight, inside } from './layout.ts';
 import { buildPlants } from './plants.ts';
+import { addCloudShadow, farmSky } from './sky.ts';
 
 /**
  * The Grandparents' Farm scene: lush green summer into early fall, sunshine, built from the
@@ -20,6 +25,10 @@ export class FarmScene {
   private t = 0;
   private updateProps: (t: number) => void;
   private solids: { c: XY; w: number; h: number; angle: number }[];
+  private grass: Grass;
+  private critters: ReturnType<typeof buildCritters>;
+  private farm: THREE.Group;
+  private camLocal = new THREE.Vector3();
 
   constructor(renderer: THREE.WebGLRenderer) {
     const s = this.scene;
@@ -28,7 +37,7 @@ export class FarmScene {
     setWind(1, -1, 1 / S, 1);
     s.background = new THREE.Color(0xcfe3f2);
     s.fog = new THREE.Fog(0xd6e6ee, 2400, 14000);
-    this.sky = buildSky(0x3f86d9, 0xd9ebf6, this.sunDir);
+    this.sky = farmSky(0x3f86d9, 0xd9ebf6, this.sunDir);
     this.sky.scale.setScalar(4);
     s.add(this.sky);
 
@@ -57,17 +66,28 @@ export class FarmScene {
     const farm = new THREE.Group();
     farm.scale.setScalar(S);
     farm.position.set(-CENTRE[0] * S, 0, CENTRE[1] * S);
-    farm.add(buildGround());
+    setGrimeFrame(farm);
+    const land = buildGround();
+    farm.add(land);
+    this.grass = buildGrass((land.material as THREE.MeshStandardMaterial).map!);
+    farm.add(this.grass.group);
+    this.farm = farm;
     const b = buildBuildings();
     const plants = buildPlants();
     farm.add(b.group, plants);
     const bees = plants.userData.update as (t: number) => void;
+    this.critters = buildCritters(plants.userData.spots as BeeSpot[]);
+    farm.add(this.critters.group);
     this.updateProps = (t) => {
       b.update(t);
       bees(t);
     };
     this.solids = b.solids;
     s.add(farm);
+    farm.traverse((o) => {
+      const m = (o as THREE.Mesh).material;
+      if (m) (Array.isArray(m) ? m : [m]).forEach(addCloudShadow);
+    });
     patchScene(s);
   }
 
@@ -149,5 +169,8 @@ export class FarmScene {
     windUniforms.uTime.value = this.t;
     this.updateProps(this.t);
     this.sky.position.copy(camera.position);
+    this.farm.worldToLocal(this.camLocal.copy(camera.position));
+    this.grass.update(this.camLocal);
+    this.critters.update(this.t, this.camLocal);
   }
 }

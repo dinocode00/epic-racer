@@ -76,11 +76,11 @@ function coneTier(
     p.fromBufferAttribute(pos, i);
     const rim = THREE.MathUtils.clamp((-p.y + h / 2) / h, 0, 1);
     const a = Math.atan2(p.z, p.x);
-    const teeth =
-      1 +
-      rim *
-        s.jag *
-        (Math.sin(a * s.teeth + k * 1.7) * 0.7 + Math.sin(a * s.teeth * 2.3 + k * 0.9) * 0.3);
+    // Branch tips: a pointed triangle wave round the rim, each tip a different length.
+    const u = (a / (Math.PI * 2)) * s.teeth + k * 0.37;
+    const tip = 1 - 2 * Math.abs(u - Math.floor(u) - 0.5);
+    const len = 0.7 + 0.6 * Math.abs(Math.sin(Math.floor(u) * 12.9898 + k * 78.233));
+    const teeth = 1 + rim * s.jag * (tip ** 1.6 * len * 1.4 - 0.45);
     const fl = 1 + s.fluff * wobble(p, s.fluffF / Math.max(r, 0.2), k * 3.1);
     p.x *= teeth * fl;
     p.z *= teeth * fl;
@@ -127,7 +127,7 @@ function conifer(s: ConeSpec): TreeGeo {
   const H = s.height;
   const solid = [
     bark(
-      new THREE.CylinderGeometry(H * 0.012, H * 0.03, H * 0.97, 7).translate(0, H * 0.485, 0),
+      new THREE.CylinderGeometry(H * 0.012, H * 0.03, H * 0.9, 7).translate(0, H * 0.45, 0),
       s.trunk,
     ),
   ];
@@ -164,21 +164,21 @@ const XMAS: Record<'scotch' | 'douglas' | 'white' | 'blue', ConeSpec> = {
   scotch: {
     height: 3,
     spread: 0.42,
-    tiers: 7,
+    tiers: 8,
     overlap: 2.1,
     skirt: 0.12,
-    teeth: 7,
-    jag: 0.08,
+    teeth: 9,
+    jag: 0.16,
     droop: 0.02,
     upturn: 0.05,
-    fluff: 0.2,
-    fluffF: 4.5,
-    low: 0x35603f,
-    high: 0x5b7f45,
+    fluff: 0.28,
+    fluffF: 6,
+    low: 0x355f45,
+    high: 0x6c8b4c,
     trunk: 0x7a4a2c,
-    cardN: 10,
-    cardSize: 0.5,
-    cardOut: 1.02,
+    cardN: 15,
+    cardSize: 0.62,
+    cardOut: 1.12,
     shape: 0.85,
   },
   // Douglas fir: dark, soft and dense, a narrower cone with a sharp top and soft drooping tips.
@@ -188,18 +188,18 @@ const XMAS: Record<'scotch' | 'douglas' | 'white' | 'blue', ConeSpec> = {
     tiers: 9,
     overlap: 1.7,
     skirt: 0.1,
-    teeth: 11,
-    jag: 0.1,
-    droop: 0.12,
+    teeth: 12,
+    jag: 0.24,
+    droop: 0.18,
     upturn: 0.04,
     fluff: 0.06,
     fluffF: 6,
     low: 0x1f4a2a,
     high: 0x2f6236,
     trunk: 0x5a3c28,
-    cardN: 12,
-    cardSize: 0.42,
-    cardOut: 1.0,
+    cardN: 14,
+    cardSize: 0.48,
+    cardOut: 1.08,
     shape: 1.05,
   },
   // White pine: pale, soft and feathery, layered whorls with daylight between them, long
@@ -208,20 +208,20 @@ const XMAS: Record<'scotch' | 'douglas' | 'white' | 'blue', ConeSpec> = {
     height: 3,
     spread: 0.38,
     tiers: 5,
-    overlap: 1.25,
+    overlap: 1.1,
     skirt: 0.14,
-    teeth: 6,
-    jag: 0.16,
+    teeth: 8,
+    jag: 0.32,
     droop: 0.05,
     upturn: 0.08,
-    fluff: 0.12,
+    fluff: 0.16,
     fluffF: 3,
     low: 0x3f6f58,
     high: 0x6b9a7c,
     trunk: 0x5e5248,
-    cardN: 16,
-    cardSize: 0.62,
-    cardOut: 1.12,
+    cardN: 20,
+    cardSize: 0.78,
+    cardOut: 1.2,
     shape: 0.95,
   },
   // Blue spruce: stiff and symmetric, sharp tiers with spiky rims flicking up, silver-blue.
@@ -231,18 +231,18 @@ const XMAS: Record<'scotch' | 'douglas' | 'white' | 'blue', ConeSpec> = {
     tiers: 10,
     overlap: 1.45,
     skirt: 0.08,
-    teeth: 16,
-    jag: 0.2,
+    teeth: 18,
+    jag: 0.32,
     droop: 0.06,
-    upturn: 0.22,
+    upturn: 0.3,
     fluff: 0.02,
     fluffF: 8,
-    low: 0x4d6e7c,
-    high: 0x8aa9b4,
+    low: 0x587a88,
+    high: 0x9db9c2,
     trunk: 0x5a4636,
     cardN: 9,
     cardSize: 0.34,
-    cardOut: 1.0,
+    cardOut: 1.06,
     shape: 1.0,
   },
 };
@@ -253,23 +253,47 @@ export const xmasTree = (kind: keyof typeof XMAS): TreeGeo => conifer(XMAS[kind]
 export function spruce(): TreeGeo {
   return conifer({
     height: 13,
-    spread: 0.24,
-    tiers: 13,
-    overlap: 1.5,
+    spread: 0.3,
+    tiers: 14,
+    overlap: 1.8,
     skirt: 0.5,
-    teeth: 9,
-    jag: 0.14,
-    droop: 0.32,
+    teeth: 10,
+    jag: 0.3,
+    droop: 0.35,
     upturn: 0.1,
-    fluff: 0.08,
+    fluff: 0.12,
     fluffF: 3,
     low: 0x1d3f26,
     high: 0x2d5a33,
     trunk: 0x4f3a2a,
-    cardN: 10,
-    cardSize: 0.4,
-    cardOut: 1.02,
-    shape: 1.1,
+    cardN: 14,
+    cardSize: 0.45,
+    cardOut: 1.08,
+    shape: 1.0,
+  });
+}
+
+/** Arborvitae, about 11 ft: a dense, rounded column of soft, flat sprays. */
+export function arborvitaeTree(): TreeGeo {
+  return conifer({
+    height: 3.35,
+    spread: 0.3,
+    tiers: 9,
+    overlap: 2.6,
+    skirt: 0.05,
+    teeth: 7,
+    jag: 0.12,
+    droop: 0.0,
+    upturn: 0.0,
+    fluff: 0.26,
+    fluffF: 5,
+    low: 0x2c5a2a,
+    high: 0x4b7f3a,
+    trunk: 0x5a4030,
+    cardN: 16,
+    cardSize: 0.6,
+    cardOut: 1.08,
+    shape: 0.55,
   });
 }
 
@@ -280,18 +304,18 @@ export function spruce(): TreeGeo {
  */
 export function scotchGiant(): TreeGeo {
   const grey = 0x6d5d50,
-    orange = 0xc0662f,
-    limbCol = 0xa75a2e;
+    orange = 0xb8693a,
+    limbCol = 0x9c5a34;
   const trunkPts = [V(0, 0, 0), V(0.1, 4, 0.05), V(-0.05, 8, 0.2), V(0.25, 12.5, 0.1)];
   const top = [V(0.25, 12.5, 0.1), V(0.4, 15.5, -0.15), V(0.3, 18.2, -0.3)];
   const solid = [
     bark(
-      new THREE.TubeGeometry(new THREE.CatmullRomCurve3(trunkPts.slice(0, 3)), 10, 0.42, 9),
+      new THREE.TubeGeometry(new THREE.CatmullRomCurve3(trunkPts.slice(0, 3)), 10, 0.5, 9),
       grey,
     ),
-    bark(new THREE.CylinderGeometry(0.44, 0.62, 0.8, 9).translate(0, 0.25, 0), grey),
-    bark(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(trunkPts.slice(2)), 8, 0.3, 8), orange),
-    bark(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(top), 8, 0.2, 7), orange),
+    bark(new THREE.CylinderGeometry(0.52, 0.75, 0.8, 9).translate(0, 0.25, 0), grey),
+    bark(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(trunkPts.slice(2)), 8, 0.36, 8), orange),
+    bark(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(top), 8, 0.24, 7), orange),
   ];
   // Stubs of old lower limbs, long since shaded out.
   for (let i = 0; i < 6; i++) {
@@ -309,19 +333,21 @@ export function scotchGiant(): TreeGeo {
   const pad = (c: THREE.Vector3, r: number, k: number) => {
     const cols = [0x2f5a46, 0x3a6a52, 0x45745a];
     solid.push(blob(c, r, C(cols[k % 3]!), 40 + k, 0.42));
-    leaves.push(cards(c, r * 0.95, Math.round(r * 14), 1.1, C(cols[(k + 1) % 3]!)));
+    leaves.push(cards(c, r * 0.95, Math.round(r * 18), 1.3, C(cols[(k + 1) % 3]!)));
   };
   // Limbs: angled up out of the orange trunk, levelling out, each ending in needle pads.
   // The crown leans to one side and is flat on top.
   const limbs: [number, number, number, number][] = [
     // angle, height on trunk, reach, rise
-    [0.3, 10.5, 4.6, 2.2],
-    [2.1, 11.2, 3.8, 2.6],
-    [3.6, 12.3, 4.2, 2.4],
-    [5.0, 13.0, 3.3, 2.5],
-    [1.2, 14.0, 3.0, 2.2],
-    [4.3, 14.8, 2.6, 2.0],
-    [2.8, 15.6, 2.2, 1.6],
+    [0.3, 8.8, 5.8, 2.6],
+    [2.0, 9.6, 5.0, 3.0],
+    [3.5, 10.4, 5.4, 2.8],
+    [5.0, 11.2, 4.6, 3.0],
+    [1.1, 12.2, 4.4, 2.8],
+    [4.2, 13.0, 4.0, 2.6],
+    [2.7, 13.9, 3.6, 2.4],
+    [5.8, 14.8, 3.2, 2.2],
+    [0.7, 15.6, 2.6, 1.8],
   ];
   limbs.forEach(([a, y, reach, rise], k) => {
     const dx = Math.cos(a),
@@ -335,15 +361,27 @@ export function scotchGiant(): TreeGeo {
           V(dx * reach * 0.7 + 0.4, y + rise * 0.9 + (rnd() - 0.5) * 0.6, dz * reach * 0.7),
           end,
         ],
-        0.16 - k * 0.012,
+        0.2 - k * 0.012,
         limbCol,
       ),
     );
-    pad(end, 1.9 - k * 0.1, k);
-    pad(V(dx * reach * 0.55 + 0.35, y + rise * 0.85, dz * reach * 0.55), 1.3, k + 1);
+    // A big pad at the tip, one part way along, and a side shoot with its own pad.
+    pad(end, 2.5 - k * 0.1, k);
+    pad(V(dx * reach * 0.55 + 0.35, y + rise * 0.85, dz * reach * 0.55), 1.8, k + 1);
+    const sa = a + (k % 2 ? 0.7 : -0.7);
+    pad(
+      V(
+        dx * reach * 0.6 + Math.cos(sa) * 1.6,
+        y + rise * 0.8,
+        dz * reach * 0.6 + Math.sin(sa) * 1.6,
+      ),
+      1.6,
+      k + 2,
+    );
   });
-  pad(V(0.4, 18.0, -0.2), 1.8, 9);
-  pad(V(1.6, 17.6, 1.2), 1.5, 10);
+  pad(V(0.4, 18.0, -0.2), 2.4, 9);
+  pad(V(2.2, 17.6, 1.6), 2.1, 10);
+  pad(V(-1.6, 17.4, -1.4), 2.0, 11);
   return { solid: merge(solid), leaves: merge(leaves), needles: true };
 }
 

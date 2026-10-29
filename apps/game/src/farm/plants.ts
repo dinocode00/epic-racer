@@ -21,7 +21,16 @@ import {
   rampHeight,
   rampPoint,
 } from './layout.ts';
-import { WOODS, appleTree, cherryTree, pearTree, scotchGiant, spruce, xmasTree } from './trees.ts';
+import {
+  WOODS,
+  appleTree,
+  arborvitaeTree,
+  cherryTree,
+  pearTree,
+  scotchGiant,
+  spruce,
+  xmasTree,
+} from './trees.ts';
 
 /** Where the honeybees work: every flower patch and the windfalls in the orchard. */
 const SPOTS: BeeSpot[] = [];
@@ -65,7 +74,6 @@ const FT = 0.3048;
 
 // How the farm's shrubs and low plants move in the breeze (object units: metres here).
 const LILAC_WIND = { lean: 0.018, sway: 0.014, speed: 1.6, flutter: 0.025, h0: 0.4 };
-const HEDGE_WIND = { lean: 0.012, sway: 0.01, speed: 1.2, flutter: 0.012, h0: 0.6 };
 const VINE_WIND = { lean: 0.03, sway: 0.03, speed: 2.1, flutter: 0.03, h0: 1.0 };
 const LEAF_FLUTTER = { lean: 0.12, sway: 0.12, speed: 2.6, flutter: 0.1, h0: -1 };
 
@@ -289,6 +297,7 @@ export function buildPlants(): THREE.Group {
   const hive = bees(SPOTS);
   root.add(hive.mesh);
   root.userData.update = hive.update;
+  root.userData.spots = SPOTS;
   root.traverse((o) => {
     if ((o as THREE.Mesh).isMesh && !(o as THREE.InstancedMesh).isInstancedMesh) {
       o.castShadow = true;
@@ -299,39 +308,11 @@ export function buildPlants(): THREE.Group {
 }
 
 /** Mature arborvitae, about 11 ft: full, dense columns that nearly meet along the row. */
-function arborvitae(): THREE.InstancedMesh {
-  const prof: THREE.Vector2[] = [];
-  for (let i = 0; i <= 12; i++) {
-    const t = i / 12;
-    const r = 1.0 * Math.sin(Math.min(1, t * 1.35) * Math.PI * 0.62) * (1 - t * 0.55) + 0.02;
-    prof.push(new THREE.Vector2(r, t * 11 * FT));
-  }
-  prof.push(new THREE.Vector2(0, 11 * FT));
-  const g = new THREE.LatheGeometry(prof, 12);
-  const pos = g.attributes.position!;
-  for (let i = 0; i < pos.count; i++) {
-    const k = 1 + 0.06 * Math.sin(pos.getY(i) * 9 + Math.atan2(pos.getZ(i), pos.getX(i)) * 5);
-    pos.setX(i, pos.getX(i) * k);
-    pos.setZ(i, pos.getZ(i) * k);
-  }
-  g.computeVertexNormals();
-  const m = new THREE.InstancedMesh(
-    g,
-    new THREE.MeshStandardMaterial({ color: 0x3f7a3a, roughness: 0.95 }),
-    FARM.arborvitae.length,
-  );
-  const mt = new THREE.Matrix4();
-  FARM.arborvitae.forEach((p, i) => {
-    mt.makeScale(1, 0.94 + rnd() * 0.12, 1).setPosition(
-      p[0],
-      groundHeight(p[0], p[1]) - 0.05,
-      -p[1],
-    );
-    m.setMatrixAt(i, mt);
-    m.setColorAt(i, new THREE.Color().setHSL(0.31, 0.38, 0.27 + rnd() * 0.05));
-  });
-  m.castShadow = m.receiveShadow = true;
-  return windy(m, HEDGE_WIND, 'hedge');
+function arborvitae(): THREE.Group {
+  const b = new TreeBatch(normalise(arborvitaeTree), FARM.arborvitae.length, true);
+  for (const p of FARM.arborvitae)
+    b.add(p[0], p[1], 11 * FT * (0.94 + rnd() * 0.12), 1, vary(0.07));
+  return b.done();
 }
 
 /**
