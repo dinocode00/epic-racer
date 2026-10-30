@@ -944,11 +944,13 @@ function trucker(): THREE.Group {
     snap.rotation.x = Math.PI / 2;
     g.add(snap);
   }
-  // The long, pre-curved bill.
+  // The pre-curved bill. It is sewn to the front of the band (no further round than the foam
+  // panels reach), juts forward rather than out to the sides, and keeps level with the band:
+  // the arch across it drops the corners only a little, never below the band at the sides.
   {
     const NU = 48,
-      NK = 14,
-      half = 1.32;
+      NK = 16,
+      half = FRONT * 1.04;
     const top: THREE.Vector3[] = [];
     for (let j = 0; j <= NK; j++)
       for (let i = 0; i <= NU; i++) {
@@ -956,10 +958,14 @@ function trucker(): THREE.Group {
         const k = j / NK;
         const a = u * half;
         const base = capPoint(a, 0);
-        const out = V(Math.sin(a) * CAP.rz, 0, Math.cos(a) * CAP.rx).normalize();
-        const L = 0.07 * (1 - u * u) ** 0.5 + 0.004;
-        const p = base.clone().addScaledVector(out, L * k);
-        p.y += -0.008 * k - 0.026 * (p.x / 0.09) ** 2 * k;
+        // Out from the band, turned toward straight ahead.
+        const n = V(Math.sin(a) * CAP.rz, 0, Math.cos(a) * CAP.rx).normalize();
+        const dir = n.lerp(V(0, 0, 1), 0.45).normalize();
+        // A rounded D: longest in the middle, curving back into the band at the corners.
+        const L = 0.072 * (1 - u * u) ** 0.65;
+        const p = base.clone().addScaledVector(dir, L * k);
+        // A gentle downward pitch and the curve across the bill.
+        p.y += -0.012 * k * k - 0.012 * u * u * k;
         top.push(p);
       }
     const T2 = 0.0035;

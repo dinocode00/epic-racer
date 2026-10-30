@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { J, arm, clothes, flap, jeansTop, leg, neck, shirt } from './grandpa/body.ts';
+import { J, arm, clothes, cloth, jeansTop, leg, neck, shirt } from './grandpa/body.ts';
 import { buildHead } from './grandpa/head.ts';
 
 /**
@@ -37,7 +37,9 @@ export function buildGrandpa(): Grandpa {
   hips.add(jeansTop(m));
   const spine = new THREE.Group();
   hips.add(spine);
-  spine.add(shirt(m));
+  const shirtG = shirt(m);
+  spine.add(shirtG);
+  const shirtUpdate = shirtG.userData.update as () => void;
   const chest = new THREE.Group();
   chest.position.y = J.chest - J.hip;
   spine.add(chest);
@@ -130,16 +132,19 @@ export function buildGrandpa(): Grandpa {
       solveLeg(l, fz * w, down, pitch * w);
     });
 
-    // Shirttails: trailing as he walks, stirring in a breeze that comes and goes.
-    flap.uFlapT.value = t;
-    flap.uFlapWalk.value = w;
-    flap.uFlapGust.value = 0.35 + 0.3 * Math.sin(t * 0.5) * Math.sin(t * 0.23 + 1);
+    // Cloth: rippling with each step, trailing as he walks, stirring in a breeze that comes
+    // and goes.
+    cloth.uClothT.value = t;
+    cloth.uClothWalk.value = w;
+    cloth.uClothGust.value = 0.35 + 0.3 * Math.sin(t * 0.5) * Math.sin(t * 0.23 + 1);
+    cloth.uClothPhase.value = phase;
+    shirtUpdate();
 
     // Arms hang loose, a little out from the baggy shirt, swinging opposite the legs.
     arms.forEach((a, i) => {
       const sw = Math.cos(phase + (i ? Math.PI : 0));
       a.shoulder.rotation.x = sw * 0.2 * w + 0.03;
-      a.shoulder.rotation.z = (i ? 1 : -1) * 0.12;
+      a.shoulder.rotation.z = (i ? 1 : -1) * 0.15;
       a.elbow.rotation.x = -(0.18 + 0.12 * Math.max(0, -sw) * w);
       a.wrist.rotation.x = -0.1;
     });

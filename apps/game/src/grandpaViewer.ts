@@ -99,6 +99,8 @@ const VIEWS: Record<string, [THREE.Vector3, THREE.Vector3]> = {
   face: [new THREE.Vector3(0.0, 1.74, -0.62), new THREE.Vector3(0, 1.72, 0)],
   face3q: [new THREE.Vector3(0.4, 1.75, -0.5), new THREE.Vector3(0, 1.72, 0)],
   cap: [new THREE.Vector3(-0.45, 1.95, 0.55), new THREE.Vector3(0, 1.8, 0)],
+  shoulders: [new THREE.Vector3(0.0, 1.45, -1.1), new THREE.Vector3(0, 1.35, 0)],
+  capSide: [new THREE.Vector3(-0.75, 1.8, 0.02), new THREE.Vector3(0, 1.78, 0)],
   seat: [new THREE.Vector3(0.5, 1.0, 1.5), new THREE.Vector3(0, 0.88, 0)],
   side: [new THREE.Vector3(-4.2, 1.2, 0), new THREE.Vector3(0, 0.95, 0)],
   back: [new THREE.Vector3(-1.2, 1.4, 4.2), new THREE.Vector3(0, 0.95, 0)],

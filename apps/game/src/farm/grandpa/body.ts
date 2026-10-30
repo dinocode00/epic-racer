@@ -27,7 +27,7 @@ import {
 /**
  * Grandpa's body and clothes, modelled in world rest-pose metres (standing on y = 0, facing
  * +z, arms hanging). A thin 6 ft 1 in frame in loose clothes: a roomy flannel shirt with
- * dropped shoulders, two flap pockets and the collar open at the neck, tucked into baggy blue
+ * dropped shoulders, two flap pockets and the collar open at the neck, worn untucked over baggy blue
  * work jeans worn low on the hips with a belt; tan leather work gloves; brown cowboy boots.
  */
 
@@ -38,8 +38,8 @@ export const J = {
   ankle: 0.107,
   hipX: 0.094,
   chest: 1.3,
-  shoulder: 1.445,
-  shoulderX: 0.19,
+  shoulder: 1.425,
+  shoulderX: 0.185,
   upperArm: 0.31,
   forearm: 0.27,
   neck: 1.6,
@@ -159,71 +159,179 @@ export function neck(m: Clothes): THREE.Mesh {
 
 // ---------------------------------------------------------------- shirt
 
-/** Drives the loose shirttails: time, how fast he is walking (0..1) and the breeze (0..1). */
-export const flap = {
-  uFlapT: { value: 0 },
-  uFlapWalk: { value: 0 },
-  uFlapGust: { value: 0 },
+/**
+ * Drives the cloth: time, how much he is walking (0..1), the breeze (0..1) and his gait phase
+ * (radians, two steps per cycle), so the folds pulse with his steps.
+ */
+export const cloth = {
+  uClothT: { value: 0 },
+  uClothWalk: { value: 0 },
+  uClothGust: { value: 0 },
+  uClothPhase: { value: 0 },
 };
 
+const CLOTH_HEAD = /* glsl */ `
+uniform float uClothT, uClothWalk, uClothGust, uClothPhase;
+float cs(float a, float b, float x) {
+  float t = clamp((x - a) / (b - a), 0.0, 1.0);
+  return t * t * (3.0 - 2.0 * t);
+}
+`;
+
 /**
- * The untucked shirttails move: the back trails and lifts a little as he walks and billows
- * in the gusts, the front only flutters. Rest-pose metres, so every part of the shirt drawn
- * in that frame (placket, seams) moves with it.
+ * The shirt on his body, in the shirt's rest frame (world heights): loose cloth everywhere
+ * below the shoulders breathes and ripples, a little in the breeze and more with each step;
+ * the untucked tails trail and lift behind him as he walks and billow in the gusts.
  */
-function flapPatch(mat: THREE.Material): void {
+const TORSO_GLSL = /* glsl */ `
+{
+  vec3 p = position;
+  float fa = atan(p.x, p.z);
+  vec2 rd = p.xz / max(length(p.xz), 1e-4);
+  // Ripples over the whole shirt below the yoke.
+  float loose = cs(1.47, 1.28, p.y);
+  float wv = sin(uClothT * 3.7 + p.y * 24.0 + fa * 3.0) * 0.5
+    + sin(uClothT * 6.1 - p.y * 37.0 + fa * 5.0 + 1.3) * 0.25
+    + sin(uClothPhase * 2.0 + p.y * 10.0 + fa) * 0.45 * uClothWalk;
+  float amp = loose * (0.001 + 0.0025 * uClothGust + 0.003 * uClothWalk);
+  vec3 d = vec3(rd.x, 0.0, rd.y) * amp * wv;
+  d.y += amp * 0.25 * sin(uClothPhase * 2.0 + fa * 2.0 + p.y * 6.0) * uClothWalk;
+  // The tails.
+  float w = cs(1.02, 0.8, p.y);
+  w *= w;
+  float back = 0.5 - 0.5 * cos(fa);
+  float rip = sin(uClothT * 5.3 + p.y * 22.0 + fa * 2.0) * 0.6
+    + sin(uClothT * 8.7 + fa * 6.0 - p.y * 30.0) * 0.4;
+  float amt = w * (0.004 + 0.012 * uClothGust + 0.032 * uClothWalk * back);
+  d.z -= amt * back * (1.0 + 0.5 * rip);
+  d.z += amt * (1.0 - back) * 0.35 * rip;
+  d.y += amt * back * 0.45 * (1.0 + 0.4 * rip);
+  d.x += amt * 0.5 * rip * sin(fa);
+  transformed += d;
+}
+`;
+
+const cs = (a: number, b: number, x: number) => {
+  const t = clamp((x - a) / (b - a), 0, 1);
+  return t * t * (3 - 2 * t);
+};
+/** The same motion as TORSO_GLSL, for small rigid parts (buttons) that ride on the shirt. */
+function torsoMotion(p: THREE.Vector3, out: THREE.Vector3): THREE.Vector3 {
+  const T = cloth.uClothT.value,
+    Wk = cloth.uClothWalk.value,
+    Gu = cloth.uClothGust.value,
+    Ph = cloth.uClothPhase.value;
+  const fa = Math.atan2(p.x, p.z);
+  const r = Math.max(Math.hypot(p.x, p.z), 1e-4);
+  const loose = cs(1.47, 1.28, p.y);
+  const wv =
+    Math.sin(T * 3.7 + p.y * 24 + fa * 3) * 0.5 +
+    Math.sin(T * 6.1 - p.y * 37 + fa * 5 + 1.3) * 0.25 +
+    Math.sin(Ph * 2 + p.y * 10 + fa) * 0.45 * Wk;
+  const amp = loose * (0.001 + 0.0025 * Gu + 0.003 * Wk);
+  out.set((p.x / r) * amp * wv, 0, (p.z / r) * amp * wv);
+  out.y += amp * 0.25 * Math.sin(Ph * 2 + fa * 2 + p.y * 6) * Wk;
+  let w = cs(1.02, 0.8, p.y);
+  w *= w;
+  const back = 0.5 - 0.5 * Math.cos(fa);
+  const rip =
+    Math.sin(T * 5.3 + p.y * 22 + fa * 2) * 0.6 + Math.sin(T * 8.7 + fa * 6 - p.y * 30) * 0.4;
+  const amt = w * (0.004 + 0.012 * Gu + 0.032 * Wk * back);
+  out.z += -amt * back * (1 + 0.5 * rip) + amt * (1 - back) * 0.35 * rip;
+  out.y += amt * back * 0.45 * (1 + 0.4 * rip);
+  out.x += amt * 0.5 * rip * Math.sin(fa);
+  return out;
+}
+
+/** Patch a material's vertex shader with a block of cloth motion. */
+function clothPatch(mat: THREE.Material, code: string, key: string): void {
   const prev = mat.onBeforeCompile.bind(mat);
-  const key = mat.customProgramCacheKey();
+  const prevKey = mat.customProgramCacheKey();
   mat.onBeforeCompile = (sh, r) => {
     prev(sh, r);
-    Object.assign(sh.uniforms, flap);
+    Object.assign(sh.uniforms, cloth);
     sh.vertexShader = sh.vertexShader
-      .replace(
-        '#include <common>',
-        '#include <common>\nuniform float uFlapT, uFlapWalk, uFlapGust;',
-      )
-      .replace(
-        '#include <begin_vertex>',
-        `#include <begin_vertex>
-        {
-          float fa = atan(position.x, position.z);
-          float w = smoothstep(1.02, 0.8, position.y);
-          w *= w;
-          float back = 0.5 - 0.5 * cos(fa);
-          float rip = sin(uFlapT * 5.3 + position.y * 22.0 + fa * 2.0) * 0.6
-            + sin(uFlapT * 8.7 + fa * 6.0 - position.y * 30.0) * 0.4;
-          float amt = w * (0.004 + 0.012 * uFlapGust + 0.032 * uFlapWalk * back);
-          transformed.z -= amt * back * (1.0 + 0.5 * rip);
-          transformed.z += amt * (1.0 - back) * 0.35 * rip;
-          transformed.y += amt * back * 0.45 * (1.0 + 0.4 * rip);
-          transformed.x += amt * 0.5 * rip * sin(fa);
-        }`,
-      );
+      .replace('#include <common>', '#include <common>\n' + CLOTH_HEAD)
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\n' + code);
   };
-  mat.customProgramCacheKey = () => key + '|flap';
+  mat.customProgramCacheKey = () => prevKey + '|cloth-' + key;
+}
+
+/**
+ * A copy of a material for one part of a sleeve or trouser leg (in its own joint frame, the
+ * limb hanging down -y): the cloth ripples round the limb, held still above y0..y1 and
+ * below y2..y3 where it meets the next part, livelier the more he walks.
+ */
+function limbCloth(
+  base: THREE.MeshStandardMaterial,
+  key: string,
+  o: {
+    y0: number;
+    y1: number;
+    y2?: number;
+    y3?: number;
+    a0: number;
+    aw: number;
+    ag: number;
+    seed: number;
+  },
+): THREE.MeshStandardMaterial {
+  const m = base.clone();
+  const f = (n: number) => n.toFixed(4);
+  const pinBelow = o.y2 === undefined ? '1.0' : `cs(${f(o.y3!)}, ${f(o.y2)}, p.y)`;
+  clothPatch(
+    m,
+    /* glsl */ `
+    {
+      vec3 p = position;
+      float fa = atan(p.x, p.z);
+      vec2 rd = p.xz / max(length(p.xz), 1e-4);
+      float w = cs(${f(o.y0)}, ${f(o.y1)}, p.y) * ${pinBelow};
+      float wv = sin(uClothT * 4.3 + p.y * 30.0 + fa * 2.0 + ${f(o.seed)}) * 0.5
+        + sin(uClothT * 7.1 - p.y * 47.0 + fa * 4.0 + ${f(o.seed * 1.7)}) * 0.25
+        + sin(uClothPhase + p.y * 14.0 + fa + ${f(o.seed)}) * 0.5 * uClothWalk;
+      float amp = w * (${f(o.a0)} + ${f(o.aw)} * uClothWalk + ${f(o.ag)} * uClothGust);
+      transformed.xz += rd * amp * wv;
+    }`,
+    key,
+  );
+  return m;
 }
 
 /** The roomy flannel shirt body, tucked in and bloused over the belt. Spine-local (y - hip). */
 export function shirt(m: Clothes): THREE.Group {
   const g = new THREE.Group();
-  for (const mat of [m.shirt, m.placket, m.shirtThread]) flapPatch(mat);
+  const vSkin = m.skin.clone();
+  for (const mat of [m.shirt, m.placket, m.shirtThread, m.pocket, m.collar, vSkin])
+    clothPatch(mat, TORSO_GLSL, 'torso');
   m.shirt.side = THREE.DoubleSide;
+  // Buttons are rigid: they ride the same motion from their rest positions each frame.
+  const riders: { o: THREE.Object3D; rest: THREE.Vector3 }[] = [];
+  const ride = (o: THREE.Object3D | null) => {
+    if (o) riders.push({ o, rest: o.position.clone() });
+    return o;
+  };
+  const dv = new THREE.Vector3();
+  g.userData.update = () => {
+    for (const r of riders) r.o.position.copy(r.rest).add(torsoMotion(r.rest, dv));
+  };
   const H = J.hip;
   const body = vTube(
     0.82,
     1.55,
     [
-      [0.82, 0.192, 0.142, 0.004],
-      [0.88, 0.187, 0.137, 0.006],
-      [0.95, 0.181, 0.131, 0.008],
-      [1.05, 0.177, 0.126, 0.008],
-      [1.15, 0.176, 0.123, 0.008],
-      [1.25, 0.182, 0.123, 0.007],
-      [1.32, 0.193, 0.121, 0.005],
-      [1.38, 0.209, 0.116, 0.002],
-      [1.425, 0.211, 0.105, -0.002],
-      [1.465, 0.184, 0.091, -0.004],
-      [1.5, 0.125, 0.075, 0.0],
+      [0.82, 0.204, 0.153, 0.006],
+      [0.88, 0.202, 0.15, 0.008],
+      [0.95, 0.199, 0.146, 0.01],
+      [1.05, 0.197, 0.141, 0.011],
+      [1.15, 0.198, 0.138, 0.011],
+      [1.25, 0.202, 0.135, 0.01],
+      [1.32, 0.21, 0.13, 0.007],
+      [1.38, 0.227, 0.122, 0.003],
+      [1.425, 0.243, 0.108, -0.002],
+      [1.455, 0.232, 0.098, -0.004],
+      [1.48, 0.192, 0.086, -0.003],
+      [1.505, 0.132, 0.074, 0.0],
       [1.53, 0.075, 0.066, 0.004],
       [1.55, 0.064, 0.062, 0.006],
     ],
@@ -246,7 +354,7 @@ export function shirt(m: Clothes): THREE.Group {
   wrinkle(body, (_x, y, _z, a) => {
     let d = 0;
     const hang = smooth(1.3, 0.95, y);
-    d += 0.006 * hang * Math.sin(a * 6 + Math.sin(y * 9) * 0.9 + 0.6);
+    d += 0.008 * hang * Math.sin(a * 6 + Math.sin(y * 7) * 0.7 + 0.6);
     d += 0.003 * hang * Math.sin(a * 11 + y * 22);
     d += 0.004 * smooth(0.92, 0.8, y) * Math.sin(a * 9 + 1.3);
     for (const s of [-1, 1]) {
@@ -282,17 +390,17 @@ export function shirt(m: Clothes): THREE.Group {
     b.rotation.x = Math.PI / 2;
     const holder = new THREE.Group();
     holder.add(b);
-    add(stick(torso, straight(0, 1.4 - i * 0.087), holder, 0.0032));
+    add(ride(stick(torso, straight(0, 1.4 - i * 0.087), holder, 0.0032)));
   }
   // The collar open at the neck: a V of skin, and the collar points lying on the chest.
   add(
     patch(
       torso,
-      12,
-      14,
+      48,
+      40,
       (u, v) => straight(-0.042 + u * 0.084, 1.44 + v * 0.11),
       0.0012,
-      m.skin,
+      vSkin,
       (u, v) => Math.abs(u - 0.5) * 2 < 0.25 + 0.75 * v,
     ),
   );
@@ -393,7 +501,7 @@ export function shirt(m: Clothes): THREE.Group {
     b.rotation.x = Math.PI / 2;
     const h = new THREE.Group();
     h.add(b);
-    add(stick(torso, straight(cx, 1.345), h, 0.0065));
+    add(ride(stick(torso, straight(cx, 1.345), h, 0.0065)));
   }
   // Yoke seam across the back, side seams, shoulder seams.
   add(
@@ -434,10 +542,11 @@ export function arm(m: Clothes, side: number) {
     -L1 - 0.01,
     0.01,
     [
-      [0.01, 0.064, 0.066, 0],
-      [-0.08, 0.062, 0.063, 0],
-      [-0.2, 0.058, 0.058, 0],
-      [-L1 - 0.01, 0.056, 0.056, 0],
+      [0.01, 0.052, 0.058, 0],
+      [-0.05, 0.066, 0.069, 0],
+      [-0.08, 0.067, 0.068, 0],
+      [-0.2, 0.063, 0.063, 0],
+      [-L1 - 0.01, 0.06, 0.06, 0],
     ],
     32,
     300,
@@ -449,24 +558,30 @@ export function arm(m: Clothes, side: number) {
       0.004 * Math.exp(-(((a - Math.PI) / 0.9) ** 2)) * Math.sin(y * 260) * smooth(-0.22, -0.28, y);
     return d;
   });
-  const um = new THREE.Mesh(upper, m.sleeve);
+  const sleeveUp = limbCloth(m.sleeve, 'sleeve-up' + side, {
+    y0: -0.02,
+    y1: -0.1,
+    y2: -0.24,
+    y3: -0.3,
+    a0: 0.0012,
+    aw: 0.003,
+    ag: 0.002,
+    seed: side * 2.1,
+  });
+  const um = new THREE.Mesh(upper, sleeveUp);
   shoulder.add(um);
-  // Dropped shoulder: the sleeve head rounding over into the shirt.
-  const cap = new THREE.Mesh(white(new THREE.SphereGeometry(0.066, 24, 16)), m.sleeve);
-  cap.scale.set(0.95, 0.75, 1.0);
-  shoulder.add(cap);
   const elbow = new THREE.Group();
   elbow.position.y = -L1;
   shoulder.add(elbow);
-  elbow.add(new THREE.Mesh(white(new THREE.SphereGeometry(0.055, 20, 14)), m.sleeve));
+  elbow.add(new THREE.Mesh(white(new THREE.SphereGeometry(0.06, 20, 14)), m.sleeve));
   const fore = vTube(
     -L2 + 0.045,
     0.01,
     [
-      [0.01, 0.056, 0.056, 0],
-      [-0.12, 0.054, 0.053, 0],
-      [-0.19, 0.055, 0.054, 0],
-      [-L2 + 0.065, 0.058, 0.056, 0.002],
+      [0.01, 0.06, 0.06, 0],
+      [-0.12, 0.058, 0.057, 0],
+      [-0.19, 0.059, 0.058, 0],
+      [-L2 + 0.065, 0.06, 0.058, 0.002],
       [-L2 + 0.045, 0.05, 0.048, 0.001],
     ],
     32,
@@ -479,7 +594,17 @@ export function arm(m: Clothes, side: number) {
       0.004 * bunch * Math.sin(y * 220 + Math.sin(a * 2) * 2.2) + 0.002 * Math.sin(a * 5 + y * 40)
     );
   });
-  elbow.add(new THREE.Mesh(fore, m.sleeve));
+  const sleeveLow = limbCloth(m.sleeve, 'sleeve-low' + side, {
+    y0: -0.02,
+    y1: -0.07,
+    y2: -0.18,
+    y3: -0.215,
+    a0: 0.0012,
+    aw: 0.003,
+    ag: 0.002,
+    seed: side * 3.7 + 1,
+  });
+  elbow.add(new THREE.Mesh(fore, sleeveLow));
   // Buttoned cuff over the glove's cuff.
   const cuff = vTube(-L2 + 0.002, -L2 + 0.055, [
     [-L2 + 0.002, 0.047, 0.044, 0],
@@ -868,7 +993,21 @@ export function leg(m: Clothes, side: number) {
       smooth(-T + 0.09, -T + 0.02, y);
     return d;
   });
-  const tm = new THREE.Mesh(thigh, m.jeanLeg);
+  const thighCloth = {
+    y0: -0.08,
+    y1: -0.15,
+    y2: -0.36,
+    y3: -0.42,
+    a0: 0.0008,
+    aw: 0.0028,
+    ag: 0.0012,
+  };
+  const thighMat = limbCloth(m.jeanLeg, 'thigh' + side, { ...thighCloth, seed: side * 1.3 });
+  const thighThread = limbCloth(m.thread, 'thigh-thread' + side, {
+    ...thighCloth,
+    seed: side * 1.3,
+  });
+  const tm = new THREE.Mesh(thigh, thighMat);
   hip.add(tm);
   // Outer seam with its stitching.
   hip.add(
@@ -878,7 +1017,7 @@ export function leg(m: Clothes, side: number) {
       (t) => radial(side * Math.PI * 0.5, -0.07 - t * (T - 0.09)),
       0.0022,
       0.0008,
-      m.thread,
+      thighThread,
       0.005,
     )!,
   );
@@ -910,7 +1049,14 @@ export function leg(m: Clothes, side: number) {
     d += 0.003 * Math.exp(-((a / 0.8) ** 2)) * Math.sin(y * 120) * G(y, 0, -0.03, 0, 0.05, 1);
     return d;
   });
-  const sm = new THREE.Mesh(shinG, m.jeanLeg);
+  // The lower legs swing and the loose denim flaps round the boots, most at the hem.
+  const shinCloth = { y0: -0.04, y1: -0.12, a0: 0.001, aw: 0.0042, ag: 0.0016 };
+  const shinMat = limbCloth(m.jeanLeg, 'shin' + side, { ...shinCloth, seed: side * 2.9 + 2 });
+  const shinThread = limbCloth(m.thread, 'shin-thread' + side, {
+    ...shinCloth,
+    seed: side * 2.9 + 2,
+  });
+  const sm = new THREE.Mesh(shinG, shinMat);
   knee.add(sm);
   knee.add(
     band(
@@ -919,7 +1065,7 @@ export function leg(m: Clothes, side: number) {
       (t) => radial(side * Math.PI * 0.5, -0.01 - t * (S - 0.02)),
       0.0022,
       0.0008,
-      m.thread,
+      shinThread,
       0.005,
     )!,
   );
@@ -928,7 +1074,7 @@ export function leg(m: Clothes, side: number) {
     [-S - 0.045, 0.092, 0.099, 0.013],
     [-S - 0.028, 0.091, 0.098, 0.012],
   ]);
-  knee.add(new THREE.Mesh(white(hem), m.jeanLeg));
+  knee.add(new THREE.Mesh(white(hem), shinMat));
   const ankle = new THREE.Group();
   ankle.position.y = -S;
   knee.add(ankle);
@@ -997,12 +1143,14 @@ function boot(): THREE.Group {
   const welt = new THREE.MeshStandardMaterial({ color: 0x3d2a1b, roughness: 0.7 });
   g.add(
     new THREE.Mesh(
+      // Only the bottom of the shaft: the rest is hidden under the jeans, and a tall shaft
+      // would push through the hem as the foot tips.
       vTube(
         -0.02,
-        0.14,
+        0.07,
         [
           [-0.02, 0.048, 0.056],
-          [0.14, 0.051, 0.057],
+          [0.07, 0.046, 0.05],
         ],
         24,
       ),
