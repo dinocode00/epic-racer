@@ -12,7 +12,7 @@ import { buildHead } from './grandpa/head.ts';
  * He is modelled in finer detail than the rest of the farm: a sculpted, painted face, cloth
  * folds, seams, stitching, rivets, pockets and buttons. Real metres, standing on y = 0,
  * facing -Z like the game's other characters. The rig is a hierarchy of groups posed
- * procedurally: `animate(t, speed)` with speed in m/s (0 stands, ~0.85 is his stroll).
+ * procedurally: `animate(t, speed)` with speed in m/s (0 stands, ~0.55 is his stroll).
  */
 
 export interface Grandpa {
@@ -80,7 +80,7 @@ export function buildGrandpa(): Grandpa {
     l.ankle.rotation.x = thigh - flex - footPitch;
   };
 
-  const strollSpeed = 0.85;
+  const strollSpeed = 0.55; // about 1.2 mph: an easy amble
   let phase = 0,
     lastT = 0,
     gait = 0;
@@ -88,7 +88,7 @@ export function buildGrandpa(): Grandpa {
     const dt = Math.min(0.1, Math.max(0, t - lastT));
     lastT = t;
     gait += (Math.min(1, speed / strollSpeed) - gait) * Math.min(1, dt * 3);
-    const stride = 0.56; // short, unhurried steps
+    const stride = 0.48; // short, unhurried steps, about 70 a minute
     const cadence = speed / (2 * stride);
     phase += dt * cadence * Math.PI * 2;
     const w = gait;

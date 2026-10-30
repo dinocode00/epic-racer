@@ -837,7 +837,7 @@ export function jeansTop(m: Clothes): THREE.Group {
   });
   // Worn low: the whole waist and seat hang a few centimetres below his hips, baggy.
   g.position.y = -J.hip - 0.035;
-  g.scale.set(1.05, 1, 1.05);
+  g.scale.set(0.98, 1, 1.0);
   return g;
 }
 
@@ -850,10 +850,10 @@ export function leg(m: Clothes, side: number) {
     -T - 0.01,
     -0.06,
     [
-      [-0.06, 0.108, 0.112, -0.006],
-      [-0.15, 0.104, 0.106, 0],
-      [-T + 0.04, 0.096, 0.098, 0],
-      [-T - 0.01, 0.095, 0.097, 0],
+      [-0.06, 0.096, 0.1, -0.006],
+      [-0.15, 0.09, 0.093, 0],
+      [-T + 0.04, 0.082, 0.085, 0],
+      [-T - 0.01, 0.081, 0.084, 0],
     ],
     40,
     260,
@@ -885,16 +885,16 @@ export function leg(m: Clothes, side: number) {
   const knee = new THREE.Group();
   knee.position.y = -T;
   hip.add(knee);
-  knee.add(new THREE.Mesh(white(new THREE.SphereGeometry(0.095, 24, 16)), m.jeanLeg));
+  knee.add(new THREE.Mesh(white(new THREE.SphereGeometry(0.082, 24, 16)), m.jeanLeg));
   const shinG = vTube(
     -S - 0.04,
     0.01,
     [
-      [0.01, 0.095, 0.097, 0],
-      [-0.15, 0.094, 0.094, 0],
-      [-S + 0.09, 0.093, 0.094, 0.002],
-      [-S + 0.01, 0.097, 0.1, 0.008],
-      [-S - 0.04, 0.099, 0.104, 0.012],
+      [0.01, 0.081, 0.084, 0],
+      [-0.15, 0.078, 0.08, 0],
+      [-S + 0.09, 0.08, 0.082, 0.002],
+      [-S + 0.01, 0.086, 0.09, 0.008],
+      [-S - 0.04, 0.089, 0.095, 0.012],
     ],
     40,
     300,
@@ -925,8 +925,8 @@ export function leg(m: Clothes, side: number) {
   );
   // Hem: a turned edge.
   const hem = vTube(-S - 0.045, -S - 0.028, [
-    [-S - 0.045, 0.102, 0.108, 0.013],
-    [-S - 0.028, 0.101, 0.107, 0.012],
+    [-S - 0.045, 0.092, 0.099, 0.013],
+    [-S - 0.028, 0.091, 0.098, 0.012],
   ]);
   knee.add(new THREE.Mesh(white(hem), m.jeanLeg));
   const ankle = new THREE.Group();
