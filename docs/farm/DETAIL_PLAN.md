@@ -86,7 +86,7 @@ as each item lands, so the work can be picked up from here at any time.
 - [x] Walk every landmark view and fix anything that looks off (lilacs given leaf fringes and floret sprays; blue spruce toned toward silver-green).
 - [x] Load time (now ~8 s in the software renderer, was ~70 s): the ground canvas is painted with ~600k small fills plus blurs, which takes about 70 s on the software renderer used for screenshots. Speckle is now laid down from a pattern tile.
 - [ ] Check frame time and draw calls at low and high quality; instance or merge anything that got expensive.
-- [x] Republish the explorer (version 8).
+- [x] Republish the explorer (version 9).
 
 ## Progress log
 
