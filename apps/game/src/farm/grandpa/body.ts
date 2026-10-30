@@ -34,8 +34,8 @@ import {
 export const J = {
   hip: 0.955,
   thigh: 0.44,
-  shin: 0.41,
-  ankle: 0.107,
+  shin: 0.428,
+  ankle: 0.089,
   hipX: 0.094,
   chest: 1.3,
   shoulder: 1.425,
@@ -1091,7 +1091,7 @@ export function leg(m: Clothes, side: number) {
 function boot(): THREE.Group {
   const outer = new THREE.Group();
   const g = new THREE.Group();
-  g.rotation.x = 0.143; // pitched toe-down on the heel so heel and sole both meet the ground
+  g.rotation.x = 0.056; // pitched toe-down on the heel so heel and sole both meet the ground
   outer.add(g);
   const grain = leatherBump();
   const vamp = canvasTex(256, 256, (x) => {
@@ -1208,15 +1208,15 @@ function boot(): THREE.Group {
   const we = new THREE.Mesh(wg, welt);
   we.position.y = -0.053;
   g.add(we);
-  // Stacked leather heel: layers.
-  for (let i = 0; i < 4; i++) {
+  // A low stacked leather heel: two layers.
+  for (let i = 0; i < 2; i++) {
     const layer = new THREE.Mesh(
       new THREE.CylinderGeometry(0.03 - i * 0.001, 0.029 - i * 0.001, 0.011, 16),
       i % 2 ? sole : welt,
     );
     layer.scale.set(1.15, 1, 1.1);
     layer.position.set(0, -0.075 - i * 0.011, -0.05 - i * 0.001);
-    layer.rotation.x = 0.12;
+    layer.rotation.x = 0.05;
     g.add(layer);
   }
   outer.traverse((o) => {
