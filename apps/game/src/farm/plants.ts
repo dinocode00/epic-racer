@@ -7,6 +7,7 @@ import {
   leafDepth,
   leafMaterial,
 } from '../render/foliage.ts';
+import * as tex from '../render/textures.ts';
 import { windy } from '../render/wind.ts';
 import { bake } from './bake.ts';
 import { type BeeSpot, bees } from './bees.ts';
@@ -77,6 +78,10 @@ const FT = 0.3048;
 // How the farm's shrubs and low plants move in the breeze (object units: metres here).
 const LILAC_WIND = { lean: 0.018, sway: 0.014, speed: 1.6, flutter: 0.025, h0: 0.4 };
 const VINE_GREENS = [0x4e8a34, 0x5a9a3c, 0x447d2e];
+const LILAC_DEEP = new THREE.Color(0xa77bc9);
+const LILAC_PALE = new THREE.Color(0xc9aee0);
+const LILAC_LEAF = new THREE.Color(0x56844a);
+const LILAC_LEAF_DARK = new THREE.Color(0x44703c);
 const LEAF_FLUTTER = { lean: 0.12, sway: 0.12, speed: 2.6, flutter: 0.1, h0: -1 };
 
 interface Normalised {
@@ -375,8 +380,16 @@ function lilacs(): THREE.Group {
   const bushLeaf = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 });
   const bushBloom = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8 });
   const bushBark = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95 });
+  const lilacCards = new THREE.MeshStandardMaterial({
+    vertexColors: true,
+    map: tex.leafCluster(),
+    alphaTest: 0.45,
+    side: THREE.DoubleSide,
+    roughness: 0.85,
+  });
   for (const p of FARM.lilacs) {
     const b = new THREE.Group();
+    const florets: THREE.BufferGeometry[] = [];
     const clumps: { c: THREE.Vector3; r: number }[] = [];
     // Clumps on a dome so the outside reads as one rounded bush.
     for (let i = 0; i < 16; i++) {
@@ -409,7 +422,17 @@ function lilacs(): THREE.Group {
       o.quaternion.setFromUnitVectors(up, dir);
       o.scale.setScalar(0.8 + rnd() * 0.45);
       b.add(o);
+      // Florets: a spray of small purple cards round each panicle.
+      const pc = o.position.clone().addScaledVector(dir, 0.12 * o.scale.x);
+      florets.push(
+        treeKit.cards(pc, 0.13 * o.scale.x, 7, 0.16, rnd() < 0.35 ? LILAC_PALE : LILAC_DEEP),
+      );
     }
+    // A fringe of leaf cards over every clump so the outline is leafy, not smooth.
+    for (const k of clumps)
+      florets.push(
+        treeKit.cards(k.c, k.r * 1.02, 14, 0.36, rnd() < 0.4 ? LILAC_LEAF_DARK : LILAC_LEAF),
+      );
     // No single trunk: a clump of thin woody stems rising from the ground and fanning out,
     // forking once on the way up into the leaves.
     for (let i = 0; i < 16; i++) {
@@ -439,6 +462,9 @@ function lilacs(): THREE.Group {
     ]);
     const bush = new THREE.Group();
     for (const mesh of baked) bush.add(windy(mesh, LILAC_WIND, 'lilac'));
+    const cardMesh = new THREE.Mesh(treeKit.merge(florets), lilacCards);
+    cardMesh.castShadow = cardMesh.receiveShadow = true;
+    bush.add(windy(cardMesh, LILAC_WIND, 'lilac'));
     bush.position.set(p[0], driveHeight(p[0], p[1]) - 0.15, -p[1]);
     SPOTS.push({ x: p[0], y: bush.position.y + 2.6, z: -p[1], r: 2.0, n: 7 });
     bush.rotation.y = rnd() * 6;
