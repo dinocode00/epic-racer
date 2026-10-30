@@ -91,3 +91,15 @@ as each item lands, so the work can be picked up from here at any time.
 - Plan written; baseline screenshots taken.
 - Phase 1 done and pushed. Trees, grass, grime, gutters, clouds and critters written.
 - Checked in screenshots: tree species, lawn, wild grass, gravel stones, gutters and sills, clouds, butterflies. Butterflies capped at about 40 (one at every flower was ~300). Explorer republished (version 8).
+
+## Grandpa in the map (routes drafted, waiting for the owner's approval)
+
+Drawn on the blueprint (v16, "Where grandpa goes") before anything goes in the 3D map. Route data:
+`docs/farm/grandpa_routes.json` (made by `tools/farm-blueprint/grandpa_routes.py`).
+
+1. Corn crib (10) to the concrete patio and back, a loop that curves round the sandbox, lilac and ramp foot; at the patio he stops, turns to the orchard and waves his cap.
+2. Mower: from the NE corner of the Christmas trees south down the east path a third of the way, then a long winding run through the aisles (13 trees become stumps where he crosses between aisles), out the top and east back to the corner.
+3. Pumpkin patch: curving east to west and back on a different curve, with stops and three cap waves.
+4. Orchard: up and down the aisles, crossing lines only between trees, stopping under trees; never leaves the orchard.
+
+To do when approved: lock the mower's front wheels further for the aisle hairpins; make the stumps; drive grandpa along the loops.
