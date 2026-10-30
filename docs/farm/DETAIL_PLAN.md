@@ -70,10 +70,8 @@ as each item lands, so the work can be picked up from here at any time.
 
 ## Ideas to ask the owner about (not added until confirmed)
 
-- [?] A mercury-vapour yard light on a pole (very common on farms of that era).
-- [?] Power poles along the road, with a drop to the house.
-- [?] A TV antenna on the house roof.
-- [?] Farm animals or pets: barn cats, chickens, a dog.
+- [x] Barn cats (owner said yes to a couple): an orange tabby sitting by the barn's south door, and a black-and-white tom patrolling the east side, stopping to sit and look around.
+- Owner said no to: a yard light, power poles, a TV antenna, chickens, a dog.
 - Mowing stripes on the lawn: already painted (along the farm grid).
 
 ## Phase 6: polish and performance

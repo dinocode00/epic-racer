@@ -353,7 +353,7 @@ addEventListener('hashchange', () => {
 
 let last = performance.now();
 function frame(now: number): void {
-  const dt = Math.min(0.05, (now - last) / 1000);
+  const dt = Math.max(0, Math.min(0.05, (now - last) / 1000));
   last = now;
   if (mode === 'drive') {
     driveStep(dt);

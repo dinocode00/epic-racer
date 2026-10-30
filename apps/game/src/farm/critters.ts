@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { WIND_GLSL, windUniforms } from '../render/wind.ts';
 import type { BeeSpot } from './bees.ts';
 import { TERRAIN_UV_GLSL, heightTexture, terrainUniforms } from './grass.ts';
-import { FARM, groundHeight } from './layout.ts';
+import { FARM, U, V, type XY, add, groundHeight } from './layout.ts';
 
 /**
  * Small summer life, all in farm-local real metres (x, height, -y):
@@ -477,6 +477,181 @@ function fallingLeaves() {
   return { mesh, update };
 }
 
+// ------------------------------------------------------------------ barn cats
+
+interface Cat {
+  root: THREE.Group;
+  body: THREE.Group;
+  head: THREE.Group;
+  legs: THREE.Group[];
+  tail: THREE.Group[];
+}
+
+/** A barn cat about 45 cm long, nose along +x, standing on y = 0. */
+function makeCat(coat: number, patch: number): Cat {
+  const fur = new THREE.MeshStandardMaterial({ color: coat, roughness: 0.95 });
+  const white = new THREE.MeshStandardMaterial({ color: patch, roughness: 0.95 });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x1a1a14, roughness: 0.5 });
+  const pink = new THREE.MeshStandardMaterial({ color: 0xd99a9a, roughness: 0.8 });
+  const ball = (r: number, m: THREE.Material, sx = 1, sy = 1, sz = 1) => {
+    const o = new THREE.Mesh(new THREE.SphereGeometry(r, 12, 8), m);
+    o.scale.set(sx, sy, sz);
+    return o;
+  };
+  const root = new THREE.Group();
+  const body = new THREE.Group();
+  body.position.y = 0.2;
+  root.add(body);
+  body.add(ball(0.1, fur, 2.1, 1.05, 0.95));
+  const chest = ball(0.075, white, 1, 1.1, 1);
+  chest.position.set(0.13, -0.03, 0);
+  body.add(chest);
+  // Head on a pivot at the neck.
+  const head = new THREE.Group();
+  head.position.set(0.21, 0.07, 0);
+  body.add(head);
+  head.add(ball(0.068, fur, 1.05, 0.95, 1.05).translateX(0.03));
+  const muzzle = ball(0.033, white, 1, 0.8, 1.2);
+  muzzle.position.set(0.085, -0.02, 0);
+  head.add(muzzle);
+  const nose = ball(0.008, pink);
+  nose.position.set(0.115, -0.008, 0);
+  head.add(nose);
+  for (const s of [-1, 1]) {
+    const ear = new THREE.Mesh(new THREE.ConeGeometry(0.026, 0.055, 4), fur);
+    ear.position.set(0.02, 0.065, s * 0.038);
+    ear.rotation.x = s * 0.25;
+    head.add(ear);
+    const eye = ball(0.011, dark);
+    eye.position.set(0.085, 0.018, s * 0.028);
+    head.add(eye);
+  }
+  // Legs on hip and shoulder pivots, with white paws.
+  const legs: THREE.Group[] = [];
+  for (const [x, z] of [
+    [0.13, 0.05],
+    [0.13, -0.05],
+    [-0.13, 0.05],
+    [-0.13, -0.05],
+  ] as const) {
+    const hip = new THREE.Group();
+    hip.position.set(x, -0.02, z);
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.018, 0.17, 6), fur);
+    leg.position.y = -0.085;
+    const paw = ball(0.022, white, 1.3, 0.7, 1);
+    paw.position.set(0.01, -0.17, 0);
+    hip.add(leg, paw);
+    body.add(hip);
+    legs.push(hip);
+  }
+  // A tail of short segments, each hinged on the last, so it can curl and flick.
+  const tail: THREE.Group[] = [];
+  let parent: THREE.Object3D = body;
+  for (let i = 0; i < 7; i++) {
+    const seg = new THREE.Group();
+    seg.position.set(i === 0 ? -0.2 : -0.045, i === 0 ? 0.03 : 0, 0);
+    const piece = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.016 - i * 0.0012, 0.018 - i * 0.0012, 0.05, 6),
+      i === 6 ? white : fur,
+    );
+    piece.rotation.z = Math.PI / 2;
+    piece.position.x = -0.022;
+    seg.add(piece);
+    parent.add(seg);
+    tail.push(seg);
+    parent = seg;
+  }
+  root.traverse((o) => {
+    if ((o as THREE.Mesh).isMesh) o.castShadow = true;
+  });
+  return { root, body, head, legs, tail };
+}
+
+/**
+ * A couple of barn cats: an orange tabby sitting in the sun by the barn's south door,
+ * looking about and flicking her tail, and a black-and-white tom patrolling along the
+ * barn's east side, stopping now and then to sit and look around before heading back.
+ */
+function barnCats() {
+  const group = new THREE.Group();
+  group.name = 'barn-cats';
+  const B = FARM.barn;
+  // Map point in the barn's frame: `along` toward farm north, `out` toward farm east.
+  const at = (along: number, out: number): XY => add(add(B.c, U, along), V, -out);
+  const place = (c: Cat, p: XY, yaw: number) => {
+    c.root.position.set(p[0], groundHeight(p[0], p[1]), -p[1]);
+    c.root.rotation.y = yaw;
+  };
+  const grid = (FARM.farmGridDeg * Math.PI) / 180;
+
+  // Sitting tabby: rear down, front legs straight, body tipped up.
+  const sit = makeCat(0xd2843a, 0xf2e6d0);
+  place(sit, at(-B.w / 2 - 1.4, 2.6), grid + Math.PI + 0.5);
+  const sitPose = (c: Cat) => {
+    c.body.rotation.z = 0.62;
+    c.body.position.y = 0.17;
+    c.legs[0]!.rotation.z = -0.62;
+    c.legs[1]!.rotation.z = -0.62;
+    c.legs[2]!.rotation.z = 0.55;
+    c.legs[3]!.rotation.z = 0.55;
+    c.head.rotation.z = -0.55;
+  };
+  sitPose(sit);
+  group.add(sit.root);
+
+  // Patrolling tom: walks the east side of the barn and back.
+  const walk = makeCat(0x1c1c1e, 0xf4f2ec);
+  group.add(walk.root);
+  const A = at(-B.w / 2 + 1, B.h / 2 + 1.3),
+    Bp = at(B.w / 2 - 1, B.h / 2 + 1.3);
+  const len = Math.hypot(Bp[0] - A[0], Bp[1] - A[1]);
+  const speed = 0.35,
+    rest = 6;
+  const leg = len / speed;
+  const cycle = 2 * (leg + rest);
+
+  const update = (t: number) => {
+    // Tabby: slow tail sweep, the odd flick, head turning to watch the yard.
+    sit.tail.forEach((sg, i) => {
+      sg.rotation.y = Math.sin(t * 0.8 + i * 0.5) * 0.18 + (i === 0 ? 1.2 : 0);
+      sg.rotation.z = i === 0 ? -0.9 : 0.12 + Math.max(0, Math.sin(t * 0.37)) ** 8 * 0.5;
+    });
+    sit.head.rotation.y = Math.sin(t * 0.21) * 0.7 + Math.sin(t * 0.9) * 0.08;
+
+    // Tom: walk, sit and look round, walk back, sit again.
+    const k = ((t % cycle) + cycle) % cycle;
+    const out = k < leg + rest;
+    const kk = out ? k : k - (leg + rest);
+    const walking = kk < leg;
+    const f = out ? Math.min(1, kk / leg) : 1 - Math.min(1, kk / leg);
+    const p: XY = [A[0] + (Bp[0] - A[0]) * f, A[1] + (Bp[1] - A[1]) * f];
+    const heading = Math.atan2(Bp[1] - A[1], Bp[0] - A[0]) + (out ? 0 : Math.PI);
+    place(walk, p, heading);
+    if (walking) {
+      const ph = t * 7;
+      walk.body.rotation.z = 0;
+      walk.body.position.y = 0.2 + Math.abs(Math.sin(ph)) * 0.01;
+      walk.legs.forEach(
+        (l, i) => (l.rotation.z = Math.sin(ph + (i === 0 || i === 3 ? 0 : Math.PI)) * 0.45),
+      );
+      walk.head.rotation.set(0, Math.sin(t * 0.6) * 0.2, 0);
+      // Tail held up with a curl at the tip.
+      walk.tail.forEach((sg, i) => {
+        sg.rotation.z = i === 0 ? -1.1 : i > 4 ? -0.35 : 0.08;
+        sg.rotation.y = Math.sin(t * 2 + i * 0.6) * 0.08;
+      });
+    } else {
+      sitPose(walk);
+      walk.head.rotation.y = Math.sin(t * 0.5) * 0.8;
+      walk.tail.forEach((sg, i) => {
+        sg.rotation.z = i === 0 ? -0.9 : 0.1;
+        sg.rotation.y = (i === 0 ? 1.1 : 0) + Math.sin(t * 1.3 + i * 0.4) * 0.15;
+      });
+    }
+  };
+  return { group, update };
+}
+
 // ------------------------------------------------------------------ all together
 
 export function buildCritters(flowerSpots: BeeSpot[]) {
@@ -485,7 +660,8 @@ export function buildCritters(flowerSpots: BeeSpot[]) {
   const sw = swallows();
   const fl = fluff();
   const lv = fallingLeaves();
-  group.add(bf.group, sw.group, fl.points, lv.mesh);
+  const cats = barnCats();
+  group.add(bf.group, sw.group, fl.points, lv.mesh, cats.group);
   return {
     group,
     update(t: number, localCamera: THREE.Vector3) {
@@ -493,6 +669,7 @@ export function buildCritters(flowerSpots: BeeSpot[]) {
       sw.update(t);
       fl.update(localCamera);
       lv.update(t, localCamera);
+      cats.update(t);
     },
   };
 }
