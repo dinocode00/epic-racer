@@ -154,6 +154,19 @@ function paintGround(): THREE.CanvasTexture {
   }
   x.restore();
   speckle(140000, ['#68a040', '#77ae4b', '#62973c', '#7bb352'], 1.5, 4);
+  // Soft patches: lusher, darker grass in places, drier and yellower in others, and the odd
+  // clover-rich spot, so the lawn isn't one flat green.
+  for (let i = 0; i < 520; i++) {
+    const cx = rnd() * W,
+      cy = rnd() * H,
+      r = (2 + rnd() * 7) * PPM;
+    const g = x.createRadialGradient(cx, cy, 0, cx, cy, r);
+    const c = ['58,110,36', '150,160,70', '96,140,60', '120,150,50'][(rnd() * 4) | 0]!;
+    g.addColorStop(0, `rgba(${c},${0.12 + rnd() * 0.12})`);
+    g.addColorStop(1, `rgba(${c},0)`);
+    x.fillStyle = g;
+    x.fillRect(cx - r, cy - r, r * 2, r * 2);
+  }
   x.restore();
 
   // 3. Pumpkin patch: soil with rows of vines.
@@ -278,8 +291,21 @@ function paintGround(): THREE.CanvasTexture {
   x.lineWidth = 4.2 * PPM;
   line(FARM.lane);
   x.stroke();
-  x.strokeStyle = 'rgba(120,104,80,0.6)';
-  x.lineWidth = 0.4 * PPM;
+  // Two worn tyre tracks down the lane, with grass in the middle strip.
+  for (const off of [-0.8, 0.8]) {
+    const [a, b] = FARM.lane as [XY, XY];
+    const L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    const n: XY = [(-(b[1] - a[1]) / L) * off, ((b[0] - a[0]) / L) * off];
+    x.strokeStyle = 'rgba(132,114,88,0.55)';
+    x.lineWidth = 0.45 * PPM;
+    line([
+      [a[0] + n[0], a[1] + n[1]],
+      [b[0] + n[0], b[1] + n[1]],
+    ]);
+    x.stroke();
+  }
+  x.strokeStyle = 'rgba(110,140,70,0.45)';
+  x.lineWidth = 0.5 * PPM;
   line(FARM.lane);
   x.stroke();
 

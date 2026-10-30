@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {
   type TreeGeo,
+  treeKit,
   barkDepth,
   barkMaterial,
   leafDepth,
@@ -75,7 +76,7 @@ const FT = 0.3048;
 
 // How the farm's shrubs and low plants move in the breeze (object units: metres here).
 const LILAC_WIND = { lean: 0.018, sway: 0.014, speed: 1.6, flutter: 0.025, h0: 0.4 };
-const VINE_WIND = { lean: 0.03, sway: 0.03, speed: 2.1, flutter: 0.03, h0: 1.0 };
+const VINE_GREENS = [0x4e8a34, 0x5a9a3c, 0x447d2e];
 const LEAF_FLUTTER = { lean: 0.12, sway: 0.12, speed: 2.6, flutter: 0.1, h0: -1 };
 
 interface Normalised {
@@ -450,8 +451,8 @@ function lilacs(): THREE.Group {
 function grapes(): THREE.Group {
   const g = new THREE.Group();
   const post = new THREE.MeshStandardMaterial({ color: 0x7a5a3a, roughness: 0.9 });
-  const vine = new THREE.MeshStandardMaterial({ color: 0x4e8a34, roughness: 0.9 });
-  const vineLeaf = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 });
+  const vineBody = barkMaterial();
+  const vineLeaves = leafMaterial(false);
   const grape = new THREE.MeshStandardMaterial({ roughness: 0.35 });
   const berry = new THREE.IcosahedronGeometry(1, 1);
   const purples = [0x4a2a5e, 0x5b2d73, 0x3d2050, 0x6a3a82];
@@ -462,14 +463,28 @@ function grapes(): THREE.Group {
       row.add(
         new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.8, 0.1), post).translateX(s).translateY(0.9),
       );
-    const foliage = new THREE.Group();
-    for (let s = 0.4; s < L - 0.4; s += 0.55) {
-      const o = new THREE.Mesh(new THREE.IcosahedronGeometry(0.42 + rnd() * 0.12, 0), vine);
-      o.position.set(s, 1.35 + (rnd() - 0.5) * 0.3, (rnd() - 0.5) * 0.25);
-      o.scale.set(1, 0.9, 0.7);
-      foliage.add(o);
+    // Leafy along the wires: soft, shaded clumps fringed with leaf cards, like the trees.
+    const body: THREE.BufferGeometry[] = [],
+      fringe: THREE.BufferGeometry[] = [];
+    for (let s = 0.3; s < L - 0.3; s += 0.2 + rnd() * 0.2) {
+      const c = new THREE.Vector3(s, 1.36 + (rnd() - 0.5) * 0.36, (rnd() - 0.5) * 0.22);
+      const r = 0.2 + rnd() * 0.2;
+      const col = new THREE.Color(VINE_GREENS[(rnd() * VINE_GREENS.length) | 0]!);
+      body.push(treeKit.blob(c, r * 0.8, col, (rnd() * 100) | 0, 0.85));
+      fringe.push(treeKit.cards(c, r * 1.15, 9, 0.38, col.clone().multiplyScalar(1.12)));
+      // Shoots trailing down off the wire.
+      if (rnd() < 0.35)
+        fringe.push(
+          treeKit.cards(c.clone().add(new THREE.Vector3(0, -0.32, 0)), 0.14, 4, 0.3, col),
+        );
     }
-    row.add(windy(bake(foliage, [{ from: [vine], to: vineLeaf }])[0]!, VINE_WIND, 'vine'));
+    const bodyGeo = treeKit.merge(body).scale(1, 1, 0.72);
+    const fringeGeo = treeKit.merge(fringe).scale(1, 1, 0.72);
+    const bm = new THREE.Mesh(bodyGeo, vineBody);
+    bm.customDepthMaterial = barkDepth();
+    const fm = new THREE.Mesh(fringeGeo, vineLeaves);
+    fm.customDepthMaterial = leafDepth(false);
+    row.add(bm, fm);
     // Bunches of round purple grapes hanging below the leaves on both sides of the row: each
     // a tapering heap of small berries, widest at the top.
     const at: THREE.Matrix4[] = [],

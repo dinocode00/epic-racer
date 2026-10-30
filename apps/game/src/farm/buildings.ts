@@ -167,8 +167,9 @@ function makeMats() {
   const planks = tex.planks();
   planks.repeat.set(1 / 1.6, 1 / 1.6);
   const all = {
-    siding: std({ map: siding, roughness: 0.75 }),
-    boards: std({ map: boards, roughness: 0.85 }),
+    // The texture doubles as a bump map: the lap lines and batten gaps catch the light.
+    siding: std({ map: siding, bumpMap: siding, bumpScale: 1.5, roughness: 0.75 }),
+    boards: std({ map: boards, bumpMap: boards, bumpScale: 2, roughness: 0.85 }),
     shingle: std({ map: shingle, roughness: 0.95 }),
     stone: std({ map: stoneMap, roughness: 0.95 }),
     asphalt: std({ map: asphaltMap, roughness: 0.9 }),
