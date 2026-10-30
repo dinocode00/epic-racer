@@ -95,7 +95,8 @@ function seg(px: number, py: number, ax: number, ay: number, bx: number, by: num
 }
 
 /** The face: how far (m) each point stands out from the plain head shape, and its cavity. */
-function face(x: number, y: number): { dz: number; cav: number } {
+/** `smile` 0..1 widens the closed smile: corners up and back, cheeks lifted. */
+function face(x: number, y: number, smile = 0): { dz: number; cav: number } {
   const ax = Math.abs(x);
   let up = 0,
     down = 0;
@@ -172,9 +173,16 @@ function face(x: number, y: number): { dz: number; cav: number } {
   add(0.0006 * G(ax, y, 0.0058, -0.062, 0.0018, 0.005));
   add(0.0028 * G(x, y, 0, -0.0675, 0.019, 0.0045));
   {
-    const ym = -0.0726 + 0.0062 * (x / 0.025) ** 2;
-    const win = 1 - smooth(0.022, 0.029, ax);
+    const ym = -0.0726 + (0.0062 + 0.0045 * smile) * (x / 0.025) ** 2;
+    const win = 1 - smooth(0.022 + 0.003 * smile, 0.029 + 0.004 * smile, ax);
     add(-0.0028 * Math.exp(-(((y - ym) / 0.0017) ** 2)) * win);
+  }
+  if (smile > 0) {
+    // Cheeks round up under the eyes, the corners tuck in, the nose folds deepen.
+    add(0.003 * smile * G(ax, y, 0.044, -0.033, 0.016, 0.012));
+    add(-0.0016 * smile * G(ax, y, 0.029, -0.0655, 0.0035, 0.0035));
+    const sg = seg(ax, y, 0.019, -0.046, 0.034, -0.086);
+    add(-0.0012 * smile * Math.exp(-((sg.d / 0.003) ** 2)));
   }
   add(0.0032 * G(x, y, 0, -0.0785, 0.016, 0.0042));
   add(-0.0022 * G(ax, y, 0.0265, -0.0685, 0.003, 0.0032));
@@ -429,6 +437,7 @@ function skinMaps(): { map: THREE.CanvasTexture; bump: THREE.CanvasTexture } {
 // ---------------------------------------------------------------- head mesh
 
 function headMesh(skin: THREE.Material): THREE.Mesh {
+  const smilePos: number[] = [];
   // Angles bunch up across the face (about 1 mm apart there) and spread out round the back.
   const NA = 260,
     NY = 300;
@@ -444,6 +453,7 @@ function headMesh(skin: THREE.Material): THREE.Mesh {
       const sh = shell(a, y);
       const f = face(sh.x, y);
       pos.push(sh.x, y, sh.z + f.dz * sh.front);
+      smilePos.push(sh.x, y, sh.z + face(sh.x, y, 1).dz * sh.front);
       uv.push(a / (Math.PI * 2) + 0.5, j / NY);
       const k = clamp(1 + f.cav * sh.front * 34, 0.55, 1);
       col.push(k, k * 0.97, k * 0.96);
@@ -471,12 +481,32 @@ function headMesh(skin: THREE.Material): THREE.Mesh {
     g.setIndex(idx);
     smoothSeams(g);
   }
-  return new THREE.Mesh(g, skin);
+  // The smile as a morph target (position and normal offsets from the resting face).
+  const sm = new THREE.BufferGeometry();
+  sm.setAttribute('position', new THREE.Float32BufferAttribute(smilePos, 3));
+  sm.setIndex(g.index!.clone());
+  smoothSeams(sm);
+  const dp = new Float32Array(pos.length),
+    dn = new Float32Array(pos.length);
+  const n0 = g.attributes.normal!.array,
+    n1 = sm.attributes.normal!.array;
+  for (let i = 0; i < pos.length; i++) {
+    dp[i] = smilePos[i]! - pos[i]!;
+    dn[i] = n1[i]! - n0[i]!;
+  }
+  g.morphAttributes.position = [new THREE.BufferAttribute(dp, 3)];
+  g.morphAttributes.normal = [new THREE.BufferAttribute(dn, 3)];
+  g.morphTargetsRelative = true;
+  const mesh = new THREE.Mesh(g, skin);
+  mesh.morphTargetInfluences = [0];
+  return mesh;
 }
 
 /** Eyes narrowed in a smile: eyeballs under hooded upper lids, the lash line along them. */
 function eyes(skin: THREE.Material): THREE.Group {
   const g = new THREE.Group();
+  const lowers: THREE.Object3D[] = [];
+  g.userData.lowers = lowers;
   const white = new THREE.MeshStandardMaterial({ color: 0xcfc3b4, roughness: 0.2 });
   const iris = new THREE.MeshStandardMaterial({ color: 0x3b4855, roughness: 0.12 });
   const pupil = new THREE.MeshStandardMaterial({ color: 0x0e0e10, roughness: 0.1 });
@@ -510,6 +540,7 @@ function eyes(skin: THREE.Material): THREE.Group {
       skin,
     );
     e.add(lower);
+    lowers.push(lower);
     // Lash line along the lid edge (front arc only).
     const rr = R * 1.1 * Math.sin(up);
     const line = new THREE.Mesh(new THREE.TorusGeometry(rr, 0.0007, 5, 24, 2.1), lash);
@@ -628,6 +659,30 @@ function ear(side: number, skin: THREE.Material): THREE.Group {
   return g;
 }
 
+/**
+ * Grey hair strands, the same for every part of his hair: lines along the texture's v.
+ * `edge` breaks the strands up toward v = 0 (the lower edge of the short hair at the sides).
+ */
+function hairStrands(edge: boolean): THREE.CanvasTexture {
+  return canvasTex(256, 256, (x) => {
+    x.clearRect(0, 0, 256, 256);
+    x.fillStyle = '#a59f96';
+    x.fillRect(0, 0, 256, edge ? 150 : 256);
+    for (let i = 0; i < (edge ? 1600 : 2600); i++) {
+      const sx = rnd() * 256;
+      const len = 40 + rnd() * 120;
+      const y0 = edge ? 60 + rnd() * 80 : rnd() * 256 - 40;
+      const v = 120 + ((rnd() * 110) | 0);
+      x.strokeStyle = `rgb(${v},${v - 3},${v - 9})`;
+      x.lineWidth = 1 + rnd() * 1.6;
+      x.beginPath();
+      x.moveTo(sx, y0);
+      x.quadraticCurveTo(sx + (rnd() - 0.5) * 6, y0 + len * 0.5, sx + (rnd() - 0.5) * 10, y0 + len);
+      x.stroke();
+    }
+  });
+}
+
 /** Short grey hair round the sides and back, below the cap, its lower edge in fine tufts. */
 function hair(): THREE.Mesh {
   // Lower edge of the hair by angle from the front: sideburns, over the ears, down the nape.
@@ -676,35 +731,113 @@ function hair(): THREE.Mesh {
   g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   g.setIndex(idx);
   g.computeVertexNormals();
-  const strands = canvasTex(256, 256, (x) => {
-    x.clearRect(0, 0, 256, 256);
-    // Solid above, combed strands breaking up toward the lower edge (bottom of the canvas).
-    x.fillStyle = '#a59f96';
-    x.fillRect(0, 0, 256, 150);
-    for (let i = 0; i < 1600; i++) {
-      const sx = rnd() * 256;
-      const len = 40 + rnd() * 120;
-      const y0 = 60 + rnd() * 80;
-      const v = 120 + ((rnd() * 110) | 0);
-      x.strokeStyle = `rgb(${v},${v - 3},${v - 9})`;
-      x.lineWidth = 1 + rnd() * 1.6;
-      x.beginPath();
-      x.moveTo(sx, y0);
-      x.quadraticCurveTo(sx + (rnd() - 0.5) * 6, y0 + len * 0.5, sx + (rnd() - 0.5) * 10, y0 + len);
-      x.stroke();
-    }
-  });
+  const strands = hairStrands(true);
   strands.wrapT = THREE.ClampToEdgeWrapping;
   strands.flipY = true;
   const m = new THREE.MeshStandardMaterial({
     map: strands,
     alphaTest: 0.5,
     side: THREE.DoubleSide,
-    roughness: 0.75,
+    roughness: 0.95,
+    envMapIntensity: 0.35,
     bumpMap: strands,
     bumpScale: 2,
   });
   return new THREE.Mesh(g, m);
+}
+
+/**
+ * His hair over the top: a plain man's cut combed straight back, the same grey as the short
+ * hair at the sides. Under the cap it lies flat; with the cap off it has a little lift at the
+ * front (a morph target, 0 flat to 1 lifted, driven by `setHatOff`).
+ */
+function crownHair(): THREE.Mesh {
+  // Hairline: high across the forehead, rounding back at the temples, lower at the sides
+  // and back where it meets the short hair below.
+  const line = (a: number) => {
+    const aa = Math.abs(a);
+    // Forehead 0.064 (just above the top forehead line), temples and over the ears 0.034,
+    // down the back toward the nape.
+    return 0.034 + 0.03 * smooth(1.25, 0.45, aa) - 0.064 * smooth(2.0, 3.0, aa);
+  };
+  const NA = 180,
+    NY = 120;
+  const flat: number[] = [],
+    lifted: number[] = [],
+    uv: number[] = [],
+    idx: number[] = [];
+  for (let j = 0; j <= NY; j++) {
+    const t = j / NY;
+    for (let i = 0; i <= NA; i++) {
+      const a = -Math.PI + (i / NA) * Math.PI * 2;
+      const y0 = line(a);
+      const y = y0 + t * (Y1 - 0.0005 - y0);
+      const sh = shell(a, y);
+      // Lifted off the scalp all round (radially from the middle of the head) so it covers
+      // the top; thicker on top, thin at the edges.
+      // Thick enough to cover the short hair under it, thinning only at its very edge.
+      const base = 0.0034 * smooth(0, 0.06, t) + 0.0016;
+      const e0 = 1 + base / 0.1;
+      // The lift: just behind the front hairline, fading back over the crown and round the
+      // temples; the front edge itself stands up a little.
+      const front = smooth(1.15, 0.25, Math.abs(a));
+      const lift = front * (0.0095 * G(t, 0, 0.22, 0, 0.26, 1) + 0.003 * (1 - smooth(0, 0.08, t)));
+      const e1 = e0 + lift / 0.1;
+      flat.push(sh.x * e0, y * e0, sh.z * e0);
+      lifted.push(sh.x * e1, y * e1 + lift * 0.25, sh.z * e1);
+      // Combed straight back: strands run front to back (v), side by side round the head (u).
+      const phi = Math.atan2(sh.x, y + 0.03);
+      uv.push(phi * 1.6, -sh.z * 6);
+    }
+  }
+  for (let j = 0; j < NY; j++)
+    for (let i = 0; i < NA; i++) {
+      const a = j * (NA + 1) + i,
+        b = a + 1,
+        c = a + NA + 1,
+        d = c + 1;
+      idx.push(a, b, d, a, d, c);
+    }
+  const build = (p: number[]) => {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(p, 3));
+    g.setIndex(idx);
+    g.computeVertexNormals();
+    // Faces should point out (away from the middle of the head).
+    const n = g.attributes.normal!;
+    const k = ((NY / 2) | 0) * (NA + 1) + NA / 2;
+    if (n.getY(k) < 0) {
+      for (let q = 0; q < idx.length; q += 3) [idx[q + 1], idx[q + 2]] = [idx[q + 2]!, idx[q + 1]!];
+      g.setIndex(idx);
+      g.computeVertexNormals();
+    }
+    return g;
+  };
+  const g = build(flat);
+  const gl = build(lifted);
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  const dp = new Float32Array(flat.length),
+    dn = new Float32Array(flat.length);
+  const n0 = g.attributes.normal!.array,
+    n1 = gl.attributes.normal!.array;
+  for (let q = 0; q < flat.length; q++) {
+    dp[q] = lifted[q]! - flat[q]!;
+    dn[q] = n1[q]! - n0[q]!;
+  }
+  g.morphAttributes.position = [new THREE.BufferAttribute(dp, 3)];
+  g.morphAttributes.normal = [new THREE.BufferAttribute(dn, 3)];
+  g.morphTargetsRelative = true;
+  const strands = hairStrands(false);
+  const m = new THREE.MeshStandardMaterial({
+    map: strands,
+    bumpMap: strands,
+    bumpScale: 1.5,
+    roughness: 0.95,
+    envMapIntensity: 0.35,
+  });
+  const mesh = new THREE.Mesh(g, m);
+  mesh.morphTargetInfluences = [0];
+  return mesh;
 }
 
 // ---------------------------------------------------------------- trucker cap
@@ -1015,7 +1148,18 @@ function trucker(): THREE.Group {
 
 // ---------------------------------------------------------------- whole head
 
-export function buildHead(): { group: THREE.Group; cap: THREE.Group } {
+export interface Head {
+  group: THREE.Group;
+  cap: THREE.Group;
+  /** Where the cap sits on the head (its rest pose, head-local). */
+  capRest: { position: THREE.Vector3; quaternion: THREE.Quaternion };
+  /** 0 his usual easy look, 1 a soft, warm smile (cheeks up, eyes crinkled). */
+  setSmile(k: number): void;
+  /** 0 cap on (hair flat under it), 1 cap off (the front of his hair lifts). */
+  setHatOff(k: number): void;
+}
+
+export function buildHead(): Head {
   const g = new THREE.Group();
   const maps = skinMaps();
   // Skin: a soft sheen at grazing angles stands in for light through the skin.
@@ -1037,8 +1181,10 @@ export function buildHead(): { group: THREE.Group; cap: THREE.Group } {
     bumpScale: 0.3,
   });
   const earSkin = new THREE.MeshStandardMaterial({ color: 0xbc8470, roughness: 0.6 });
-  g.add(headMesh(skin));
-  g.add(eyes(plainSkin));
+  const face = headMesh(skin);
+  g.add(face);
+  const eyeG = eyes(plainSkin);
+  g.add(eyeG);
   g.add(brows());
   for (const s of [-1, 1]) {
     const e = ear(s, earSkin);
@@ -1046,7 +1192,8 @@ export function buildHead(): { group: THREE.Group; cap: THREE.Group } {
     e.rotation.set(0.12, s * 0.28, s * -0.05);
     g.add(e);
   }
-  g.add(hair());
+  const top = crownHair();
+  g.add(hair(), top);
   // Worn loose and pushed back: front up off the forehead, the back down on the nape.
   const cap = trucker();
   cap.rotation.x = -0.3;
@@ -1056,5 +1203,17 @@ export function buildHead(): { group: THREE.Group; cap: THREE.Group } {
     if ((o as THREE.Mesh).isMesh) o.castShadow = o.receiveShadow = true;
   });
   void white;
-  return { group: g, cap };
+  const lowers = eyeG.userData.lowers as THREE.Object3D[];
+  return {
+    group: g,
+    cap,
+    capRest: { position: cap.position.clone(), quaternion: cap.quaternion.clone() },
+    setSmile(k) {
+      face.morphTargetInfluences![0] = k;
+      for (const l of lowers) l.rotation.x = -0.22 * k;
+    },
+    setHatOff(k) {
+      top.morphTargetInfluences![0] = k;
+    },
+  };
 }

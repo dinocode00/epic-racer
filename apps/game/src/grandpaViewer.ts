@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { buildGrandpa } from './farm/grandpa.ts';
+import { WAVE_LENGTH, buildGrandpa } from './farm/grandpa.ts';
+import { buildMower } from './farm/mower.ts';
 import { buildSky } from './render/scenery.ts';
 import { View } from './render/view.ts';
 
@@ -85,6 +86,10 @@ scene.add(stick);
 
 const gp = buildGrandpa();
 scene.add(gp.group);
+// His lawn tractor, parked out of sight until he rides it.
+const mower = buildMower();
+mower.group.visible = false;
+scene.add(mower.group);
 
 const camera = new THREE.PerspectiveCamera(35, 16 / 9, 0.05, 100);
 const controls = new OrbitControls(camera, view.renderer.domElement);
@@ -92,7 +97,7 @@ controls.enableDamping = true;
 controls.target.set(0, 1.0, 0);
 camera.position.set(1.6, 1.5, -4.2);
 
-type Mode = 'stand' | 'walk' | 'turn';
+type Mode = 'stand' | 'walk' | 'turn' | 'wave' | 'mower';
 let mode: Mode = 'turn';
 const VIEWS: Record<string, [THREE.Vector3, THREE.Vector3]> = {
   full: [new THREE.Vector3(1.6, 1.4, -4.4), new THREE.Vector3(0.2, 0.95, 0)],
@@ -106,6 +111,14 @@ const VIEWS: Record<string, [THREE.Vector3, THREE.Vector3]> = {
   back: [new THREE.Vector3(-1.2, 1.4, 4.2), new THREE.Vector3(0, 0.95, 0)],
   feet: [new THREE.Vector3(-1.4, 0.35, -0.9), new THREE.Vector3(0, 0.15, 0)],
   hands: [new THREE.Vector3(-0.9, 1.0, -0.9), new THREE.Vector3(-0.2, 0.85, 0)],
+  wave: [new THREE.Vector3(1.2, 1.7, -3.2), new THREE.Vector3(-0.1, 1.45, 0)],
+  mower: [new THREE.Vector3(2.4, 1.6, -2.6), new THREE.Vector3(0, 0.75, -0.2)],
+  mowerSide: [new THREE.Vector3(3.2, 1.1, -0.2), new THREE.Vector3(0, 0.75, -0.2)],
+  lap: [new THREE.Vector3(-0.5, 1.9, -1.3), new THREE.Vector3(0, 1.0, 0.1)],
+  hairFront: [new THREE.Vector3(-0.35, 1.78, -0.6), new THREE.Vector3(0, 1.76, 0)],
+  hairTop: [new THREE.Vector3(0.6, 2.3, -0.7), new THREE.Vector3(-0.05, 1.75, 0)],
+  hairSide: [new THREE.Vector3(0.75, 1.82, 0.12), new THREE.Vector3(-0.02, 1.78, 0)],
+  mowerBack: [new THREE.Vector3(-1.6, 1.9, 2.4), new THREE.Vector3(0, 0.9, 0)],
 };
 function setView(name: string): void {
   const v = VIEWS[name];
@@ -114,9 +127,21 @@ function setView(name: string): void {
   controls.target.copy(v[1]);
   controls.update();
 }
+let waveStart = 0;
 function setMode(m: Mode): void {
   mode = m;
   if (m !== 'turn') gp.group.rotation.y = 0;
+  if (m === 'wave') waveStart = t;
+  // On the mower he sits in its seat; otherwise he stands on the lawn.
+  mower.group.visible = m === 'mower';
+  stick.visible = m !== 'mower';
+  if (m === 'mower') {
+    mower.seat.add(gp.group);
+    gp.group.position.set(0, 0, 0);
+  } else if (gp.group.parent !== scene) {
+    scene.add(gp.group);
+    gp.group.position.set(0, 0, 0);
+  }
 }
 
 // Overlay.
@@ -134,6 +159,14 @@ const btn = (label: string, fn: () => void) => {
 btn('Turn around', () => setMode('turn'));
 btn('Walk', () => setMode('walk'));
 btn('Stand', () => setMode('stand'));
+btn('Wave the cap', () => {
+  setMode('wave');
+  setView('wave');
+});
+btn('Mower', () => {
+  setMode('mower');
+  setView('mower');
+});
 btn('Whole', () => setView('full'));
 btn('Face', () => setView('face'));
 btn('Side', () => setView('side'));
@@ -142,7 +175,8 @@ btn('Gloves', () => setView('hands'));
 btn('Boots', () => setView('feet'));
 
 const hash = location.hash.slice(1);
-if (hash === 'walk' || hash === 'stand' || hash === 'turn') setMode(hash);
+if (hash === 'walk' || hash === 'stand' || hash === 'turn' || hash === 'wave' || hash === 'mower')
+  setMode(hash);
 else if (VIEWS[hash]) (setView(hash), setMode('stand'));
 else setView('full');
 
@@ -160,10 +194,27 @@ function frame(now: number): void {
 }
 function step(dt: number): void {
   t += dt;
-  const speed = mode === 'walk' ? gp.strollSpeed : 0;
-  gp.animate(t, speed);
+  let speed = mode === 'walk' || mode === 'wave' ? gp.strollSpeed : 0;
+  if (mode === 'wave') {
+    // Walking along; every so often he spots someone far off and waves his cap at them.
+    const cycle = WAVE_LENGTH + 3;
+    gp.animate(t, speed, { kind: 'wave', t: (t - waveStart) % cycle });
+  } else if (mode === 'mower') {
+    // Mowing at an easy 3.5 mph, steering gently back and forth.
+    speed = 1.5;
+    const steer = Math.sin(t * 0.35) * 0.25 + Math.sin(t * 1.1) * 0.05;
+    mower.update(t, speed, steer);
+    gp.animate(t, 0, {
+      kind: 'ride',
+      wheel: mower.wheel,
+      wheelR: mower.wheelR,
+      feet: mower.feet,
+      shake: 1,
+      speed,
+    });
+  } else gp.animate(t, speed);
   if (mode === 'turn') gp.group.rotation.y += dt * 0.5;
-  // The lawn slides back under his feet at his walking speed (he walks toward -z).
+  // The lawn slides back under him at his speed (he travels toward -z).
   grassTex.offset.y += (speed * dt * 6) / 12;
 }
 requestAnimationFrame(frame);
