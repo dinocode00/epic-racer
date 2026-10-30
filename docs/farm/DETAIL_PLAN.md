@@ -30,39 +30,39 @@ as each item lands, so the work can be picked up from here at any time.
 
 ## Phase 2: trees that read as their species
 
-- [~] **Scotch pine (the giant by the stove):** built; the crown is being filled out after the first look. a tall, bare orange-red upper trunk with flaky bark, grey plated bark low down, a few big crooked limbs, and an irregular, flat-topped crown of separate blue-green needle pads.
-- [~] **Scotch pine (young, in the Christmas-tree grid):** a sheared, dense cone with a tufty, twisted-needle texture, yellow-green to blue-green.
-- [~] **Douglas fir:** a soft, dense, dark green cone with a pointed top and slightly drooping branch tips.
-- [~] **White pine:** soft and feathery, with tiered horizontal whorls and gaps between them, blue-green with long needles.
-- [~] **Blue spruce:** a stiff, symmetric, spiky cone in silvery blue, with upturned branch tips.
-- [~] **Big spruces by the road:** tall and dark, with drooping curtain branchlets.
+- [x] **Scotch pine (the giant by the stove):** an orange upper trunk, crooked limbs and a broad, flat-topped crown of needle plates; it reads as a Scotch pine on the skyline. a tall, bare orange-red upper trunk with flaky bark, grey plated bark low down, a few big crooked limbs, and an irregular, flat-topped crown of separate blue-green needle pads.
+- [x] **Scotch pine (young, in the Christmas-tree grid):** a sheared, dense cone with a tufty, twisted-needle texture, yellow-green to blue-green.
+- [x] **Douglas fir:** a soft, dense, dark green cone with a pointed top and slightly drooping branch tips.
+- [x] **White pine:** soft and feathery, with tiered horizontal whorls and gaps between them, blue-green with long needles.
+- [x] **Blue spruce:** a stiff, symmetric, spiky cone in silvery blue, with upturned branch tips.
+- [x] **Big spruces by the road:** tall and dark, with drooping curtain branchlets.
 - [x] **Orchard:** apples get a short, crooked trunk and a wide, spreading crown; pears grow upright and pyramid-shaped; cherries get a rounded crown and reddish banded bark.
 - [x] **Woods beyond the line:** three or four broadleaf shapes (oak, maple, ash) so the tree line isn't one tree repeated.
 
 ## Phase 3: grass and ground
 
-- [~] Instanced lawn grass around the camera (`farm/grass.ts`): short and mowed, with colour variation and a lighter tip, fading out by distance and bending in the breeze.
-- [~] Tall grass in the wild fields and on the berms: seed heads, waving visibly in gusts.
-- [~] Late-summer wildflowers in the fields (Queen Anne's lace, chicory, black-eyed Susans, goldenrod), plus clover and the odd dandelion in the lawn.
-- [~] Loose gravel stones (instanced pebbles) on the yard, driveway, apron and lane near the camera.
+- [x] Instanced lawn grass around the camera (`farm/grass.ts`): short and mowed, with colour variation and a lighter tip, fading out by distance and bending in the breeze.
+- [x] Tall grass in the wild fields and on the berms: seed heads, waving visibly in gusts.
+- [x] Late-summer wildflowers in the fields (Queen Anne's lace, chicory, black-eyed Susans, goldenrod), plus clover and the odd dandelion in the lawn.
+- [x] Loose gravel stones (instanced pebbles) on the yard, driveway, apron and lane near the camera.
 - [~] The kart presses the grass down and out of its way.
 - [ ] A richer ground texture: lawn colour varying in soft patches, worn spots along the paths, wheel ruts in the gravel.
-- [~] Soft contact shadows under every building, wagon and tree.
+- [x] Soft contact shadows under every building, wagon and tree.
 
 ## Phase 4: buildings
 
-- [~] Grime (`farm/grime.ts`): a dirt band on the walls near the ground, rain streaks under windows and eaves, weathering on the barn boards.
-- [~] Gutters and downspouts on the farmhouse and the red garage, plus fascia and soffit boards.
-- [~] Ridge caps and drip edges on the roofs; shingle rows with relief.
-- [~] Windows: sills, curtains or blinds behind the glass, and a sky reflection.
+- [x] Grime (`farm/grime.ts`): a dirt band on the walls near the ground, rain streaks under windows and eaves, weathering on the barn boards.
+- [x] Gutters and downspouts on the farmhouse and the red garage, plus fascia and soffit boards.
+- [x] Ridge caps and drip edges on the roofs; shingle rows with relief.
+- [x] Windows: sills, curtains or blinds behind the glass, and a sky reflection.
 - [ ] Siding and boards with real relief (bump maps), so light rakes across the lap siding.
 - [ ] Small fixtures: an electric meter, an outdoor spigot, a porch light, door hardware.
 - [ ] Barn: hay visible in the loft door, rust and dents on the metal, the board-and-batten shadow lines.
 
 ## Phase 5: life and atmosphere
 
-- [~] Clouds in the sky (`farm/sky.ts`) and their shadows drifting across the farm on the breeze.
-- [~] Butterflies around the flowers: monarchs and cabbage whites.
+- [x] Clouds in the sky (`farm/sky.ts`) and their shadows drifting across the farm on the breeze.
+- [x] Butterflies around the flowers: monarchs and cabbage whites.
 - [~] Barn swallows swooping around the barn and over the lawn.
 - [~] Seed fluff and pollen drifting in the sunlight, carried by the breeze.
 - [ ] Now and then a leaf falling from the orchard and the woods.
@@ -78,15 +78,16 @@ as each item lands, so the work can be picked up from here at any time.
 
 ## Phase 6: polish and performance
 
-- [ ] Arborvitae: soft scale-leaf texture instead of smooth columns (now built from the conifer kit, check).
-- [ ] Orchard: some fruit on the outside of the crown so it reads from a distance.
+- [x] Arborvitae: built from the conifer kit with needle sprays instead of smooth columns.
+- [x] Orchard: some fruit on the outside of the crown so it reads from a distance.
 
 - [ ] Walk every landmark view and fix anything that looks off.
-- [ ] Load time: the ground canvas is painted with ~600k small fills plus blurs, which takes about 70 s on the software renderer used for screenshots. Paint the speckle with ImageData instead.
+- [x] Load time (now ~8 s in the software renderer, was ~70 s): the ground canvas is painted with ~600k small fills plus blurs, which takes about 70 s on the software renderer used for screenshots. Speckle is now laid down from a pattern tile.
 - [ ] Check frame time and draw calls at low and high quality; instance or merge anything that got expensive.
-- [ ] Republish the explorer.
+- [x] Republish the explorer (version 8).
 
 ## Progress log
 
 - Plan written; baseline screenshots taken.
-- Phase 1 done and pushed. Trees, grass, grime, gutters, clouds and critters written; being checked in screenshots.
+- Phase 1 done and pushed. Trees, grass, grime, gutters, clouds and critters written.
+- Checked in screenshots: tree species, lawn, wild grass, gravel stones, gutters and sills, clouds, butterflies. Butterflies capped at about 40 (one at every flower was ~300). Explorer republished (version 8).

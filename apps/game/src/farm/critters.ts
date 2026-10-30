@@ -158,14 +158,16 @@ interface Flier {
 function butterflies(spots: BeeSpot[]) {
   const group = new THREE.Group();
   const kinds = [
-    { map: wingTexture('monarch'), span: 0.11, share: 0.45 },
-    { map: wingTexture('white'), span: 0.07, share: 0.55 },
+    { map: wingTexture('monarch'), span: 0.11, max: 18 },
+    { map: wingTexture('white'), span: 0.07, max: 24 },
   ];
   const all: { mesh: THREE.InstancedMesh; fl: Flier[] }[] = [];
   for (const k of kinds) {
     const fl: Flier[] = [];
-    for (const s of spots) {
-      if (rnd() > k.share) continue;
+    // A handful spread over the flower spots, not one at every flower.
+    const flowers = spots.filter((s) => !s.fruit);
+    for (let i = 0; i < k.max && flowers.length; i++) {
+      const s = flowers[(rnd() * flowers.length) | 0]!;
       fl.push({
         c: new THREE.Vector3(s.x, s.y + 0.15, s.z),
         r: Math.max(0.8, s.r * 1.4),

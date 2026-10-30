@@ -287,7 +287,7 @@ export function buildPlants(): THREE.Group {
       if (rnd() < 0.3) c.lerp(new THREE.Color(0x5a3a1c), 0.55);
       fruit.setColorAt(nf++, c);
     }
-    SPOTS.push({ x, y: g0 + 0.12, z: -y, r: 1.3, n: 2 });
+    SPOTS.push({ x, y: g0 + 0.12, z: -y, r: 1.3, n: 2, fruit: true });
   }
   fruit.count = nf;
   for (const b of Object.values(orch)) root.add(b.done());

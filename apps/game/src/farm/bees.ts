@@ -8,6 +8,8 @@ export interface BeeSpot {
   z: number;
   r: number;
   n: number;
+  /** Fallen fruit rather than flowers (bees come, butterflies don't). */
+  fruit?: boolean;
 }
 
 /** One honeybee about 6 cm long (a touch big so it reads at miniature scale), nose along +x. */
