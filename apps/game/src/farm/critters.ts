@@ -264,6 +264,7 @@ function swallow(): { bird: THREE.Group; wings: THREE.Object3D[] } {
 
 function swallows() {
   const group = new THREE.Group();
+  group.name = 'swallows';
   const B = FARM.barn;
   const g0 = groundHeight(B.c[0], B.c[1]);
   const birds = Array.from({ length: 7 }, (_, i) => {
@@ -288,7 +289,11 @@ function swallows() {
     // A wandering loop: two circles beating together, swooping low then climbing.
     const x = B.c[0] + b.off[0]! + Math.cos(a) * b.r[0]! + Math.cos(a * 2.3 + 1) * 4;
     const y = B.c[1] + b.off[1]! + Math.sin(a) * b.r[1]! + Math.sin(a * 1.7) * 4;
-    const h = Math.max(groundHeight(x, y) + 0.5, g0 + b.h + Math.sin(a * 1.9 + b.ph) * 2.6);
+    let h = Math.max(groundHeight(x, y) + 0.5, g0 + b.h + Math.sin(a * 1.9 + b.ph) * 2.6);
+    // Up and over the barn roof rather than through it.
+    const db = Math.hypot(x - B.c[0], y - B.c[1]);
+    const over = 1 - THREE.MathUtils.smoothstep(db, 10, 16);
+    h = Math.max(h, h + (g0 + 15 - h) * over);
     return out.set(x, h, -y);
   };
   const update = (t: number) => {
@@ -379,6 +384,99 @@ function fluff(): { points: THREE.Points; update: (cam: THREE.Vector3) => void }
   return { points, update: (cam) => centre.value.set(cam.x, cam.z) };
 }
 
+// ------------------------------------------------------------------ falling leaves
+
+/**
+ * Now and then a leaf lets go from one of the orchard trees near the camera and twirls down
+ * on the breeze, then lies in the grass a while before the next one falls.
+ */
+function fallingLeaves() {
+  const N = 40;
+  const shape = new THREE.Shape();
+  shape.moveTo(0, -0.5);
+  shape.quadraticCurveTo(0.42, -0.1, 0, 0.5);
+  shape.quadraticCurveTo(-0.42, -0.1, 0, -0.5);
+  const geo = new THREE.ShapeGeometry(shape, 4).scale(0.06, 0.06, 0.06);
+  const mesh = new THREE.InstancedMesh(
+    geo,
+    new THREE.MeshStandardMaterial({ side: THREE.DoubleSide, roughness: 0.8 }),
+    N,
+  );
+  mesh.frustumCulled = false;
+  mesh.name = 'falling-leaves';
+  const greens = [0x6a9a3c, 0x8aa63c, 0xc9a43a, 0xb8782e];
+  const leaves = Array.from({ length: N }, (_, i) => {
+    mesh.setColorAt(i, new THREE.Color(greens[(rnd() * greens.length) | 0]!));
+    return {
+      t0: 0,
+      life: 24 + rnd() * 12,
+      from: new THREE.Vector3(),
+      spin: rnd() * 6,
+      ready: false,
+    };
+  });
+  const trees = FARM.orchard.map(([x, y]) => [x, y] as const);
+  const wd = windUniforms.uWindDir.value;
+  const m = new THREE.Matrix4(),
+    q = new THREE.Quaternion(),
+    e = new THREE.Euler(),
+    p = new THREE.Vector3(),
+    one = new THREE.Vector3(1, 1, 1);
+  const respawn = (l: (typeof leaves)[number], t: number, cam: THREE.Vector3) => {
+    // A tree near the camera, so the leaves fall where someone can see them.
+    let best = trees[(rnd() * trees.length) | 0]!;
+    for (let k = 0; k < 6; k++) {
+      const c = trees[(rnd() * trees.length) | 0]!;
+      if (Math.hypot(c[0] - cam.x, -c[1] - cam.z) < Math.hypot(best[0] - cam.x, -best[1] - cam.z))
+        best = c;
+    }
+    const a = rnd() * 6.3,
+      d = rnd() * 1.6;
+    const gx = best[0] + Math.cos(a) * d,
+      gy = best[1] + Math.sin(a) * d;
+    l.from.set(gx, groundHeight(gx, gy) + 2.2 + rnd() * 1.2, -gy);
+    l.t0 = t;
+    l.spin = rnd() * 6;
+  };
+  const update = (t: number, cam: THREE.Vector3) => {
+    leaves.forEach((l, i) => {
+      if (!l.ready) {
+        // First frame: start each leaf somewhere in its cycle, near the camera.
+        respawn(l, t, cam);
+        l.t0 = t - rnd() * l.life;
+        l.ready = true;
+      }
+      let age = t - l.t0;
+      if (age > l.life || age < 0) {
+        respawn(l, t, cam);
+        age = 0;
+      }
+      // Falls about 0.4 m/s, drifting downwind and swinging side to side, then lies still.
+      const fall = Math.min(age * 0.4, l.from.y - groundHeight(l.from.x, -l.from.z) - 0.02);
+      const tFall = fall / 0.4;
+      const sway = Math.sin(tFall * 2.6 + l.spin) * 0.35;
+      p.set(
+        l.from.x + wd.x * tFall * 0.5 + sway * -wd.y,
+        l.from.y - fall,
+        l.from.z + wd.y * tFall * 0.5 + sway * wd.x,
+      );
+      const landed = age * 0.4 >= fall + 0.001;
+      q.setFromEuler(
+        landed
+          ? e.set(-Math.PI / 2, 0, l.spin)
+          : e.set(
+              Math.sin(tFall * 3 + l.spin) * 1.1,
+              tFall * 2 + l.spin,
+              Math.cos(tFall * 2.3) * 0.8,
+            ),
+      );
+      mesh.setMatrixAt(i, m.compose(p, q, one));
+    });
+    mesh.instanceMatrix.needsUpdate = true;
+  };
+  return { mesh, update };
+}
+
 // ------------------------------------------------------------------ all together
 
 export function buildCritters(flowerSpots: BeeSpot[]) {
@@ -386,13 +484,15 @@ export function buildCritters(flowerSpots: BeeSpot[]) {
   const bf = butterflies(flowerSpots);
   const sw = swallows();
   const fl = fluff();
-  group.add(bf.group, sw.group, fl.points);
+  const lv = fallingLeaves();
+  group.add(bf.group, sw.group, fl.points, lv.mesh);
   return {
     group,
     update(t: number, localCamera: THREE.Vector3) {
       bf.update(t);
       sw.update(t);
       fl.update(localCamera);
+      lv.update(t, localCamera);
     },
   };
 }

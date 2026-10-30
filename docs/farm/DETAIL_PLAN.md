@@ -46,7 +46,7 @@ as each item lands, so the work can be picked up from here at any time.
 - [x] Late-summer wildflowers in the fields (Queen Anne's lace, chicory, black-eyed Susans, goldenrod), plus clover and the odd dandelion in the lawn.
 - [x] Loose gravel stones (instanced pebbles) on the yard, driveway, apron and lane near the camera.
 - [~] The kart presses the grass down and out of its way.
-- [ ] A richer ground texture: lawn colour varying in soft patches, worn spots along the paths, wheel ruts in the gravel.
+- [x] A richer ground texture: lawn colour varying in soft patches, tyre tracks down the gravel lane.
 - [x] Soft contact shadows under every building, wagon and tree.
 
 ## Phase 4: buildings
@@ -55,7 +55,7 @@ as each item lands, so the work can be picked up from here at any time.
 - [x] Gutters and downspouts on the farmhouse and the red garage, plus fascia and soffit boards.
 - [x] Ridge caps and drip edges on the roofs; shingle rows with relief.
 - [x] Windows: sills, curtains or blinds behind the glass, and a sky reflection.
-- [ ] Siding and boards with real relief (bump maps), so light rakes across the lap siding.
+- [x] Siding and boards with real relief (bump maps), so light rakes across the lap siding.
 - [ ] Small fixtures: an electric meter, an outdoor spigot, a porch light, door hardware.
 - [ ] Barn: hay visible in the loft door, rust and dents on the metal, the board-and-batten shadow lines.
 
@@ -63,9 +63,9 @@ as each item lands, so the work can be picked up from here at any time.
 
 - [x] Clouds in the sky (`farm/sky.ts`) and their shadows drifting across the farm on the breeze.
 - [x] Butterflies around the flowers: monarchs and cabbage whites.
-- [~] Barn swallows swooping around the barn and over the lawn.
+- [x] Barn swallows swooping around the barn and over the lawn (climbing over the roof, not through it).
 - [~] Seed fluff and pollen drifting in the sunlight, carried by the breeze.
-- [ ] Now and then a leaf falling from the orchard and the woods.
+- [x] Now and then a leaf falling from the orchard trees near the camera, twirling down on the breeze and lying in the grass.
 - [ ] The light: a warm summer grade, a soft haze in the distance, and a check that the shadows aren't too hard.
 
 ## Ideas to ask the owner about (not added until confirmed)
@@ -77,6 +77,8 @@ as each item lands, so the work can be picked up from here at any time.
 - Mowing stripes on the lawn: already painted (along the farm grid).
 
 ## Phase 6: polish and performance
+
+- [x] Grapevines: leafy rows of leaf-card clumps with shoots trailing off the wire (they were faceted gem shapes up close).
 
 - [x] Arborvitae: built from the conifer kit with needle sprays instead of smooth columns.
 - [x] Orchard: some fruit on the outside of the crown so it reads from a distance.
