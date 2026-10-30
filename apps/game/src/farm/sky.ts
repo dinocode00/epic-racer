@@ -35,8 +35,8 @@ float cFbm(vec2 p) {
 float cloudField(vec2 q, float t, vec2 wind) {
   q -= wind * t * 7.0;
   float n = cFbm(q / 520.0) + 0.25 * cFbm(q / 140.0 + 7.0);
-  float edge = 1.05 - uCover * 0.55;
-  return smoothstep(edge, edge + 0.22, n);
+  float edge = 0.85 - uCover * 0.45;
+  return smoothstep(edge, edge + 0.08, n);
 }
 `;
 
