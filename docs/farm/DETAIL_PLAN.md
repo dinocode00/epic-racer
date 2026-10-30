@@ -45,7 +45,7 @@ as each item lands, so the work can be picked up from here at any time.
 - [x] Tall grass in the wild fields and on the berms: seed heads, waving visibly in gusts.
 - [x] Late-summer wildflowers in the fields (Queen Anne's lace, chicory, black-eyed Susans, goldenrod), plus clover and the odd dandelion in the lawn.
 - [x] Loose gravel stones (instanced pebbles) on the yard, driveway, apron and lane near the camera.
-- [~] The kart presses the grass down and out of its way.
+- [x] The kart presses the grass down and out of its way.
 - [x] A richer ground texture: lawn colour varying in soft patches, tyre tracks down the gravel lane.
 - [x] Soft contact shadows under every building, wagon and tree.
 
@@ -56,7 +56,7 @@ as each item lands, so the work can be picked up from here at any time.
 - [x] Ridge caps and drip edges on the roofs; shingle rows with relief.
 - [x] Windows: sills, curtains or blinds behind the glass, and a sky reflection.
 - [x] Siding and boards with real relief (bump maps), so light rakes across the lap siding.
-- [ ] Small fixtures: an electric meter, an outdoor spigot, a porch light, door hardware.
+- [x] Small fixtures: an electric meter on the north wall (the spigot, porch lantern and door hardware were already there).
 - [ ] Barn: hay visible in the loft door, rust and dents on the metal, the board-and-batten shadow lines.
 
 ## Phase 5: life and atmosphere
@@ -64,7 +64,7 @@ as each item lands, so the work can be picked up from here at any time.
 - [x] Clouds in the sky (`farm/sky.ts`) and their shadows drifting across the farm on the breeze.
 - [x] Butterflies around the flowers: monarchs and cabbage whites.
 - [x] Barn swallows swooping around the barn and over the lawn (climbing over the roof, not through it).
-- [~] Seed fluff and pollen drifting in the sunlight, carried by the breeze.
+- [x] Seed fluff and pollen drifting in the sunlight, carried by the breeze.
 - [x] Now and then a leaf falling from the orchard trees near the camera, twirling down on the breeze and lying in the grass.
 - [ ] The light: a warm summer grade, a soft haze in the distance, and a check that the shadows aren't too hard.
 
@@ -83,7 +83,7 @@ as each item lands, so the work can be picked up from here at any time.
 - [x] Arborvitae: built from the conifer kit with needle sprays instead of smooth columns.
 - [x] Orchard: some fruit on the outside of the crown so it reads from a distance.
 
-- [ ] Walk every landmark view and fix anything that looks off.
+- [x] Walk every landmark view and fix anything that looks off (lilacs given leaf fringes and floret sprays; blue spruce toned toward silver-green).
 - [x] Load time (now ~8 s in the software renderer, was ~70 s): the ground canvas is painted with ~600k small fills plus blurs, which takes about 70 s on the software renderer used for screenshots. Speckle is now laid down from a pattern tile.
 - [ ] Check frame time and draw calls at low and high quality; instance or merge anything that got expensive.
 - [x] Republish the explorer (version 8).

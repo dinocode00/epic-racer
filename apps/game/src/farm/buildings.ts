@@ -461,6 +461,19 @@ function farmhouse(): THREE.Group {
   for (const x of [-L / 2 + 0.15, L / 2 - 0.15])
     g.add(downspout(x, gz, W / 2, trim.edge, hAt(x, W / 2) + 0.35));
   g.add(downspout(L / 2 - 0.15, -gz, -W / 2, trim.edge, hAt(L / 2, -W / 2)));
+  // The electric meter on the north wall, with its conduit down into the ground.
+  {
+    const meter = new THREE.Group();
+    meter.add(box(0.1, 0.42, 0.3, m.galv, 0.05, 0, 0));
+    const dome = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.1, 14), m.plexi);
+    dome.rotation.z = Math.PI / 2;
+    dome.position.set(0.15, 0.03, 0);
+    meter.add(dome);
+    const base = hAt(L / 2, -W / 2 + 1.2);
+    meter.add(box(0.05, 1.5 - base, 0.05, m.galv, 0.03, -(1.5 - base) / 2 - 0.2, 0));
+    meter.position.set(L / 2, 1.5, -W / 2 + 1.2);
+    g.add(meter);
+  }
   // Front gable wing toward the road (-z), ridge across the main one, steeper.
   const wl = H.wing.w,
     wd = H.wing.h + W / 2; // runs back into the main block
