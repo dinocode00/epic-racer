@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { WAVE_LENGTH, buildGrandpa } from './farm/grandpa.ts';
+import { MowerDriver, figureEight } from './farm/drive.ts';
 import { buildMower } from './farm/mower.ts';
 import { buildSky } from './render/scenery.ts';
 import { View } from './render/view.ts';
@@ -46,12 +47,12 @@ const grassTex = (() => {
   x.fillRect(0, 0, 256, 128);
   const t = new THREE.CanvasTexture(c);
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  t.repeat.set(6, 6);
+  t.repeat.set(16, 16);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 })();
 const ground = new THREE.Mesh(
-  new THREE.CircleGeometry(6, 48).rotateX(-Math.PI / 2),
+  new THREE.CircleGeometry(16, 64).rotateX(-Math.PI / 2),
   new THREE.MeshStandardMaterial({ map: grassTex, roughness: 1 }),
 );
 ground.receiveShadow = true;
@@ -86,8 +87,10 @@ scene.add(stick);
 
 const gp = buildGrandpa();
 scene.add(gp.group);
-// His lawn tractor, parked out of sight until he rides it.
+// His lawn tractor, parked out of sight until he rides it, and its driver.
 const mower = buildMower();
+const eight = figureEight(5.5);
+const driver = new MowerDriver(eight.path, eight.length);
 mower.group.visible = false;
 scene.add(mower.group);
 
@@ -113,6 +116,10 @@ const VIEWS: Record<string, [THREE.Vector3, THREE.Vector3]> = {
   hands: [new THREE.Vector3(-0.9, 1.0, -0.9), new THREE.Vector3(-0.2, 0.85, 0)],
   wave: [new THREE.Vector3(1.2, 1.7, -3.2), new THREE.Vector3(-0.1, 1.45, 0)],
   mower: [new THREE.Vector3(2.4, 1.6, -2.6), new THREE.Vector3(0, 0.75, -0.2)],
+  wheel: [new THREE.Vector3(1.1, 1.75, -1.35), new THREE.Vector3(0.0, 1.0, -0.15)],
+  overShoulder: [new THREE.Vector3(0.55, 1.95, 0.45), new THREE.Vector3(0.0, 1.05, -0.2)],
+  frontWheels: [new THREE.Vector3(-0.9, 1.5, -2.3), new THREE.Vector3(0.0, 0.3, -0.85)],
+  mowerTop: [new THREE.Vector3(0.0, 13, 3), new THREE.Vector3(0, 0, 0)],
   mowerSide: [new THREE.Vector3(3.2, 1.1, -0.2), new THREE.Vector3(0, 0.75, -0.2)],
   lap: [new THREE.Vector3(-0.5, 1.9, -1.3), new THREE.Vector3(0, 1.0, 0.1)],
   hairFront: [new THREE.Vector3(-0.35, 1.78, -0.6), new THREE.Vector3(0, 1.76, 0)],
@@ -125,6 +132,12 @@ function setView(name: string): void {
   if (!v) return;
   camera.position.copy(v[0]);
   controls.target.copy(v[1]);
+  // Mower views are relative to the tractor and turned with it (wherever it has got to).
+  if (mode === 'mower' && name !== 'mowerTop') {
+    mower.group.updateMatrixWorld(true);
+    mower.group.localToWorld(camera.position);
+    mower.group.localToWorld(controls.target);
+  }
   controls.update();
 }
 let waveStart = 0;
@@ -136,6 +149,7 @@ function setMode(m: Mode): void {
   mower.group.visible = m === 'mower';
   stick.visible = m !== 'mower';
   if (m === 'mower') {
+    mower.group.position.set(driver.pos.x, 0, driver.pos.y);
     mower.seat.add(gp.group);
     gp.group.position.set(0, 0, 0);
   } else if (gp.group.parent !== scene) {
@@ -200,10 +214,18 @@ function step(dt: number): void {
     const cycle = WAVE_LENGTH + 3;
     gp.animate(t, speed, { kind: 'wave', t: (t - waveStart) % cycle });
   } else if (mode === 'mower') {
-    // Mowing at an easy 3.5 mph, steering gently back and forth.
-    speed = 1.5;
-    const steer = Math.sin(t * 0.35) * 0.25 + Math.sin(t * 1.1) * 0.05;
-    mower.update(t, speed, steer);
+    // Mowing a figure-eight round the lawn at an easy 2.5 mph: he winds the wheel round into
+    // each turn and back out of it, and the front wheels follow.
+    const ms = 1.1;
+    driver.step(dt, ms);
+    const before = mower.group.position.clone();
+    mower.group.position.set(driver.pos.x, 0, driver.pos.y);
+    mower.group.rotation.y = driver.heading;
+    mower.update(t, ms, driver.steer);
+    // The camera rides along.
+    const moved = mower.group.position.clone().sub(before);
+    camera.position.add(moved);
+    controls.target.add(moved);
     gp.animate(t, 0, {
       kind: 'ride',
       wheel: mower.wheel,
@@ -214,8 +236,8 @@ function step(dt: number): void {
     });
   } else gp.animate(t, speed);
   if (mode === 'turn') gp.group.rotation.y += dt * 0.5;
-  // The lawn slides back under him at his speed (he travels toward -z).
-  grassTex.offset.y += (speed * dt * 6) / 12;
+  // The lawn slides back under him at his walking speed (he walks toward -z).
+  grassTex.offset.y += (speed * dt * 16) / 32;
 }
 requestAnimationFrame(frame);
 
@@ -232,5 +254,8 @@ requestAnimationFrame(frame);
   step,
   rotate(a: number) {
     gp.group.rotation.y = a;
+  },
+  info() {
+    return `steer ${driver.steer.toFixed(2)} wheel ${mower.wheel.rotation.y.toFixed(2)}`;
   },
 };

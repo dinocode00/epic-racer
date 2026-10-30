@@ -8,7 +8,7 @@ import { canvasTex, leatherBump } from './grandpa/kit.ts';
  * black grille with the headlights set in it, a black dash and steering wheel on a raked
  * column, a black high-back seat on the fender pan, chunky turf tyres (20 in rear, 15 in
  * front), a 44 in mower deck slung between the axles with its discharge chute on the right,
- * and the AGCO ALLIS stripe down each side of the hood.
+ * and a plain black stripe down each side of the hood (no badging).
  *
  * Real metres, sitting on y = 0, facing -Z. `update(t, speed, steer)` spins the wheels,
  * turns the steering and shakes it with the engine.
@@ -23,13 +23,17 @@ export interface Mower {
   wheelR: number;
   /** The footrests, in the seat's frame. */
   feet: [THREE.Vector3, THREE.Vector3];
+  /** steer: -1 full left lock .. +1 full right lock. */
   update(t: number, speed: number, steer: number): void;
 }
 
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
+/** Front wheels' angle at full lock (radians), and the wheelbase (m). */
+export const MAX_LOCK = 0.6;
+export const WHEELBASE = 1.2;
 
 function decals() {
-  // Black stripe with the name in white, for each side of the hood (reads left to right).
+  // A plain black stripe with cream pinstripes along each side of the hood.
   const side = canvasTex(1024, 128, (x) => {
     x.clearRect(0, 0, 1024, 128);
     x.fillStyle = '#141414';
@@ -39,12 +43,6 @@ function decals() {
     x.lineTo(1024, 98);
     x.lineTo(0, 98);
     x.fill();
-    x.fillStyle = '#e9e4d8';
-    x.font = 'bold 56px Arial, Helvetica, sans-serif';
-    x.textBaseline = 'middle';
-    x.fillText('AGCO ALLIS', 60, 66);
-    x.font = 'bold 40px Arial, Helvetica, sans-serif';
-    x.fillText('1616H', 820, 66);
     x.fillStyle = '#e9e4d8';
     x.fillRect(0, 24, 1024, 4);
     x.fillRect(0, 100, 1024, 4);
@@ -277,7 +275,7 @@ export function buildMower(): Mower {
   }
   const column = new THREE.Group();
   column.position.set(0, 0.9, -0.24);
-  column.rotation.x = -0.52; // raked back toward the driver
+  column.rotation.x = 0.55; // raked back toward the driver
   add(column);
   const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.022, 0.24, 12), black);
   shaft.position.y = 0.12;
@@ -388,8 +386,9 @@ export function buildMower(): Mower {
       lastT = t;
       roll += (speed * dt) / RR;
       spinners.forEach((w, i) => (w.rotation.x = -roll * (i % 2 ? RR / FR : 1)));
-      for (const p of steerers) p.rotation.y = -steer * 0.5;
-      wheel.rotation.y = -steer * 1.6;
+      // The steering box: 2.4 rad at the wheel (most of a half turn) for full lock.
+      for (const p of steerers) p.rotation.y = -steer * MAX_LOCK;
+      wheel.rotation.y = -steer * 2.4;
       // Engine shake, and a little pitch and roll over the lawn.
       group.position.y = base + Math.sin(t * 53) * 0.0015 + Math.sin(t * 1.7) * 0.003 * speed;
       group.rotation.x = Math.sin(t * 1.3) * 0.006 * speed;

@@ -177,34 +177,20 @@ export function buildGrandpa(): Grandpa {
   // ---- the cap: on his head, or in his right hand.
   const cap = head.cap;
   const capInHand = { on: false };
-  /** The point on the bill he pinches (cap frame). */
-  const GRIP = V(0, 0.034, 0.132);
   /** Where he takes hold of it to lift it off: the top of the crown, toward the front. */
   const TAKE = V(0, 0.15, 0.03);
   const rightWrist = arms[0]!.wrist;
-  /** How he holds it: bill pinched in the fingers, crown out past the fingertips, the front
-   * of the cap facing the way his palm does (wrist frame). */
-  const held = (() => {
-    const s = -1;
-    const Zc = V(0, 1, 0),
-      Yc = V(-s, 0, 0),
-      Xc = new THREE.Vector3().crossVectors(Yc, Zc);
-    const q = new THREE.Quaternion().setFromRotationMatrix(
-      new THREE.Matrix4().makeBasis(Xc, Yc, Zc),
-    );
-    const g = V(-0.02 * s, -0.15, 0);
-    return { q, p: g.sub(GRIP.clone().applyQuaternion(q)) };
-  })();
-  const fromPose = { p: V(0, 0, 0), q: new THREE.Quaternion() };
   const restWorld = new THREE.Matrix4(),
-    restInWrist = new THREE.Matrix4(),
-    rp = V(0, 0, 0),
-    rq = new THREE.Quaternion(),
-    rs = V(1, 1, 1);
+    capWorld = new THREE.Matrix4(),
+    rs = V(1, 1, 1),
+    p1 = V(0, 0, 0),
+    q1 = new THREE.Quaternion(),
+    p2 = V(0, 0, 0),
+    q2 = new THREE.Quaternion();
+  /** He closes his hand on it: from now on it moves rigidly with the hand, held exactly
+   * where he took hold of it. */
   const takeCap = () => {
     rightWrist.attach(cap);
-    fromPose.p.copy(cap.position);
-    fromPose.q.copy(cap.quaternion);
     capInHand.on = true;
   };
   const putCapBack = () => {
@@ -214,6 +200,10 @@ export function buildGrandpa(): Grandpa {
     capInHand.on = false;
   };
 
+  let heldBack: { p: THREE.Vector3; q: THREE.Quaternion } | null = null;
+  // Steering: where on the rim his hand holds (wheel frame), and a regrip in progress.
+  let grip: number | null = null,
+    regrip: { from: number; to: number; k: number } | null = null;
   const strollSpeed = 0.55; // about 1.2 mph: an easy amble
   let phase = 0,
     lastT = 0,
@@ -319,13 +309,18 @@ export function buildGrandpa(): Grandpa {
 
     let smile = 0,
       hatOff = 0;
+    if (heldBack) {
+      cap.position.copy(heldBack.p);
+      cap.quaternion.copy(heldBack.q);
+      heldBack = null;
+    }
     group.updateMatrixWorld(true);
     if (act?.kind === 'wave') {
       const T = act.t;
       const right = arms[0]!;
       // The cap is in his hand from the moment he takes it until it's back on his head.
       const inHand = T >= 1.05 && T < 7.0;
-      if (inHand && !capInHand.on) takeCap();
+      // Back on his head once his hand has brought it home.
       if (!inHand && capInHand.on) putCapBack();
       // Where the bill is (on his head, or where it will go back): chest frame.
       cap.parent!.updateWorldMatrix(true, false);
@@ -351,18 +346,31 @@ export function buildGrandpa(): Grandpa {
       reach(right, target, pole, reachW);
       // Palm toward his face as he takes the cap; out toward whoever he's waving at.
       palmToward(right, 0, fwd, up * (1 - down) * reachW);
-      // The cap swings from his grip into his fingers and back onto his head.
+      // He closes his hand on it where his hand now is (after this frame's reach).
+      if (inHand && !capInHand.on) {
+        right.shoulder.updateWorldMatrix(true, true);
+        takeCap();
+      }
+      // Setting it back on: his hand returns to the same place it took it from, so the cap
+      // is already almost on his head; the last few centimetres it settles into place.
       if (capInHand.on) {
-        const k = ease(1.05, 1.6, T) * (1 - ease(6.4, 7.0, T));
-        rightWrist.updateWorldMatrix(true, false);
-        restInWrist.copy(rightWrist.matrixWorld).invert().multiply(restWorld);
-        restInWrist.decompose(rp, rq, rs);
-        rs.set(1, 1, 1);
-        const backOn = ease(6.4, 7.0, T);
-        const p0 = fromPose.p.clone().lerp(rp, backOn),
-          q0 = fromPose.q.clone().slerp(rq, backOn);
-        cap.position.copy(p0).lerp(held.p, k);
-        cap.quaternion.copy(q0).slerp(held.q, k);
+        const settle = ease(6.55, 7.0, T);
+        if (settle > 0) {
+          rightWrist.updateWorldMatrix(true, false);
+          capWorld.compose(cap.position, cap.quaternion, rs).premultiply(rightWrist.matrixWorld);
+          capWorld.decompose(p1, q1, rs);
+          restWorld.decompose(p2, q2, rs);
+          rs.set(1, 1, 1);
+          p1.lerp(p2, settle);
+          q1.slerp(q2, settle);
+          capWorld.compose(p1, q1, rs).premultiply(rightWrist.matrixWorld.clone().invert());
+          // Only for this frame: keep the grip itself unchanged.
+          const keepP = cap.position.clone(),
+            keepQ = cap.quaternion.clone();
+          capWorld.decompose(cap.position, cap.quaternion, rs);
+          rs.set(1, 1, 1);
+          heldBack = { p: keepP, q: keepQ };
+        }
       }
       // He looks up and over toward whoever he's waving at, with a soft smile.
       const look = ease(1.6, 2.6, T) * (1 - ease(6.0, 7.2, T));
@@ -378,16 +386,55 @@ export function buildGrandpa(): Grandpa {
       // Right hand on the wheel, up at about one o'clock; left hand resting across his lap.
       const right = arms[0]!,
         left = arms[1]!;
-      act.wheel.updateWorldMatrix(true, false);
-      const ang = 1.15;
-      gw.set(Math.cos(ang) * act.wheelR, 0.012, -Math.sin(ang) * act.wheelR);
-      act.wheel.localToWorld(gw);
+      // He holds a point on the rim and turns the wheel with it. Once the wheel has carried
+      // his hand too far round (past about 3 o'clock or 10 o'clock), he lets go, brings the
+      // hand back over the top and takes a fresh hold, as you do steering one-handed.
+      const psi = act.wheel.rotation.y; // the wheel's turn (radians, + = anticlockwise)
+      if (grip === null) grip = 1.15 - psi;
+      let handAng = grip + psi,
+        liftOff = 0;
+      if (regrip) {
+        regrip.k = Math.min(1, regrip.k + dt / 0.42);
+        const k = regrip.k * regrip.k * (3 - 2 * regrip.k);
+        handAng = regrip.from + (regrip.to - regrip.from) * k;
+        liftOff = Math.sin(Math.PI * regrip.k) * 0.06;
+        if (regrip.k >= 1) {
+          grip = regrip.to - psi;
+          regrip = null;
+        }
+      } else if (handAng < 0.05 || handAng > 2.45) {
+        regrip = { from: handAng, to: handAng < 0.05 ? 1.85 : 0.5, k: 0 };
+      }
+      act.wheel.parent!.updateWorldMatrix(true, false);
+      const W = act.wheel.position;
+      const col = act.wheel.parent!;
+      // The rim point he holds, the wheel's face normal (toward him) and the centre, all in his
+      // chest frame.
+      gw.set(W.x + Math.cos(handAng) * act.wheelR, W.y, W.z - Math.sin(handAng) * act.wheelR);
+      col.localToWorld(gw);
       chest.worldToLocal(gw);
+      const nrm = col.localToWorld(V(W.x, W.y + 1, W.z)),
+        ctr = col.localToWorld(V(W.x, W.y, W.z));
+      chest.worldToLocal(nrm);
+      chest.worldToLocal(ctr);
+      nrm.sub(ctr).normalize();
+      // Palm resting on the rim with the fingers curled over it: the wrist sits back from the
+      // rim toward him and a little above the wheel's face.
       const sh = right.shoulder.position;
-      target.copy(gw).addScaledVector(gw.clone().sub(sh).normalize(), -0.1);
+      const along = gw.clone().sub(sh).normalize();
+      target
+        .copy(gw)
+        .addScaledVector(nrm, 0.045 + liftOff)
+        .addScaledVector(along, -0.05);
       reach(right, target, V(-1, -0.6, -0.3).normalize(), 1);
-      palmToward(right, 0, V(0.3, -0.6, 1).normalize(), 1);
-      right.wrist.rotation.x = -0.35;
+      palmToward(right, 0, nrm.clone().negate(), 1);
+      // The hand bends down at the wrist so the fingers wrap over and round the rim (opening a
+      // little as he lets go to regrip).
+      right.wrist.rotation.x = 0.75 - liftOff * 8;
+      // Leaning a touch into the turn and looking where he's going.
+      const turn = THREE.MathUtils.clamp(-psi / 2.4, -1, 1);
+      spine.rotation.z += turn * 0.05;
+      neckJ.rotation.y += -turn * 0.35;
       // Across his lap: wrist over his right thigh, forearm lying across both legs.
       lapT.set(-0.03, -0.235, 0.27);
       lapT.add(V(0, Math.sin(t * 47) * 0.0015 * act.shake, 0));
