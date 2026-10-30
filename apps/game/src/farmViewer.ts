@@ -171,17 +171,22 @@ function flyTo(l: Landmark, instant = false): void {
 /** Which grandpa the drone is following (it keeps its angle and distance as he moves). */
 let follow: { i: number; last: THREE.Vector3 } | null = null;
 const gpNow = new THREE.Vector3();
-function followGrandpa(i: number): void {
+function followGrandpa(i: number, instant = false): void {
   setMode('drone');
   const at = farm.grandpaAt(i, new THREE.Vector3());
   // Come in from the south-east, a little above him.
   const dir = new THREE.Vector3(0.55, 0.32, 0.77).normalize();
   const pos = at.clone().addScaledVector(dir, i === 1 ? 70 : 48);
-  flight = {
-    from: [camera.position.clone(), controls.target.clone()],
-    to: [pos, at.clone()],
-    t: 0,
-  };
+  if (instant) {
+    camera.position.copy(pos);
+    controls.target.copy(at);
+    flight = null;
+  } else
+    flight = {
+      from: [camera.position.clone(), controls.target.clone()],
+      to: [pos, at.clone()],
+      t: 0,
+    };
   follow = { i, last: at.clone() };
   for (const b of panel.querySelectorAll('button[data-lm]'))
     b.classList.toggle('on', (b as HTMLElement).dataset.lm === 'gp' + i);
