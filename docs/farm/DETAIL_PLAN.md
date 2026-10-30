@@ -92,14 +92,21 @@ as each item lands, so the work can be picked up from here at any time.
 - Phase 1 done and pushed. Trees, grass, grime, gutters, clouds and critters written.
 - Checked in screenshots: tree species, lawn, wild grass, gravel stones, gutters and sills, clouds, butterflies. Butterflies capped at about 40 (one at every flower was ~300). Explorer republished (version 8).
 
-## Grandpa in the map (routes drafted, waiting for the owner's approval)
+## Grandpa in the map (owner approved the routes; built)
 
-Drawn on the blueprint (v16, "Where grandpa goes") before anything goes in the 3D map. Route data:
-`docs/farm/grandpa_routes.json` (made by `tools/farm-blueprint/grandpa_routes.py`).
+Drawn on the blueprint (v16, "Where grandpa goes"), approved, then built. Route data:
+`docs/farm/grandpa_routes.json` = `apps/game/src/farm/grandpaRoutes.json` (made by
+`tools/farm-blueprint/grandpa_routes.py <out.json>`). In the game: `farm/grandpaRounds.ts`.
 
 1. Corn crib (10) to the concrete patio and back, a loop that curves round the sandbox, lilac and ramp foot; at the patio he stops, turns to the orchard and waves his cap.
-2. Mower: from the NE corner of the Christmas trees south down the east path a third of the way, then a long winding run through the aisles (13 trees become stumps where he crosses between aisles), out the top and east back to the corner.
-3. Pumpkin patch: curving east to west and back on a different curve, with stops and three cap waves.
+2. Mower: from the NE corner of the Christmas trees south down the east path a third of the way, then a long winding run up and down the aisles, out the top and east back to the corner.
+   - U-turns only at the ends of the rows, past the last tree (a tight turn mid-block would swing the tractor's nose into the next row); mid-block it jinks diagonally through a gap, and those 10 trees are stumps.
+   - The tractor follows the track exactly (rear axle on the line); the steering, front wheels and the steering wheel come from the track's curvature, so they always match. Front-wheel lock raised to 0.85 rad; he slows for the U-turns.
+3. Pumpkin patch: curving east to west and back on a different curve, with stops and three cap waves (toward the barnyard).
 4. Orchard: up and down the aisles, crossing lines only between trees, stopping under trees; never leaves the orchard.
 
-To do when approved: lock the mower's front wheels further for the aisle hairpins; make the stumps; drive grandpa along the loops.
+Performance:
+- One grandpa is built; the other three are copies sharing his geometry and textures, each with his own joints and cloth.
+- Level rays for laying details are binned by height (the build went from ~10 s to ~2 s).
+- Detail levels: full within 10 m, then a coarse head and hair (same vertices, every 4th row) and no tiny parts, then only what reads from afar. He isn't drawn past 90 m but keeps going.
+- Explorer buttons follow each grandpa (`#grandpa-crib`, `#grandpa-mower`, `#grandpa-pumpkins`, `#grandpa-orchard`).

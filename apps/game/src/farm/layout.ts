@@ -1,4 +1,5 @@
 import RAW from './farmLayout.json';
+import ROUNDS from './grandpaRoutes.json';
 
 /**
  * Grandparents' Farm: the locked blueprint (docs/farm), exported by
@@ -84,10 +85,18 @@ export interface FarmLayout {
   windmill: XY;
   stove: XY;
   clothes_lines: [XY, XY];
+  /** Christmas trees already cut, where grandpa's mower slips between the aisles. */
+  stumps: XY[];
 }
 export type Species = 'scotch' | 'douglas' | 'white' | 'blue';
 
 export const FARM = RAW as unknown as FarmLayout;
+// Grandpa's mowing route cuts across the aisles where a tree has been sold: those are stumps.
+FARM.stumps = ROUNDS.stumps as XY[];
+{
+  const cut = new Set(FARM.stumps.map(([x, y]) => `${x},${y}`));
+  FARM.christmas_trees = FARM.christmas_trees.filter((t) => !cut.has(`${t.x},${t.y}`));
+}
 
 /** Centre of the property in map metres; the scene puts it at the world origin. */
 export const CENTRE: XY = [50, 100];

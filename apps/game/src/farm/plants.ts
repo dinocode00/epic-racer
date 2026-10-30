@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import {
   type TreeGeo,
   treeKit,
@@ -167,6 +168,45 @@ class TreeBatch {
   }
 }
 
+/**
+ * Stumps of Christmas trees already sold, where grandpa's mower slips from one aisle to the
+ * next: a hand-saw cut a few inches up, pale wood with a darker heart, bark round the side.
+ */
+function stumps(): THREE.Mesh {
+  const parts: THREE.BufferGeometry[] = [];
+  const bark = new THREE.Color(0x5a4532),
+    wood = new THREE.Color(0xd9c08e),
+    heart = new THREE.Color(0xa77d4c);
+  for (const [x, y] of FARM.stumps) {
+    const r = 0.05 + rnd() * 0.025,
+      h = 0.07 + rnd() * 0.06;
+    const g = new THREE.CylinderGeometry(r, r * 1.35, h, 10, 1).toNonIndexed();
+    const pos = g.getAttribute('position'),
+      nrm = g.getAttribute('normal');
+    const col = new Float32Array(pos.count * 3);
+    const c = new THREE.Color();
+    for (let i = 0; i < pos.count; i++) {
+      if (nrm.getY(i) > 0.9) {
+        const d = Math.hypot(pos.getX(i), pos.getZ(i)) / r;
+        c.copy(heart).lerp(wood, Math.min(1, d * 1.6));
+      } else c.copy(bark).multiplyScalar(0.85 + rnd() * 0.3);
+      c.toArray(col, i * 3);
+    }
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    // A slightly slanted saw cut.
+    g.rotateZ((rnd() - 0.5) * 0.12);
+    g.translate(x, groundHeight(x, y) + h / 2 - 0.02, -y);
+    parts.push(g);
+  }
+  const mesh = new THREE.Mesh(
+    mergeGeometries(parts),
+    new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.92 }),
+  );
+  mesh.castShadow = mesh.receiveShadow = true;
+  mesh.name = 'stumps';
+  return mesh;
+}
+
 /** A little lighter or darker, a little warmer or cooler: no two trees quite alike. */
 const vary = (amount = 0.1) => {
   const v = 1 - amount + rnd() * amount * 2;
@@ -197,6 +237,7 @@ export function buildPlants(): THREE.Group {
       vary(0.08),
     );
   for (const k of kinds) root.add(xmas[k].done());
+  root.add(stumps());
 
   // ---- Big spruces by the road (10-20 ft over the house), the spruce row, the giant Scotch pine.
   const big = new TreeBatch(normalise(spruce), 30, true);

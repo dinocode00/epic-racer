@@ -6,8 +6,9 @@ import type { BeeSpot } from './bees.ts';
 import { buildBuildings } from './buildings.ts';
 import { buildCritters } from './critters.ts';
 import { type Grass, buildGrass } from './grass.ts';
+import { type GrandpaRounds, buildGrandpaRounds } from './grandpaRounds.ts';
 import { setGrimeFrame } from './grime.ts';
-import { buildGround } from './ground.ts';
+import { buildGround, meshHeight } from './ground.ts';
 import { CENTRE, FARM, FARM_SCALE, type XY, driveHeight, inside } from './layout.ts';
 import { buildPlants } from './plants.ts';
 import { addCloudShadow, farmSky } from './sky.ts';
@@ -27,6 +28,8 @@ export class FarmScene {
   private solids: { c: XY; w: number; h: number; angle: number }[];
   private grass: Grass;
   private critters: ReturnType<typeof buildCritters>;
+  /** Grandpa on his rounds: walking three loops and mowing the Christmas tree aisles. */
+  readonly grandpa: GrandpaRounds;
   private farm: THREE.Group;
   private camLocal = new THREE.Vector3();
   private pressLocal = new THREE.Vector3();
@@ -79,6 +82,8 @@ export class FarmScene {
     const bees = plants.userData.update as (t: number) => void;
     this.critters = buildCritters(plants.userData.spots as BeeSpot[]);
     farm.add(this.critters.group);
+    this.grandpa = buildGrandpaRounds();
+    farm.add(this.grandpa.group);
     this.updateProps = (t) => {
       b.update(t);
       bees(t);
@@ -90,6 +95,13 @@ export class FarmScene {
       if (m) (Array.isArray(m) ? m : [m]).forEach(addCloudShadow);
     });
     patchScene(s);
+  }
+
+  /** Game-world position of where one of the grandpas is now (at his chest height). */
+  grandpaAt(i: number, out: THREE.Vector3): THREE.Vector3 {
+    const p = this.grandpa.folks[i]!.pos;
+    out.set(p.x, meshHeight(p.x, p.y) + 1.3, -p.y);
+    return this.farm.localToWorld(out);
   }
 
   /** Game-world position of a map point (metres, x east, y north) at ground level. */
@@ -125,6 +137,18 @@ export class FarmScene {
     const [mx, my] = FarmScene.map(p.x, p.z);
     const r = radius / FARM_SCALE;
     let hit = false;
+    // Grandpa (and his tractor): a circle to keep out of.
+    for (const o of this.grandpa.obstacles()) {
+      const dx = mx - o.x,
+        dy = my - o.y;
+      const d = Math.hypot(dx, dy),
+        rr = o.r + r;
+      if (d < rr && d > 1e-6) {
+        p.x = (o.x + (dx / d) * rr - CENTRE[0]) * FARM_SCALE;
+        p.z = -(o.y + (dy / d) * rr - CENTRE[1]) * FARM_SCALE;
+        hit = true;
+      }
+    }
     for (const b of this.solids) {
       const a = (b.angle * Math.PI) / 180;
       const dx = mx - b.c[0],
@@ -178,5 +202,6 @@ export class FarmScene {
     this.farm.worldToLocal(this.camLocal.copy(camera.position));
     this.grass.update(this.camLocal);
     this.critters.update(this.t, this.camLocal);
+    this.grandpa.update(this.t, dt, this.camLocal);
   }
 }

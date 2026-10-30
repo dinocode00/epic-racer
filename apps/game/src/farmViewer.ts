@@ -11,7 +11,8 @@ import { View } from './render/view.ts';
  * drone, jump to each landmark, or drop in a miniature kart and drive around to feel the
  * scale (1:10, so a kart is RC-car sized).
  *
- * Hash options: #drive  #drone  #<landmark id> (e.g. #barn) for a starting view.
+ * Hash options: #drive  #drone  #<landmark id> (e.g. #barn) for a starting view, or
+ * #grandpa-crib, #grandpa-mower, #grandpa-pumpkins, #grandpa-orchard to follow grandpa.
  */
 
 const view = new View(document.getElementById('stage')!);
@@ -153,6 +154,7 @@ function landmarkPose(l: Landmark): [THREE.Vector3, THREE.Vector3] {
 
 function flyTo(l: Landmark, instant = false): void {
   setMode('drone');
+  follow = null;
   const [pos, target] = landmarkPose(l);
   if (instant) {
     camera.position.copy(pos);
@@ -162,6 +164,39 @@ function flyTo(l: Landmark, instant = false): void {
     flight = { from: [camera.position.clone(), controls.target.clone()], to: [pos, target], t: 0 };
   for (const b of panel.querySelectorAll('button[data-lm]'))
     b.classList.toggle('on', (b as HTMLElement).dataset.lm === l.id);
+}
+
+// ---------------------------------------------------------------- following grandpa
+
+/** Which grandpa the drone is following (it keeps its angle and distance as he moves). */
+let follow: { i: number; last: THREE.Vector3 } | null = null;
+const gpNow = new THREE.Vector3();
+function followGrandpa(i: number): void {
+  setMode('drone');
+  const at = farm.grandpaAt(i, new THREE.Vector3());
+  // Come in from the south-east, a little above him.
+  const dir = new THREE.Vector3(0.55, 0.32, 0.77).normalize();
+  const pos = at.clone().addScaledVector(dir, i === 1 ? 70 : 48);
+  flight = {
+    from: [camera.position.clone(), controls.target.clone()],
+    to: [pos, at.clone()],
+    t: 0,
+  };
+  follow = { i, last: at.clone() };
+  for (const b of panel.querySelectorAll('button[data-lm]'))
+    b.classList.toggle('on', (b as HTMLElement).dataset.lm === 'gp' + i);
+}
+function followStep(): void {
+  if (!follow) return;
+  farm.grandpaAt(follow.i, gpNow);
+  const d = gpNow.clone().sub(follow.last);
+  follow.last.copy(gpNow);
+  camera.position.add(d);
+  controls.target.add(d);
+  if (flight) {
+    flight.to[0].add(d);
+    flight.to[1].add(d);
+  }
 }
 
 // ---------------------------------------------------------------- the miniature kart
@@ -308,6 +343,14 @@ for (const l of LANDMARKS) {
   b.addEventListener('click', () => flyTo(l));
   panel.append(b);
 }
+panel.append(Object.assign(document.createElement('div'), { className: 'sep' }));
+farm.grandpa.folks.forEach((f, i) => {
+  const b = document.createElement('button');
+  b.textContent = f.label;
+  b.dataset.lm = 'gp' + i;
+  b.addEventListener('click', () => followGrandpa(i));
+  panel.append(b);
+});
 const isTouch = matchMedia('(pointer: coarse)').matches;
 for (const b of ui.querySelectorAll<HTMLButtonElement>('.farm-touch button')) {
   const k = b.dataset.t as keyof typeof touch;
@@ -342,8 +385,10 @@ function setMode(m: Mode): void {
 const start = location.hash.slice(1);
 const startLm = LANDMARKS.find((l) => l.id === start) ?? LANDMARKS[0]!;
 flyTo(startLm, true);
+const startGp = farm.grandpa.folks.findIndex((f) => 'grandpa-' + f.name === start);
 if (start === 'drive') setMode('drive');
 else setMode('drone');
+if (startGp >= 0) followGrandpa(startGp);
 addEventListener('hashchange', () => {
   const h = location.hash.slice(1);
   if (h === 'drive') setMode('drive');
@@ -356,6 +401,7 @@ function frame(now: number): void {
   const dt = Math.max(0, Math.min(0.05, (now - last) / 1000));
   last = now;
   if (mode === 'drive') {
+    follow = null;
     driveStep(dt);
     chaseCam(dt);
     farm.focusSun(car.pos, 220);
@@ -377,6 +423,7 @@ function frame(now: number): void {
   }
   farm.pressGrass(car.pos);
   farm.update(dt, camera);
+  if (mode === 'drone') followStep();
   view.render(farm.scene, [{ x: 0, y: 0, w: 1, h: 1, camera }]);
   requestAnimationFrame(frame);
 }
@@ -390,6 +437,7 @@ requestAnimationFrame(frame);
   flyTo,
   LANDMARKS,
   setMode,
+  followGrandpa,
   car,
   FARM_SCALE,
 };

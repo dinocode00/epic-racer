@@ -110,6 +110,8 @@ export function clothes() {
     belt: std({ color: 0x4a2e1b, roughness: 0.55, bumpMap: leatherBump(), bumpScale: 0.6 }),
     brass: new THREE.MeshStandardMaterial({ color: 0xbfa66c, metalness: 0.95, roughness: 0.3 }),
     skin: std({ color: 0xc98e72, roughness: 0.62, bumpMap: leatherBump(), bumpScale: 0.25 }),
+    /** This man's cloth motion (each grandpa moves his own clothes). */
+    cloth: clothUniforms(),
   };
 }
 export type Clothes = ReturnType<typeof clothes>;
@@ -163,12 +165,15 @@ export function neck(m: Clothes): THREE.Mesh {
  * Drives the cloth: time, how much he is walking (0..1), the breeze (0..1) and his gait phase
  * (radians, two steps per cycle), so the folds pulse with his steps.
  */
-export const cloth = {
-  uClothT: { value: 0 },
-  uClothWalk: { value: 0 },
-  uClothGust: { value: 0 },
-  uClothPhase: { value: 0 },
-};
+export function clothUniforms() {
+  return {
+    uClothT: { value: 0 },
+    uClothWalk: { value: 0 },
+    uClothGust: { value: 0 },
+    uClothPhase: { value: 0 },
+  };
+}
+export type ClothUniforms = ReturnType<typeof clothUniforms>;
 
 const CLOTH_HEAD = /* glsl */ `
 uniform float uClothT, uClothWalk, uClothGust, uClothPhase;
@@ -216,7 +221,7 @@ const cs = (a: number, b: number, x: number) => {
   return t * t * (3 - 2 * t);
 };
 /** The same motion as TORSO_GLSL, for small rigid parts (buttons) that ride on the shirt. */
-function torsoMotion(p: THREE.Vector3, out: THREE.Vector3): THREE.Vector3 {
+function torsoMotion(p: THREE.Vector3, out: THREE.Vector3, cloth: ClothUniforms): THREE.Vector3 {
   const T = cloth.uClothT.value,
     Wk = cloth.uClothWalk.value,
     Gu = cloth.uClothGust.value,
@@ -244,7 +249,8 @@ function torsoMotion(p: THREE.Vector3, out: THREE.Vector3): THREE.Vector3 {
 }
 
 /** Patch a material's vertex shader with a block of cloth motion. */
-function clothPatch(mat: THREE.Material, code: string, key: string): void {
+function clothPatch(mat: THREE.Material, code: string, key: string, cloth: ClothUniforms): void {
+  mat.userData.cloth = true;
   const prev = mat.onBeforeCompile.bind(mat);
   const prevKey = mat.customProgramCacheKey();
   mat.onBeforeCompile = (sh, r) => {
@@ -263,6 +269,7 @@ function clothPatch(mat: THREE.Material, code: string, key: string): void {
  * below y2..y3 where it meets the next part, livelier the more he walks.
  */
 function limbCloth(
+  cloth: ClothUniforms,
   base: THREE.MeshStandardMaterial,
   key: string,
   o: {
@@ -294,8 +301,38 @@ function limbCloth(
       transformed.xz += rd * amp * wv;
     }`,
     key,
+    cloth,
   );
   return m;
+}
+
+/**
+ * A copy of a cloth material driven by another man's cloth (the same shader program: only
+ * the uniforms it reads differ).
+ */
+export function clothCopy(mat: THREE.Material, cloth: ClothUniforms): THREE.Material {
+  const c = mat.clone();
+  const ob = mat.onBeforeCompile;
+  c.onBeforeCompile = (sh, r) => {
+    ob.call(mat, sh, r);
+    Object.assign(sh.uniforms, cloth);
+  };
+  c.customProgramCacheKey = mat.customProgramCacheKey;
+  return c;
+}
+
+/** Buttons and the like that ride the shirt: each frame they follow the cloth from rest. */
+export interface Rider {
+  o: THREE.Object3D;
+  rest: THREE.Vector3;
+}
+const shirtRiders = new WeakMap<THREE.Object3D, Rider[]>();
+export const ridersOf = (shirtGroup: THREE.Object3D): Rider[] => shirtRiders.get(shirtGroup) ?? [];
+export function rideShirt(riders: Rider[], cloth: ClothUniforms): () => void {
+  const dv = new THREE.Vector3();
+  return () => {
+    for (const r of riders) r.o.position.copy(r.rest).add(torsoMotion(r.rest, dv, cloth));
+  };
 }
 
 /** The roomy flannel shirt body, tucked in and bloused over the belt. Spine-local (y - hip). */
@@ -303,18 +340,15 @@ export function shirt(m: Clothes): THREE.Group {
   const g = new THREE.Group();
   const vSkin = m.skin.clone();
   for (const mat of [m.shirt, m.placket, m.shirtThread, m.pocket, m.collar, vSkin])
-    clothPatch(mat, TORSO_GLSL, 'torso');
+    clothPatch(mat, TORSO_GLSL, 'torso', m.cloth);
   m.shirt.side = THREE.DoubleSide;
   // Buttons are rigid: they ride the same motion from their rest positions each frame.
-  const riders: { o: THREE.Object3D; rest: THREE.Vector3 }[] = [];
+  const riders: Rider[] = [];
   const ride = (o: THREE.Object3D | null) => {
     if (o) riders.push({ o, rest: o.position.clone() });
     return o;
   };
-  const dv = new THREE.Vector3();
-  g.userData.update = () => {
-    for (const r of riders) r.o.position.copy(r.rest).add(torsoMotion(r.rest, dv));
-  };
+  shirtRiders.set(g, riders);
   const H = J.hip;
   const body = vTube(
     0.82,
@@ -558,7 +592,7 @@ export function arm(m: Clothes, side: number) {
       0.004 * Math.exp(-(((a - Math.PI) / 0.9) ** 2)) * Math.sin(y * 260) * smooth(-0.22, -0.28, y);
     return d;
   });
-  const sleeveUp = limbCloth(m.sleeve, 'sleeve-up' + side, {
+  const sleeveUp = limbCloth(m.cloth, m.sleeve, 'sleeve-up' + side, {
     y0: -0.02,
     y1: -0.1,
     y2: -0.24,
@@ -594,7 +628,7 @@ export function arm(m: Clothes, side: number) {
       0.004 * bunch * Math.sin(y * 220 + Math.sin(a * 2) * 2.2) + 0.002 * Math.sin(a * 5 + y * 40)
     );
   });
-  const sleeveLow = limbCloth(m.sleeve, 'sleeve-low' + side, {
+  const sleeveLow = limbCloth(m.cloth, m.sleeve, 'sleeve-low' + side, {
     y0: -0.02,
     y1: -0.07,
     y2: -0.18,
@@ -1002,8 +1036,11 @@ export function leg(m: Clothes, side: number) {
     aw: 0.0028,
     ag: 0.0012,
   };
-  const thighMat = limbCloth(m.jeanLeg, 'thigh' + side, { ...thighCloth, seed: side * 1.3 });
-  const thighThread = limbCloth(m.thread, 'thigh-thread' + side, {
+  const thighMat = limbCloth(m.cloth, m.jeanLeg, 'thigh' + side, {
+    ...thighCloth,
+    seed: side * 1.3,
+  });
+  const thighThread = limbCloth(m.cloth, m.thread, 'thigh-thread' + side, {
     ...thighCloth,
     seed: side * 1.3,
   });
@@ -1051,8 +1088,11 @@ export function leg(m: Clothes, side: number) {
   });
   // The lower legs swing and the loose denim flaps round the boots, most at the hem.
   const shinCloth = { y0: -0.04, y1: -0.12, a0: 0.001, aw: 0.0042, ag: 0.0016 };
-  const shinMat = limbCloth(m.jeanLeg, 'shin' + side, { ...shinCloth, seed: side * 2.9 + 2 });
-  const shinThread = limbCloth(m.thread, 'shin-thread' + side, {
+  const shinMat = limbCloth(m.cloth, m.jeanLeg, 'shin' + side, {
+    ...shinCloth,
+    seed: side * 2.9 + 2,
+  });
+  const shinThread = limbCloth(m.cloth, m.thread, 'shin-thread' + side, {
     ...shinCloth,
     seed: side * 2.9 + 2,
   });

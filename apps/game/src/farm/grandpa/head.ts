@@ -5,6 +5,7 @@ import {
   V,
   canvasTex,
   clamp,
+  gridLod,
   leatherBump,
   rnd,
   smooth,
@@ -497,6 +498,7 @@ function headMesh(skin: THREE.Material): THREE.Mesh {
   g.morphAttributes.position = [new THREE.BufferAttribute(dp, 3)];
   g.morphAttributes.normal = [new THREE.BufferAttribute(dn, 3)];
   g.morphTargetsRelative = true;
+  gridLod(g, NA, NY, 4);
   const mesh = new THREE.Mesh(g, skin);
   mesh.morphTargetInfluences = [0];
   return mesh;
@@ -743,6 +745,7 @@ function hair(): THREE.Mesh {
     bumpMap: strands,
     bumpScale: 2,
   });
+  gridLod(g, NA, NY, 4);
   return new THREE.Mesh(g, m);
 }
 
@@ -835,6 +838,7 @@ function crownHair(): THREE.Mesh {
     roughness: 0.95,
     envMapIntensity: 0.35,
   });
+  gridLod(g, NA, NY, 4);
   const mesh = new THREE.Mesh(g, m);
   mesh.morphTargetInfluences = [0];
   return mesh;
@@ -1157,6 +1161,8 @@ export interface Head {
   setSmile(k: number): void;
   /** 0 cap on (hair flat under it), 1 cap off (the front of his hair lifts). */
   setHatOff(k: number): void;
+  /** The same head on a copy of this one's objects (`mp` maps each of them to its copy). */
+  rebind(mp: <T extends THREE.Object3D>(o: T) => T): Head;
 }
 
 export function buildHead(): Head {
@@ -1204,16 +1210,27 @@ export function buildHead(): Head {
   });
   void white;
   const lowers = eyeG.userData.lowers as THREE.Object3D[];
-  return {
-    group: g,
-    cap,
-    capRest: { position: cap.position.clone(), quaternion: cap.quaternion.clone() },
-    setSmile(k) {
-      face.morphTargetInfluences![0] = k;
-      for (const l of lowers) l.rotation.x = -0.22 * k;
-    },
-    setHatOff(k) {
-      top.morphTargetInfluences![0] = k;
-    },
+  // (Objects in userData would be serialised when the head is copied.)
+  delete eyeG.userData.lowers;
+  const capRest = { position: cap.position.clone(), quaternion: cap.quaternion.clone() };
+  const make = (mp: <T extends THREE.Object3D>(o: T) => T): Head => {
+    const F = mp(face),
+      T = mp(top),
+      L = lowers.map(mp);
+    return {
+      group: mp(g),
+      cap: mp(cap),
+      capRest,
+      setSmile(k) {
+        F.morphTargetInfluences![0] = k;
+        for (const l of L) l.rotation.x = -0.22 * k;
+      },
+      setHatOff(k) {
+        T.morphTargetInfluences![0] = k;
+      },
+      // A copy of a copy: map the originals to this head's objects, then on to the new copy.
+      rebind: (mp2) => make((o) => mp2(mp(o))),
+    };
   };
+  return make((o) => o);
 }

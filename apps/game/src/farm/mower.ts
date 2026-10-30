@@ -29,7 +29,7 @@ export interface Mower {
 
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
 /** Front wheels' angle at full lock (radians), and the wheelbase (m). */
-export const MAX_LOCK = 0.6;
+export const MAX_LOCK = 0.85;
 export const WHEELBASE = 1.2;
 
 function decals() {

@@ -90,65 +90,112 @@ def col_span(c):
     return min(ys), max(ys)
 
 
+def fillet_loop(corners, radii, step=0.1):
+    """A closed path through straight runs between `corners`, each corner rounded with an arc
+    of its radius (tangent to both runs), sampled every `step` metres."""
+    P = [np.asarray(c, float) for c in corners]
+    n = len(P)
+    arcs = []
+    for i in range(n):
+        p0, p1, p2 = P[i - 1], P[i], P[(i + 1) % n]
+        a = (p0 - p1) / np.linalg.norm(p0 - p1)
+        b = (p2 - p1) / np.linalg.norm(p2 - p1)
+        th = math.acos(np.clip(a @ b, -1, 1))  # interior angle
+        r = radii[i]
+        tl = r / math.tan(th / 2) if th < math.pi - 1e-6 else 0.0
+        assert tl <= np.linalg.norm(p0 - p1) / 2 + 1e-6 and tl <= np.linalg.norm(p2 - p1) / 2 + 1e-6, (i, p1, tl)
+        t0, t1 = p1 + a * tl, p1 + b * tl
+        bis = (a + b) / max(np.linalg.norm(a + b), 1e-9)
+        c = p1 + bis * (r / math.sin(th / 2)) if tl > 0 else p1
+        arcs.append((t0, t1, c, r, tl > 0))
+    out = []
+    for i in range(n):
+        t0, t1, c, r, ok = arcs[i]
+        if ok:
+            a0 = math.atan2(*(t0 - c)[::-1]); a1 = math.atan2(*(t1 - c)[::-1])
+            da = (a1 - a0 + math.pi) % (2 * math.pi) - math.pi
+            k = max(2, int(abs(da) * r / step))
+            for j in range(k):
+                ang = a0 + da * j / k
+                out.append(c + r * np.array([math.cos(ang), math.sin(ang)]))
+        nxt = arcs[(i + 1) % n][0]
+        d = np.linalg.norm(nxt - t1)
+        k = max(1, int(d / step))
+        for j in range(k):
+            out.append(t1 + (nxt - t1) * j / k)
+    return np.array(out)
+
+
+def smooth_loop(poly, sigma=0.3, step=0.1):
+    """Resample a closed loop every `step` m and blur it along its length (sigma metres), so
+    the curvature ramps up and down and the steering wheel can follow it."""
+    S = arclen(np.vstack([poly, poly[:1]]))
+    L = S[-1]
+    P = np.vstack([poly, poly[:1]])
+    ss = np.arange(0, L, step)
+    x = np.interp(ss, S, P[:, 0]); y = np.interp(ss, S, P[:, 1])
+    k = int(3 * sigma / step)
+    w = np.exp(-0.5 * (np.arange(-k, k + 1) * step / sigma) ** 2); w /= w.sum()
+    xs = sum(w[j] * np.roll(x, k - j) for j in range(2 * k + 1))
+    ys = sum(w[j] * np.roll(y, k - j) for j in range(2 * k + 1))
+    return np.c_[xs, ys]
+
+
 def route_mower():
+    """Down the east path from the NE corner, then up and down the aisles between the tree
+    columns, slipping from one aisle to the next round the end of a column, or through a gap
+    where a tree has been cut (a stump): straight on with a diagonal jink, or in a tight U-turn.
+    Out the top of the block and back east along its north edge."""
     rng = np.random.default_rng(11)
-    pts = []
-    corner = np.array([86.6, 92.6])
-    pts += [corner, (89.3, 86.0), (90.4, 78.5), (90.6, 72.5)]  # south on the east trail, a third of the way
-    # Turn in west through the open top of the last column, into aisle 31 (x 81.4)
-    y = 70.9
-    a = len(XS) - 3  # aisle between columns 31 and 32
-    pts += [(86.6, 70.4), (aisle_x(a + 1) - 0.2, 70.0)]
-    # col 32 at 70.9 is a seedling -> cross it
-    cross = []
-    pts += [(XS[a + 1], 70.0), (aisle_x(a), 68.6)]
-    d = -1  # heading south
-    y = 68.6
-    stumps = [(XS[a + 1], 70.9)]
-    legs = 0
-    while a > 9:
-        c = a  # west column of this aisle
+    corners, radii, stumps = [], [], []
+
+    def C(p, r):
+        corners.append(p); radii.append(r)
+
+    C((87.6, 93.4), 2.5)   # the NE corner: start here, turning south onto the east path
+    C((90.9, 70.0), 2.5)   # a third of the way down: turn in west
+    C((83.8, 70.0), 2.0)   # and south into the first aisle (the last column stops short here)
+    a = len(XS) - 2        # aisle between columns 32 and 33
+    y, d = 68.0, -1
+    A_END = 10
+    while a > A_END or d < 0:
+        c = a  # the column on this aisle's west side
         lo, hi = col_span(c)
-        cands = []
+        last = a <= A_END + 1
+        opts = []
         for ys in YS:
-            if not (lo <= ys <= hi):
-                continue
-            if (ys - y) * d < 7:
-                continue
-            if col_open(c, ys):
-                cands.append(ys)
-        # also free passage past the column ends
-        end = lo - 1.4 if d < 0 else hi + 1.4
-        if (end - y) * d >= 7:
-            cands.append(end)
-        cands = sorted(cands, key=lambda q: abs(q - y))
-        # prefer a long-ish leg but not always the longest
-        k = min(len(cands) - 1, int(rng.integers(1, 4)))
-        ys = cands[k] if len(cands) > 1 else cands[0]
-        ys = float(np.clip(ys, 28.0, 89.6))
-        # run down the aisle, then slip through the gap into the next aisle
-        pts.append((aisle_x(a) + rng.uniform(-0.15, 0.15), ys - d * 2.2))
-        pts.append((XS[c], ys))
-        if (XS[c], ys) in OCC:
+            if lo + 2 <= ys <= hi - 2 and (ys - y) * d >= 7 and col_open(c, ys):
+                opts.append(('gap', ys))
+        # U-turns go round the end of the column, out past its last tree, so the tractor's nose
+        # swings clear of the next columns; mid-block it only jinks diagonally through a gap.
+        end = lo - 2.4 if d < 0 else hi + 2.4
+        if (end - y) * d >= 4:
+            opts.append(('end', end))
+        if last and d < 0:
+            opts = [o for o in opts if o[0] == 'end']
+        if last and d > 0:
+            opts = [o for o in opts if o[0] == 'gap'] or opts
+        opts = [o for o in opts if o[0] == 'end' or 29.5 < o[1] + d * 3.6 < 89.6]
+        opts.sort(key=lambda o: abs(o[1] - y))
+        k = min(len(opts) - 1, int(rng.integers(1, 4)))
+        kind, ys = opts[k]
+        nd = -d if kind == 'end' else d
+        xa, xb = aisle_x(a), aisle_x(a - 1)
+        if kind == 'end':
+            C((xa, end), 1.2); C((xb, end), 1.2)
+            y = end
+        else:
             stumps.append((XS[c], ys))
-        nd = d if (rng.uniform() < 0.3 and abs(ys - end) > 2) else -d  # S-bend or hairpin
-        # cannot keep going past the block edge
-        if ys >= 88.0:
-            nd = -1
-        if ys <= 31.0:
-            nd = 1
-        pts.append((aisle_x(a - 1), ys + nd * 2.2))
-        y = ys + nd * 2.2
+            C((xa, ys - d * 1.2), 2.0); C((xb, ys + d * 1.2), 2.0)
+            y = ys + d * 1.2
         d = nd
         a -= 1
-        legs += 1
-    # Final leg: north up the aisle and out the top of the block
-    if d < 0:
-        # hairpin back north via the next gap
-        pass
-    pts.append((aisle_x(a), 89.9))
-    pts += [(aisle_x(a) + 2.2, 92.4), (40.0, 92.5), (60.0, 92.9), (75.0, 92.7), (83.0, 92.8)]
-    poly = catmull(pts)
+    assert d > 0, 'the last aisle has to head north'
+    xe = aisle_x(a)
+    C((xe, 93.4), 2.0)     # out the top and east along the block's north edge
+    stumps = [s for s in dict.fromkeys(stumps) if s in OCC]
+    raw = fillet_loop(corners, radii)
+    poly = smooth_loop(raw)
     return poly, [], stumps
 
 
@@ -213,6 +260,28 @@ def route_orchard():
     return poly, stops
 
 
+def export(path):
+    names = {'crib': 'crib_to_patio', 'mower': 'mower_christmas_trees', 'pumpkins': 'pumpkin_patch', 'orchard': 'orchard'}
+    face = {'crib': [22.0, 120.0], 'pumpkins': [52.0, 96.0]}  # who he waves at: the orchard; up at the barnyard
+    out = {'units': 'metres (real), x east, y north, origin at the SW property corner',
+           'notes': 'Closed loops. pts every ~0.1-0.5 m; stops [kind, s metres along, seconds, face xy or null]; speed m/s.',
+           'routes': [], 'stumps': []}
+    for key, fn, spd in (('crib', route_crib_patio, WALK), ('mower', route_mower, MOW),
+                         ('pumpkins', route_pumpkins, WALK), ('orchard', route_orchard, WALK)):
+        res = fn()
+        poly, stops = res[0], res[1]
+        if key == 'mower':
+            poly = poly[::2]  # every 0.2 m
+            out['stumps'] = [[float(x), float(y)] for x, y in res[2]]
+        st = []
+        for k, s_, sec, f in stops:
+            f = f if f is not None else (face.get(key) if k == 'wave' else None)
+            st.append([k, round(float(s_), 2), float(sec), f])
+        out['routes'].append({'name': names[key], 'mode': 'mow' if key == 'mower' else 'walk', 'speed': spd,
+                              'stops': st, 'pts': [[round(float(x), 2), round(float(y), 2)] for x, y in poly]})
+    json.dump(out, open(path, 'w'), separators=(',', ':'))
+
+
 if __name__ == '__main__':
     r1 = route_crib_patio(); r2 = route_mower(); r3 = route_pumpkins(); r4 = route_orchard()
     for name, r, spd in (('crib-patio', r1, WALK), ('mower', r2, MOW), ('pumpkins', r3, WALK), ('orchard', r4, WALK)):
@@ -221,3 +290,6 @@ if __name__ == '__main__':
         stop_t = sum(x[2] for x in r[1])
         print(name, f'{s[-1]:.0f} m', f'{(s[-1] / spd + stop_t) / 60:.1f} min', len(r[1]), 'stops')
     print('stumps', len(r2[2]))
+    import sys
+    if len(sys.argv) > 1:
+        export(sys.argv[1])

@@ -120,6 +120,53 @@ export function wrinkle(
   return smoothSeams(g);
 }
 
+// ---------------------------------------------------------------- level of detail
+
+const LOW = new WeakMap<THREE.BufferGeometry, THREE.BufferGeometry>();
+/** The coarse stand-in for a detailed geometry, if it has one (for seeing him from afar). */
+export const lowOf = (g: THREE.BufferGeometry): THREE.BufferGeometry | undefined => LOW.get(g);
+
+/**
+ * A coarse version of a grid mesh ((NA + 1) x (NY + 1) vertices, row by row): the same
+ * vertices (and morphs), joined every `step` rows and columns, wound the same way.
+ */
+export function gridLod(g: THREE.BufferGeometry, NA: number, NY: number, step: number): void {
+  const W = NA + 1;
+  const idx: number[] = [];
+  for (let j = 0; j < NY; j += step)
+    for (let i = 0; i < NA; i += step) {
+      const j2 = Math.min(NY, j + step),
+        i2 = Math.min(NA, i + step);
+      const a = j * W + i,
+        b = j * W + i2,
+        c = j2 * W + i,
+        d = j2 * W + i2;
+      idx.push(a, b, d, a, d, c);
+    }
+  const pos = g.attributes.position!,
+    nrm = g.attributes.normal!;
+  const pa = V(0, 0, 0),
+    pb = V(0, 0, 0),
+    pc = V(0, 0, 0),
+    na = V(0, 0, 0);
+  let score = 0;
+  for (let q = 0; q < idx.length; q += 3) {
+    pa.fromBufferAttribute(pos, idx[q]!);
+    pb.fromBufferAttribute(pos, idx[q + 1]!);
+    pc.fromBufferAttribute(pos, idx[q + 2]!);
+    na.fromBufferAttribute(nrm, idx[q]!);
+    score += Math.sign(pb.sub(pa).cross(pc.sub(pa)).dot(na));
+  }
+  if (score < 0)
+    for (let q = 0; q < idx.length; q += 3) [idx[q + 1], idx[q + 2]] = [idx[q + 2]!, idx[q + 1]!];
+  const low = new THREE.BufferGeometry();
+  for (const k of Object.keys(g.attributes)) low.setAttribute(k, g.attributes[k]!);
+  low.morphAttributes = g.morphAttributes;
+  low.morphTargetsRelative = g.morphTargetsRelative;
+  low.setIndex(idx);
+  LOW.set(g, low);
+}
+
 /** Give a geometry a plain white vertex colour (for materials that use vertex colours). */
 export function white(g: THREE.BufferGeometry): THREE.BufferGeometry {
   const n = g.attributes.position!.count;
@@ -134,9 +181,116 @@ export interface Hit {
   p: THREE.Vector3;
   n: THREE.Vector3;
 }
+/**
+ * Most details are laid with level rays (round a limb at some height, or straight in from the
+ * front), so the target's triangles are binned by height once and a level ray only tests the
+ * few that span its height: thousands of rays against meshes of 100k+ triangles.
+ */
+interface Bins {
+  ver: number;
+  y0: number;
+  dy: number;
+  bins: number[][];
+}
+const binned = new WeakMap<THREE.BufferGeometry, Bins>();
+const BIN = 0.004;
+function bins(g: THREE.BufferGeometry): Bins {
+  const pos = g.attributes.position as THREE.BufferAttribute;
+  const have = binned.get(g);
+  if (have && have.ver === pos.version) return have;
+  const n = g.index ? g.index.count : pos.count;
+  const ix = (k: number) => (g.index ? g.index.getX(k) : k);
+  let y0 = Infinity,
+    y1 = -Infinity;
+  for (let i = 0; i < pos.count; i++) {
+    y0 = Math.min(y0, pos.getY(i));
+    y1 = Math.max(y1, pos.getY(i));
+  }
+  const nb = Math.max(1, Math.ceil((y1 - y0) / BIN) + 1);
+  const out: Bins = { ver: pos.version, y0, dy: BIN, bins: Array.from({ length: nb }, () => []) };
+  for (let k = 0; k < n; k += 3) {
+    const a = pos.getY(ix(k)),
+      b = pos.getY(ix(k + 1)),
+      c = pos.getY(ix(k + 2));
+    const lo = Math.floor((Math.min(a, b, c) - y0) / BIN),
+      hi = Math.floor((Math.max(a, b, c) - y0) / BIN);
+    for (let q = lo; q <= hi; q++) out.bins[q]!.push(k);
+  }
+  binned.set(g, out);
+  return out;
+}
+const inv = new THREE.Matrix4();
+const lo = V(0, 0, 0),
+  ld = V(0, 0, 0),
+  ta = V(0, 0, 0),
+  tb = V(0, 0, 0),
+  tc = V(0, 0, 0),
+  e1 = V(0, 0, 0),
+  e2 = V(0, 0, 0),
+  pv = V(0, 0, 0),
+  tv = V(0, 0, 0),
+  qv = V(0, 0, 0);
+/** hitAt for a level ray (in the target's frame), or undefined if it can't take the shortcut. */
+function levelHit(
+  target: THREE.Mesh,
+  from: THREE.Vector3,
+  dir: THREE.Vector3,
+): Hit | null | undefined {
+  const mat = target.material;
+  const g = target.geometry;
+  if (Array.isArray(mat) || g.morphAttributes.position) return undefined;
+  inv.copy(target.matrixWorld).invert();
+  lo.copy(from).applyMatrix4(inv);
+  ld.copy(dir).transformDirection(inv);
+  if (Math.abs(ld.y) > 1e-5) return undefined;
+  const B = bins(g);
+  const q = Math.floor((lo.y - B.y0) / B.dy);
+  const list = B.bins[q];
+  if (!list) return null;
+  const pos = g.attributes.position!;
+  const ix = (k: number) => (g.index ? g.index.getX(k) : k);
+  let best = Infinity,
+    bk = -1;
+  for (const k of list) {
+    ta.fromBufferAttribute(pos, ix(k));
+    tb.fromBufferAttribute(pos, ix(k + 1));
+    tc.fromBufferAttribute(pos, ix(k + 2));
+    e1.subVectors(tb, ta);
+    e2.subVectors(tc, ta);
+    pv.crossVectors(ld, e2);
+    const det = e1.dot(pv);
+    // Same sidedness as the raycaster: a front-sided surface is only hit from the front.
+    if (mat.side === THREE.FrontSide && det < 1e-12) continue;
+    if (mat.side === THREE.BackSide && det > -1e-12) continue;
+    if (Math.abs(det) < 1e-12) continue;
+    const f = 1 / det;
+    tv.subVectors(lo, ta);
+    const u = f * tv.dot(pv);
+    if (u < 0 || u > 1) continue;
+    qv.crossVectors(tv, e1);
+    const v = f * ld.dot(qv);
+    if (v < 0 || u + v > 1) continue;
+    const t = f * e2.dot(qv);
+    if (t > 1e-6 && t < best) {
+      best = t;
+      bk = k;
+    }
+  }
+  if (bk < 0) return null;
+  ta.fromBufferAttribute(pos, ix(bk));
+  tb.fromBufferAttribute(pos, ix(bk + 1));
+  tc.fromBufferAttribute(pos, ix(bk + 2));
+  const p = lo.clone().addScaledVector(ld, best).applyMatrix4(target.matrixWorld);
+  if (p.distanceTo(from) > 3) return null;
+  const n = new THREE.Triangle(ta, tb, tc).getNormal(V(0, 0, 0));
+  return { p, n };
+}
+
 /** Where a ray from `from` along `dir` meets the target mesh (its own frame), or null. */
 export function hitAt(target: THREE.Mesh, from: THREE.Vector3, dir: THREE.Vector3): Hit | null {
   target.updateMatrixWorld(true);
+  const quick = levelHit(target, from, dir.clone().normalize());
+  if (quick !== undefined) return quick;
   ray.set(from, dir.clone().normalize());
   ray.far = 3;
   const h = ray.intersectObject(target, false)[0];

@@ -1,6 +1,21 @@
 import * as THREE from 'three';
-import { J, arm, clothes, cloth, jeansTop, leg, neck, shirt } from './grandpa/body.ts';
-import { buildHead } from './grandpa/head.ts';
+import {
+  type ClothUniforms,
+  type Rider,
+  J,
+  arm,
+  clothCopy,
+  clothUniforms,
+  clothes,
+  jeansTop,
+  leg,
+  neck,
+  rideShirt,
+  ridersOf,
+  shirt,
+} from './grandpa/body.ts';
+import { type Head, buildHead } from './grandpa/head.ts';
+import { lowOf } from './grandpa/kit.ts';
 
 /**
  * Grandpa: the farm's NPC, built from the owner's photo and description. 70 years old,
@@ -44,15 +59,31 @@ export interface Grandpa {
   /** Pose for time t (s) at a walking speed (m/s), with an optional act on top. */
   animate(t: number, speed: number, act?: Act): void;
   strollSpeed: number;
+  /** Another of him, sharing this one's geometry and textures (cheap to make). */
+  clone(): Grandpa;
+  /**
+   * How much of him to draw: 0 everything (close up), 1 a coarser head and hair and no tiny
+   * details (a few metres off), 2 only what reads from across the yard.
+   */
+  setDetail(level: 0 | 1 | 2): void;
 }
 
-const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
-const ease = (a: number, b: number, x: number) => {
-  const t = THREE.MathUtils.clamp((x - a) / (b - a), 0, 1);
-  return t * t * (3 - 2 * t);
-};
+/** The joints and parts his rig moves. */
+interface Parts {
+  group: THREE.Group;
+  hips: THREE.Group;
+  spine: THREE.Group;
+  chest: THREE.Group;
+  neckJ: THREE.Group;
+  head: Head;
+  arms: { shoulder: THREE.Group; elbow: THREE.Group; wrist: THREE.Group }[];
+  legs: { hip: THREE.Group; knee: THREE.Group; ankle: THREE.Group }[];
+  riders: Rider[];
+  cloth: ClothUniforms;
+}
 
-export function buildGrandpa(): Grandpa {
+/** Build him from scratch. */
+function buildParts(): Parts {
   const m = clothes();
   const group = new THREE.Group();
   group.name = 'grandpa';
@@ -69,7 +100,6 @@ export function buildGrandpa(): Grandpa {
   hips.add(spine);
   const shirtG = shirt(m);
   spine.add(shirtG);
-  const shirtUpdate = shirtG.userData.update as () => void;
   const chest = new THREE.Group();
   chest.position.y = J.chest - J.hip;
   spine.add(chest);
@@ -78,9 +108,8 @@ export function buildGrandpa(): Grandpa {
   neckJ.position.set(0, J.neck - J.chest, 0.01);
   chest.add(neckJ);
   const head = buildHead();
-  const headG = head.group;
-  headG.position.set(0, 0.118, 0.016);
-  neckJ.add(headG);
+  head.group.position.set(0, 0.118, 0.016);
+  neckJ.add(head.group);
   const arms = [-1, 1].map((s) => {
     const a = arm(m, s);
     a.shoulder.position.set(s * J.shoulderX, J.shoulder - J.chest, -0.005);
@@ -93,6 +122,69 @@ export function buildGrandpa(): Grandpa {
     hips.add(l.hip);
     return l;
   });
+  return {
+    group,
+    hips,
+    spine,
+    chest,
+    neckJ,
+    head,
+    arms,
+    legs,
+    riders: ridersOf(shirtG),
+    cloth: m.cloth,
+  };
+}
+
+/**
+ * Copy him: the same objects, geometry and textures; his own joints, his own cloth (each
+ * man's clothes move with his own walk), and the copy's buttons riding the copy's shirt.
+ */
+function copyParts(p: Parts): Parts {
+  const group = p.group.clone(true);
+  const a: THREE.Object3D[] = [],
+    b: THREE.Object3D[] = [];
+  p.group.traverse((o) => a.push(o));
+  group.traverse((o) => b.push(o));
+  const map = new Map(a.map((o, i) => [o, b[i]!]));
+  const mp = <T extends THREE.Object3D>(o: T) => map.get(o) as T;
+  const cloth = clothUniforms();
+  const mats = new Map<THREE.Material, THREE.Material>();
+  group.traverse((o) => {
+    const mesh = o as THREE.Mesh;
+    if (!mesh.isMesh || Array.isArray(mesh.material) || !mesh.material.userData.cloth) return;
+    const orig = mesh.material;
+    if (!mats.has(orig)) mats.set(orig, clothCopy(orig, cloth));
+    mesh.material = mats.get(orig)!;
+  });
+  return {
+    group,
+    hips: mp(p.hips),
+    spine: mp(p.spine),
+    chest: mp(p.chest),
+    neckJ: mp(p.neckJ),
+    head: p.head.rebind(mp),
+    arms: p.arms.map((x) => ({ shoulder: mp(x.shoulder), elbow: mp(x.elbow), wrist: mp(x.wrist) })),
+    legs: p.legs.map((x) => ({ hip: mp(x.hip), knee: mp(x.knee), ankle: mp(x.ankle) })),
+    riders: p.riders.map((r) => ({ o: mp(r.o), rest: r.rest })),
+    cloth,
+  };
+}
+
+const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
+const ease = (a: number, b: number, x: number) => {
+  const t = THREE.MathUtils.clamp((x - a) / (b - a), 0, 1);
+  return t * t * (3 - 2 * t);
+};
+
+export function buildGrandpa(): Grandpa {
+  return rig(buildParts());
+}
+
+function rig(parts: Parts, rest?: Parts): Grandpa {
+  const { group, hips, spine, chest, neckJ, head, arms, legs, cloth } = parts;
+  const headG = head.group;
+  const shirtUpdate = rideShirt(parts.riders, cloth);
 
   const THIGH = J.thigh,
     SHIN = J.shin;
@@ -447,5 +539,33 @@ export function buildGrandpa(): Grandpa {
     head.setHatOff(hatOff);
   };
   animate(0, 0);
-  return { group, animate, strollSpeed };
+  // Copies are taken from his rest pose (cap on his head).
+  const atRest = rest ?? copyParts(parts);
+
+  // Level of detail: each mesh's size, its detailed and coarse geometry, and its own shadow.
+  const lods: {
+    mesh: THREE.Mesh;
+    r: number;
+    hi: THREE.BufferGeometry;
+    lo?: THREE.BufferGeometry;
+    shadow: boolean;
+  }[] = [];
+  group.traverse((o) => {
+    const mesh = o as THREE.Mesh;
+    if (!mesh.isMesh) return;
+    const g = mesh.geometry;
+    if (!g.boundingSphere) g.computeBoundingSphere();
+    lods.push({ mesh, r: g.boundingSphere!.radius, hi: g, lo: lowOf(g), shadow: mesh.castShadow });
+  });
+  let detail = 0;
+  const setDetail = (level: 0 | 1 | 2) => {
+    if (level === detail) return;
+    detail = level;
+    for (const l of lods) {
+      l.mesh.geometry = level > 0 && l.lo ? l.lo : l.hi;
+      l.mesh.visible = level === 0 || l.r >= (level === 1 ? 0.012 : 0.03);
+      l.mesh.castShadow = l.shadow && (level === 0 || l.r >= (level === 1 ? 0.03 : 0.1));
+    }
+  };
+  return { group, animate, strollSpeed, clone: () => rig(copyParts(atRest), atRest), setDetail };
 }
