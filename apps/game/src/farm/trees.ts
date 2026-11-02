@@ -273,28 +273,94 @@ export function spruce(): TreeGeo {
   });
 }
 
-/** Arborvitae, about 11 ft: a dense, rounded column of soft, flat sprays. */
+/**
+ * Arborvitae, about 11 ft (the 'Emerald' kind): not tiered like a pine at all, but one dense,
+ * smooth green column, widest a little above the ground and tapering to a soft rounded tip,
+ * foliage right down to the ground. The surface is soft and lumpy (clumps of flat, fan-shaped
+ * sprays), darker in the hollows and brighter on the clumps and toward the top, with sprays of
+ * leafy cards hugging it so the outline is fluffy rather than hard.
+ */
 export function arborvitaeTree(): TreeGeo {
-  return conifer({
-    height: 3.35,
-    spread: 0.3,
-    tiers: 9,
-    overlap: 2.6,
-    skirt: 0.05,
-    teeth: 7,
-    jag: 0.12,
-    droop: 0.0,
-    upturn: 0.0,
-    fluff: 0.26,
-    fluffF: 5,
-    low: 0x2c5a2a,
-    high: 0x4b7f3a,
-    trunk: 0x5a4030,
-    cardN: 16,
-    cardSize: 0.6,
-    cardOut: 1.08,
-    shape: 0.55,
-  });
+  const H = 3.35,
+    R = 0.62;
+  const prof = (t: number) => {
+    const base = 0.8 + 0.2 * Math.min(1, t / 0.22) ** 0.5;
+    return R * base * Math.pow(Math.max(0, 1 - Math.pow(t, 2.2)), 0.6);
+  };
+  const seed = rnd() * 10;
+  const lump = (a: number, t: number) =>
+    0.55 * Math.sin(a * 5 + t * 17 + seed) * Math.sin(a * 3 - t * 11 + seed * 1.7) +
+    0.3 * Math.sin(a * 11 + t * 31 + seed * 2.3) +
+    0.15 * Math.sin(a * 19 - t * 47 + seed * 0.7);
+  const NA = 40,
+    NY = 34;
+  const pos: number[] = [],
+    col: number[] = [],
+    idx: number[] = [];
+  const dark = new THREE.Color(0x24502a),
+    mid = new THREE.Color(0x3d7a35),
+    light = new THREE.Color(0x6a9e45);
+  const c = new THREE.Color();
+  for (let j = 0; j <= NY; j++) {
+    const t = j / NY;
+    for (let i = 0; i <= NA; i++) {
+      const a = (i / NA) * Math.PI * 2;
+      const l = lump(a, t);
+      const r = prof(t) * (1 + 0.11 * l) + (j === NY ? 0 : 0);
+      pos.push(Math.cos(a) * r, t * H, Math.sin(a) * r);
+      const k = 0.5 + 0.5 * l;
+      c.copy(dark)
+        .lerp(mid, Math.min(1, k * 1.3))
+        .lerp(light, Math.max(0, k - 0.55) + t * 0.25);
+      col.push(c.r, c.g, c.b);
+    }
+  }
+  for (let j = 0; j < NY; j++)
+    for (let i = 0; i < NA; i++) {
+      const p0 = j * (NA + 1) + i,
+        p1 = p0 + 1,
+        p2 = p0 + NA + 1,
+        p3 = p2 + 1;
+      idx.push(p0, p2, p1, p1, p2, p3);
+    }
+  const body = new THREE.BufferGeometry();
+  body.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  body.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  body.setIndex(idx);
+  body.computeVertexNormals();
+  // A glimpse of trunk at the very bottom.
+  const trunk = new THREE.CylinderGeometry(0.05, 0.07, 0.25, 7).translate(0, 0.1, 0);
+  const tc = new Float32Array(trunk.attributes.position!.count * 3);
+  const tcol = new THREE.Color(0x5a4030);
+  for (let i = 0; i < tc.length; i += 3) tc.set([tcol.r, tcol.g, tcol.b], i);
+  trunk.setAttribute('color', new THREE.BufferAttribute(tc, 3));
+  // Leafy sprays lying on the surface, tipped up and out, thickest on the clumps.
+  const cards: THREE.BufferGeometry[] = [];
+  const q = new THREE.Quaternion();
+  const N = 230;
+  for (let n = 0; n < N; n++) {
+    const t = Math.pow(rnd(), 0.85) * 0.97;
+    const a = rnd() * Math.PI * 2;
+    const l = lump(a, t);
+    if (l < -0.35 && rnd() < 0.6) continue;
+    const r = prof(t) * (1 + 0.11 * l) * (0.96 + rnd() * 0.12);
+    const out = V(Math.cos(a), 0.55 + rnd() * 0.5, Math.sin(a)).normalize();
+    const size = 0.22 + rnd() * 0.16;
+    const g = new THREE.PlaneGeometry(size, size * 1.25);
+    g.rotateZ((rnd() - 0.5) * 0.8);
+    q.setFromUnitVectors(V(0, 0, 1), out);
+    g.applyQuaternion(q);
+    g.translate(Math.cos(a) * r, t * H + size * 0.2, Math.sin(a) * r);
+    const k = 0.5 + 0.5 * l;
+    c.copy(mid)
+      .lerp(light, Math.max(0, k - 0.3) + t * 0.2)
+      .multiplyScalar(0.95 + rnd() * 0.15);
+    const cc = new Float32Array(12);
+    for (let v = 0; v < 4; v++) cc.set([c.r, c.g, c.b], v * 3);
+    g.setAttribute('color', new THREE.BufferAttribute(cc, 3));
+    cards.push(g);
+  }
+  return { solid: merge([body, trunk]), leaves: merge(cards), needles: false };
 }
 
 /**
