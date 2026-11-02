@@ -1,5 +1,6 @@
 import type { TrackDef } from '@epic/shared';
-import { MIDDLE_EARTH, PROVING, SHIRE } from '@epic/sim';
+import { FARM_TRACK, MIDDLE_EARTH, PROVING, SHIRE } from '@epic/sim';
+import { FARM_THEME } from '../farm/raceEnv.ts';
 import { MIDDLE_EARTH_THEME } from '../render/middleEarth/theme.ts';
 import { SHIRE_THEME } from '../render/props/shire.ts';
 import { PROVING_THEME, type Theme } from '../render/themes.ts';
@@ -12,6 +13,12 @@ export interface TrackEntry {
 }
 
 export const TRACKS: TrackEntry[] = [
+  {
+    def: FARM_TRACK,
+    theme: FARM_THEME,
+    blurb:
+      "Round grandpa's farm: over the house, through the barn, the Christmas trees and the pumpkins",
+  },
   { def: MIDDLE_EARTH, theme: MIDDLE_EARTH_THEME, blurb: 'From Hobbiton to Mordor and back again' },
   { def: SHIRE, theme: SHIRE_THEME, blurb: 'Rolling hills, hobbit holes and a stone bridge' },
   { def: PROVING, theme: PROVING_THEME, blurb: 'Gray-box test track with a loop' },

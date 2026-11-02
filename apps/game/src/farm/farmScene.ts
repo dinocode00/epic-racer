@@ -21,6 +21,7 @@ import { addCloudShadow, farmSky } from './sky.ts';
 export class FarmScene {
   readonly scene = new THREE.Scene();
   readonly sun: THREE.DirectionalLight;
+  readonly hemi: THREE.HemisphereLight;
   readonly sunDir = new THREE.Vector3(-0.45, 0.78, 0.43).normalize();
   private sky: THREE.Mesh;
   private t = 0;
@@ -58,7 +59,8 @@ export class FarmScene {
     s.environment = pmrem.fromScene(env, 0.02).texture;
     s.environmentIntensity = 0.55;
 
-    s.add(new THREE.HemisphereLight(0xd6e8ff, 0x5a6b3a, 1.15));
+    this.hemi = new THREE.HemisphereLight(0xd6e8ff, 0x5a6b3a, 1.15);
+    s.add(this.hemi);
     this.sun = new THREE.DirectionalLight(0xfff1d6, 2.9);
     this.sun.castShadow = true;
     this.sun.shadow.mapSize.set(4096, 4096);

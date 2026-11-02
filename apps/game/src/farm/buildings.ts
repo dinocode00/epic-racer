@@ -1115,9 +1115,12 @@ function barn(): THREE.Group {
       );
       door.add(x);
     }
-    door.position.set(s * 1.9, st + 2.1, -W / 2 - 0.12);
+    // The north door (+x) is slid open a little: the racetrack drives in through the gap.
+    door.position.set(s * 1.9 + (s > 0 ? 2.9 : 0), st + 2.1, -W / 2 - 0.12);
     g.add(door);
   }
+  // Dark inside the gap.
+  g.add(doorway(2.8, 4.1, m.black, 1.45, st + 2.05, -W / 2 - 0.04, Math.PI));
   g.add(box(9.5, 0.14, 0.2, m.black, 0, st + 4.3, -W / 2 - 0.2));
   // South end (-x): giant sliding door in the stone level with a walk-through door and the hoop.
   const sd = new THREE.Group();
@@ -1154,7 +1157,9 @@ function barn(): THREE.Group {
     box(0.22, 2.0, 0.08, m.trimWhite, -0.06, -0.12, -1.55),
   );
   sd.add(box(0.24, 0.08, 1.0, m.trimWhite, -0.06, 0.9, -2.05));
-  sd.position.set(-L / 2 - 0.1, 1.17, 0.4);
+  // Slid along its track far enough for the racetrack to come out underneath the hoop.
+  sd.position.set(-L / 2 - 0.1, 1.17, 0.4 + 3.8);
+  g.add(doorway(3.8, 2.3, m.black, -0.7, 1.17, 0, -Math.PI / 2, -L / 2 - 0.03));
   // Track above the door, long enough to slide it open.
   g.add(box(0.2, 0.14, W - 0.3, m.black, -L / 2 - 0.2, 2.4, 0));
   g.add(sd);
@@ -1168,6 +1173,7 @@ function barn(): THREE.Group {
   hoop.add(rim);
   hoop.position.set(-L / 2 - 0.25, 2.75, 0.4);
   g.add(hoop);
+  g.add(barnInside(L, W, ridge));
   // Wooden garage on the north end: red, roof falling north, its overhead door facing west
   // and rolled most of the way up, grandpa's sky-blue pickup parked inside.
   const G = FARM.wooden_garage;
@@ -1182,6 +1188,71 @@ function barn(): THREE.Group {
   const floorY = Math.max(0.2, top - groundHeight(B.c[0], B.c[1]) + 0.08);
   g.add(woodenGarage(G.w, G.h, floorY).translateX(gx));
   return g;
+}
+
+/** A dark opening on a wall: w x h, centred at (along, y) on the wall plane. */
+function doorway(
+  w: number,
+  h: number,
+  _m: THREE.Material,
+  along: number,
+  y: number,
+  z: number,
+  yaw: number,
+  x?: number,
+): THREE.Mesh {
+  const d = new THREE.Mesh(
+    new THREE.PlaneGeometry(w, h),
+    new THREE.MeshBasicMaterial({ color: 0x050403 }),
+  );
+  d.rotation.y = yaw;
+  if (x === undefined) d.position.set(along, y, z);
+  else d.position.set(x, y, along);
+  return d;
+}
+
+/**
+ * Inside the barn: old boards in the dark, the sun coming through the cracks between them in
+ * thin bright lines. Seen only from inside (the outside walls hide it).
+ */
+function barnInside(L: number, W: number, ridge: number): THREE.Mesh {
+  const c = document.createElement('canvas');
+  c.width = 512;
+  c.height = 256;
+  const x = c.getContext('2d')!;
+  x.fillStyle = '#140d08';
+  x.fillRect(0, 0, 512, 256);
+  let px = 0;
+  let k = 0;
+  while (px < 512) {
+    const bw = 22 + ((k * 37) % 13);
+    const tone = 18 + ((k * 53) % 14);
+    x.fillStyle = `rgb(${tone + 8},${tone},${Math.round(tone * 0.6)})`;
+    x.fillRect(px, 0, bw - 2, 256);
+    // Every few boards a crack of daylight, brighter in the middle.
+    if (k % 3 === 1) {
+      const gr = x.createLinearGradient(0, 0, 0, 256);
+      gr.addColorStop(0, 'rgba(255,214,150,0.25)');
+      gr.addColorStop(0.5, 'rgba(255,236,190,0.95)');
+      gr.addColorStop(1, 'rgba(255,214,150,0.25)');
+      x.fillStyle = gr;
+      x.fillRect(px + bw - 2, 0, 2, 256);
+    }
+    px += bw;
+    k++;
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(5, 2);
+  const h = ridge + 1.2;
+  const box = new THREE.Mesh(
+    new THREE.BoxGeometry(L - 0.4, h, W - 0.4),
+    new THREE.MeshBasicMaterial({ map: t, side: THREE.BackSide }),
+  );
+  box.position.y = h / 2 - 1.2;
+  box.name = 'barn-inside';
+  return box;
 }
 
 /** Lean-to wall in the x/y plane, `t` thick, with an optional rectangular opening. */

@@ -12,15 +12,18 @@ import {
   buildSky,
   buildTerrain,
 } from './scenery.ts';
-import { type Atmosphere, PROVING_THEME, type Theme } from './themes.ts';
+import { type Atmosphere, PROVING_THEME, type RaceEnvironment, type Theme } from './themes.ts';
 import { buildTrackMesh } from './trackMesh.ts';
 
 /** Everything static in a race scene, plus the sun and shared effects. */
 export class World {
-  readonly scene = new THREE.Scene();
+  readonly scene: THREE.Scene;
   readonly sun: THREE.DirectionalLight;
   readonly fx = new Effects();
-  readonly terrain: Terrain;
+  readonly terrain?: Terrain;
+  /** A ready-made world (the farm), when the theme brings one. */
+  private env?: RaceEnvironment;
+  private camera: THREE.Camera | null = null;
   private animate?: (t: number, dt: number) => void;
   private t = 0;
   private sky!: THREE.Mesh;
@@ -33,8 +36,17 @@ export class World {
     renderer: THREE.WebGLRenderer,
     readonly theme: Theme = PROVING_THEME,
   ) {
-    const s = this.scene;
     this.track = track;
+    if (theme.environment) {
+      const env = theme.environment(track, renderer);
+      this.env = env;
+      this.scene = env.scene;
+      this.sun = env.sun;
+      this.hemi = env.hemi;
+      this.scene.add(this.fx.group);
+      return;
+    }
+    const s = (this.scene = new THREE.Scene());
     s.fog = new THREE.Fog(theme.fog.color, theme.fog.near, theme.fog.far);
     const sky = buildSky(theme.sky.top, theme.sky.horizon, theme.sunDir);
     this.sky = sky;
@@ -116,6 +128,16 @@ export class World {
     patchScene(s);
   }
 
+  /** Ground height under a point, for keeping cameras out of the hills. */
+  groundHeight(x: number, z: number): number {
+    return this.env ? this.env.groundHeight(x, z) : this.terrain!.height(x, z);
+  }
+
+  /** The camera the next frame is mostly seen from (worlds that follow the view use it). */
+  setCamera(c: THREE.Camera | null): void {
+    this.camera = c;
+  }
+
   regionAt(sv: number): string {
     const regions = this.track.def.regions ?? [];
     let r = regions[0]?.[0] ?? '';
@@ -125,6 +147,19 @@ export class World {
 
   /** The blended atmosphere at an arc length (multi-land tracks only). */
   atmosphereAt(sv: number): Atmosphere | null {
+    if (this.env) {
+      // Fade into the dark over 30 m either side of the barn doors.
+      const d = this.env.dark;
+      if (!d) return this.env.day;
+      let k = 0;
+      for (const [a, b] of d.ranges)
+        k = Math.max(k, Math.min(1, Math.min(sv - a, b - sv) / 30 + 0.5));
+      return k <= 0
+        ? this.env.day
+        : k >= 1
+          ? d.atmosphere
+          : mixAtmos(this.env.day, d.atmosphere, k);
+    }
     const R = this.theme.regions;
     if (!R) return null;
     const regions = this.track.def.regions ?? [];
@@ -159,9 +194,11 @@ export class World {
     fog.color.setHex(a.fog);
     fog.near = a.fogNear;
     fog.far = a.fogFar;
-    const u = (this.sky.material as THREE.ShaderMaterial).uniforms;
-    u.top!.value.setHex(a.skyTop);
-    u.horizon!.value.setHex(a.skyHorizon);
+    if (this.sky) {
+      const u = (this.sky.material as THREE.ShaderMaterial).uniforms;
+      u.top!.value.setHex(a.skyTop);
+      u.horizon!.value.setHex(a.skyHorizon);
+    }
     this.sun.color.setHex(a.sun);
     this.sun.intensity = a.sunIntensity;
     this.hemi.color.setHex(a.hemiSky);
@@ -179,6 +216,10 @@ export class World {
   /** Per-frame animation of props (mill wheels, water...). */
   update(dt: number): void {
     this.t += dt;
+    if (this.env) {
+      this.env.update(dt, this.camera);
+      return;
+    }
     windUniforms.uTime.value = this.t;
     this.animate?.(this.t, dt);
   }
@@ -193,6 +234,10 @@ export class World {
 
   /** Centre the shadow frustum on a point, covering `half` metres around it. */
   focusSun(p: THREE.Vector3, half = SHADOW_HALF): void {
+    if (this.env) {
+      this.env.focusSun(p, half);
+      return;
+    }
     this.sun.target.position.copy(p);
     this.sun.position.copy(p).addScaledVector(this.theme.sunDir, 200);
     this.sun.target.updateMatrixWorld();

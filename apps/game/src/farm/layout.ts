@@ -41,7 +41,14 @@ export interface FarmLayout {
   pumpkins: [number, number, number, 'pumpkin' | 'gourd'][];
   paths: { name: string; width: number; pts: XY[] }[];
   christmas_block: XY[];
-  christmas_trees: { x: number; y: number; species: Species; heightFt: number }[];
+  /** `trimmed`: standing in the racetrack, its low branches cut back. */
+  christmas_trees: {
+    x: number;
+    y: number;
+    species: Species;
+    heightFt: number;
+    trimmed?: boolean;
+  }[];
   gravel: XY[];
   /** Gravel in front of the wooden garage's door. */
   gravel_apron: XY[];

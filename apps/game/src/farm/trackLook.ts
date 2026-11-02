@@ -327,8 +327,28 @@ export interface TrackLook {
   setStyle(s: GlassStyle): void;
 }
 
+/** Where the lit marks go along the road (same arc length as the frames' `s`). */
+export interface GlassMarks {
+  marks: { kind: 'pad' | 'jump' | 'bigjump' | 'start'; s: number }[];
+  /** Spread the work: posts every this many metres (real). */
+  postEvery?: number;
+}
+
+/** The first stretch of the draft in glass (the look preview). */
 export function buildTrackLook(d: Draft, sections: string[]): TrackLook {
   const F = framesFor(d, sections);
+  const marks: GlassMarks['marks'] = [];
+  for (const ft of d.features) {
+    if (!F.some((f) => Math.abs(f.s - ft.s) < 0.6)) continue;
+    const kind = ft.kind === 'boost' ? 'pad' : ft.kind;
+    if (kind === 'pad' || kind === 'jump' || kind === 'bigjump' || kind === 'start')
+      marks.push({ kind, s: ft.s });
+  }
+  return buildGlass(F, { marks });
+}
+
+/** A run of road frames built in glass, with its lit marks. */
+export function buildGlass(F: Frame[], opts: GlassMarks, style: GlassStyle = 'clear'): TrackLook {
   const group = new THREE.Group();
   group.name = 'track-look';
   const st = STYLES.clear;
@@ -409,7 +429,8 @@ export function buildTrackLook(d: Draft, sections: string[]): TrackLook {
         const e = new THREE.Mesh(top, etchM);
         e.renderOrder = 2;
         group.add(e);
-        // Glowing edge lines along both sides of the road.
+        // Glowing edge lines along both sides of the road (and the rails, below): one mesh.
+        const glows: THREE.BufferGeometry[] = [];
         for (const s of [-1, 1]) {
           const g = sweep(C, (f) => {
             const r = side(f),
@@ -421,18 +442,17 @@ export function buildTrackLook(d: Draft, sections: string[]): TrackLook {
               .add(lift);
             return [a.clone().addScaledVector(r, -0.018), a.clone().addScaledVector(r, 0.018)];
           });
-          group.add(new THREE.Mesh(g, glow));
+          glows.push(g);
         }
         if (!tube) {
           // Glass walls, a lit rail along the top of each.
+          const walls: THREE.BufferGeometry[] = [];
           for (const s of [-1, 1]) {
             const w = sweep(C, (f) => {
               const a = f.p.clone().addScaledVector(side(f), (s * f.w) / 2);
               return [a, a.clone().addScaledVector(f.up, WALL_H)];
             });
-            const wm = new THREE.Mesh(w, wallM);
-            wm.renderOrder = 3;
-            group.add(wm);
+            walls.push(w);
             const rail = sweep(
               C,
               (f) => {
@@ -451,8 +471,11 @@ export function buildTrackLook(d: Draft, sections: string[]): TrackLook {
               },
               true,
             );
-            group.add(new THREE.Mesh(rail, glow));
+            glows.push(rail);
           }
+          const wm = new THREE.Mesh(mergeGeometries(walls), wallM);
+          wm.renderOrder = 3;
+          group.add(wm);
         } else {
           // The tube, round the road, and frosted ribs every metre and a half.
           const ring = (f: Frame, r0: number) => {
@@ -473,6 +496,7 @@ export function buildTrackLook(d: Draft, sections: string[]): TrackLook {
           tm.renderOrder = 4;
           group.add(tm);
           let acc = 0;
+          const ribs: THREE.BufferGeometry[] = [];
           for (let i = 1; i < C.length; i++) {
             acc += C[i]!.p.distanceTo(C[i - 1]!.p);
             if (acc < 1.5) continue;
@@ -482,14 +506,15 @@ export function buildTrackLook(d: Draft, sections: string[]): TrackLook {
               ...f,
               p: f.p.clone().addScaledVector(f.t, o),
             }));
-            const rm = new THREE.Mesh(
-              sweep(band, (q) => ring(q, TUBE_R + 0.01), true),
-              rib,
-            );
+            ribs.push(sweep(band, (q) => ring(q, TUBE_R + 0.01), true));
+          }
+          if (ribs.length) {
+            const rm = new THREE.Mesh(mergeGeometries(ribs), rib);
             rm.renderOrder = 5;
             group.add(rm);
           }
         }
+        group.add(new THREE.Mesh(mergeGeometries(glows), glow));
       }
 
   // Steel posts under anything off the ground (not under the loops themselves).
@@ -498,7 +523,7 @@ export function buildTrackLook(d: Draft, sections: string[]): TrackLook {
   for (let i = 1; i < F.length; i++) {
     const f = F[i]!;
     acc += f.p.distanceTo(F[i - 1]!.p);
-    if (acc < 4 || f.kind === 'air' || f.up.y < 0.95) continue;
+    if (acc < (opts.postEvery ?? 4) || f.kind === 'air' || f.up.y < 0.95) continue;
     const ground = meshHeight(f.p.x, -f.p.z);
     const bottom = f.p.y - (f.kind === 'tube' ? TUBE_R - TUBE_UP : SLAB);
     const h = bottom - ground;
@@ -523,11 +548,10 @@ export function buildTrackLook(d: Draft, sections: string[]): TrackLook {
   // Boost pads and kickers.
   const at = (s: number) =>
     F.reduce((b, f) => (Math.abs(f.s - s) < Math.abs(b.s - s) ? f : b), F[0]!);
-  for (const ft of d.features) {
-    if (!F.some((f) => Math.abs(f.s - ft.s) < 0.6)) continue;
+  for (const ft of opts.marks) {
     const f = at(ft.s);
     const r = side(f);
-    if (ft.kind === 'pad' || ft.kind === 'boost') {
+    if (ft.kind === 'pad') {
       const g = new THREE.PlaneGeometry(f.w * 0.7, 1.1);
       const m = new THREE.Mesh(g, boostM);
       const basis = new THREE.Matrix4().makeBasis(r, f.t, f.up);
@@ -595,5 +619,6 @@ export function buildTrackLook(d: Draft, sections: string[]): TrackLook {
     }
     etchM.opacity = s.etch;
   };
+  setStyle(style);
   return { group, frames: F, setStyle };
 }

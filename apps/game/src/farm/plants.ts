@@ -233,7 +233,8 @@ export function buildPlants(): THREE.Group {
       t.x,
       t.y,
       t.heightFt * FT * (0.92 + rnd() * 0.16),
-      0.94 + rnd() * 0.12,
+      // Trees standing in the racetrack are trimmed slim so you can see between the trunks.
+      (0.94 + rnd() * 0.12) * (t.trimmed ? 0.45 : 1),
       vary(0.08),
     );
   for (const k of kinds) root.add(xmas[k].done());
