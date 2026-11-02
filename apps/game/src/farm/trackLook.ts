@@ -81,7 +81,6 @@ export interface Frame {
   s: number;
 }
 
-
 /** Glass that gets more opaque toward grazing angles, like the real thing. */
 function glass(
   opacity: number,
