@@ -530,6 +530,8 @@ def render():
     out.append(f'<g id="lm-11"><path class="bld roof-black wall-red" d="{poly_d(rect(sh, 6, 3.6, GRID))}"/>'
                f'{seg(sh - U * 3, sh + U * 3, "ridge")}</g>')
     gh = sh - V * 6.0 - U * 2.6  # a little east and south of the shed
+    # Round 3 of the racetrack: moved a few metres east so the road loops round it, not through it.
+    gh = np.array([68.0, 110.5])
     LAYOUT['corn_crib'] = bc.tolist()
     LAYOUT['shed'] = {'c': sh.tolist(), 'w': 6.0, 'h': 3.6, 'angle': GRID}
     LAYOUT['greenhouse'] = {'c': gh.tolist(), 'w': 3.05, 'h': 1.83, 'angle': GRID}

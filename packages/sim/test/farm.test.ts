@@ -14,7 +14,7 @@ describe("Grandpa's Farm", () => {
     );
     expect(L).toBeGreaterThan(9000);
     expect(FARM_TRACK.laps).toBe(2);
-    expect(FARM_TRACK.gaps!.length).toBe(3); // the drop off the house, the jump over the trees, the wagon jump
+    expect(FARM_TRACK.gaps!.length).toBe(4); // the drop off the house, two jumps over the trees, the wagon jump
     expect(FARM_TRACK.tunnels!.length).toBe(1);
     expect(FARM_TRACK.hazards!.filter((h) => h.kind === 'trunk').length).toBeGreaterThan(50);
     expect(FARM_TRACK.boostPads!.length).toBeGreaterThan(10);

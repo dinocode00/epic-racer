@@ -223,14 +223,19 @@ const ranges = (k: FarmPieceKind): [number, number][] =>
 // Jumps and boosts.
 const kickers: { s: number; pop: number }[] = [];
 const boostPads: number[] = [];
+const superAt = new Set<number>();
 for (const f of D.features) {
   const s = sForDraft(f.s);
   if (f.kind === 'pad' || f.kind === 'boost') boostPads.push(s);
+  if (f.kind === 'super') {
+    boostPads.push(s);
+    superAt.add(s);
+  }
   if (f.kind === 'jump') kickers.push({ s, pop: f.label.includes('rest') ? 9 : 10 });
   // The big ramp over the pumpkin wagon: it has to throw them clear of the gap that follows,
   // so it sits right at the gap's edge.
   if (f.kind === 'bigjump') {
-    const g = FARM_PIECES.find((p) => p.kind === 'air' && p.s0 > s - 10);
+    const g = FARM_PIECES.find((p) => p.kind === 'air' && p.s0 > s - 10 && p.s0 < s + 80);
     kickers.push({ s: (g ? g.s0 : s) - 6, pop: 32 });
   }
 }
@@ -277,6 +282,8 @@ const pads = boostPads.map((s, i) => {
   const side = [0, -1, 1, 1, -1, 0][i % 6]!;
   const tube = FARM_PIECES.some((p) => p.kind === 'tube' && s >= p.s0 && s < p.s1);
   // (In the tubes a pad spans the whole floor: the drop off the house needs the speed.)
+  // Super pads sit in the middle of the straights: you still have to line up for them.
+  if (superAt.has(s)) return { s, lat: 0, width: PAD_W, super: true };
   return { s, lat: tube ? 0 : side * Math.max(0, w * 0.27 - PAD_W / 2), width: tube ? w : PAD_W };
 });
 
@@ -285,6 +292,7 @@ export const FARM_TRACK: TrackDef = {
   boostPads,
   pads,
   padBoost: { time: 1.7, kick: 10 },
+  superBoost: { time: 2.8, kick: 26 },
   kickers,
   gaps,
   tunnels: ranges('barn'),

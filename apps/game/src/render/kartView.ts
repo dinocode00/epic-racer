@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { type KartState, RESCUE_TIME, driftLevel } from '@epic/sim';
+import { angelWings } from './angelWings.ts';
 import { greatEagle } from './eagle.ts';
 import { DRIFT_COLORS, type Effects, flame } from './effects.ts';
 import { type VehicleModel, buildVehicle } from './vehicles.ts';
@@ -50,7 +51,15 @@ export class KartView {
   /** Bounding sphere of the model in kart-local space (long pods reach far ahead). */
   private bounds = new THREE.Sphere();
 
-  constructor(vehicleId: string, color: string) {
+  /**
+   * `lift`: what carries the kart forward (the lift-ahead item) and rescues it after a fall:
+   * the Great Eagles, or on Grandpa's Farm, Angel Wings.
+   */
+  constructor(
+    vehicleId: string,
+    color: string,
+    private lift: 'eagle' | 'angel' = 'eagle',
+  ) {
     this.model = buildVehicle(vehicleId, color);
     this.root.add(this.model);
     new THREE.Box3().setFromObject(this.model).getBoundingSphere(this.bounds);
@@ -209,12 +218,17 @@ export class KartView {
     if (k.eagleTime > 0) {
       const gold = this.goldEagle();
       gold.group.visible = true;
-      gold.group.position.set(0, 3.3, 0);
+      gold.group.position.set(0, this.lift === 'angel' ? 0 : 3.3, 0);
       gold.flap(this.t * 1.4);
     } else if (this.gold) this.gold.group.visible = false;
   }
 
   private goldEagle() {
+    if (!this.gold && this.lift === 'angel') {
+      this.gold = angelWings();
+      this.gold.group.scale.setScalar(1.3);
+      this.root.add(this.gold.group);
+    }
     if (!this.gold) {
       this.gold = greatEagle();
       this.gold.group.scale.setScalar(1.7);
@@ -234,6 +248,11 @@ export class KartView {
   }
 
   private rescueEagle() {
+    if (!this.eagle && this.lift === 'angel') {
+      this.eagle = angelWings();
+      this.eagle.group.scale.setScalar(1.3);
+      this.root.add(this.eagle.group);
+    }
     if (!this.eagle) {
       this.eagle = greatEagle();
       this.eagle.group.scale.setScalar(1.6);
@@ -301,7 +320,7 @@ export class KartView {
       const t = k.rescueTime / RESCUE_TIME;
       this.root.position.addScaledVector(this.up, t * t * 16);
       eagle.group.visible = true;
-      eagle.group.position.set(0, 3.2 + (1 - t) * 3 * (1 - t), 0);
+      eagle.group.position.set(0, this.lift === 'angel' ? 0 : 3.2 + (1 - t) * 3 * (1 - t), 0);
       eagle.flap(this.t);
     } else if (this.eagle) {
       this.eagle.group.visible = false;

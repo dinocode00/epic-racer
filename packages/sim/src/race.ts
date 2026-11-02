@@ -243,7 +243,8 @@ export class Race {
   private applyBoostPads(): void {
     const def = this.track.def;
     // A pad is the centre strip of the road unless the track places its own.
-    const pads = def.pads ?? (def.boostPads ?? []).map((s) => ({ s, lat: 0, width: 6 }));
+    const pads =
+      def.pads ?? (def.boostPads ?? []).map((s) => ({ s, lat: 0, width: 6, super: false }));
     const power = def.padBoost ?? { time: 1.1, kick: 0 };
     this.karts.forEach((k, i) => {
       this.padCooldown[i] = Math.max(0, this.padCooldown[i]! - STEP);
@@ -251,9 +252,11 @@ export class Race {
       for (const p of pads) {
         const ds = (((k.s - p.s) % this.track.length) + this.track.length) % this.track.length;
         if (ds < 3 && !k.air && Math.abs(k.lat - p.lat) < p.width / 2) {
-          k.boostTime = Math.max(k.boostTime, power.time);
+          const pw = p.super && def.superBoost ? def.superBoost : power;
+          k.boostTime = Math.max(k.boostTime, pw.time);
           // A shove on top of the boost, up to well past top speed.
-          if (power.kick) k.speed = Math.min(k.speed + power.kick, k.params.topSpeed * 1.5);
+          if (pw.kick)
+            k.speed = Math.min(k.speed + pw.kick, k.params.topSpeed * (p.super ? 1.85 : 1.5));
           this.padCooldown[i] = 1;
         }
       }

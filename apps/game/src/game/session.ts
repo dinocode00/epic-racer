@@ -114,6 +114,7 @@ export class RaceSession {
               '#28c4c4',
               '#f070b0',
             ][i % 8]!,
+        track.id === 'farm' ? 'angel' : 'eagle',
       );
       this.world.scene.add(v.root);
       return v;

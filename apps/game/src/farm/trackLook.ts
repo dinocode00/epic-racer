@@ -148,14 +148,14 @@ function etchTexture(): THREE.CanvasTexture {
 }
 
 /** Glowing chevrons for the boost pads. */
-function chevronTexture(): THREE.CanvasTexture {
+function chevronTexture(blue = false): THREE.CanvasTexture {
   const c = document.createElement('canvas');
   c.width = 128;
   c.height = 256;
   const g = c.getContext('2d')!;
-  g.fillStyle = 'rgba(255,190,20,0.35)';
+  g.fillStyle = blue ? 'rgba(40,140,255,0.5)' : 'rgba(255,190,20,0.35)';
   g.fillRect(0, 0, 128, 256);
-  g.strokeStyle = 'rgba(255,214,60,1)';
+  g.strokeStyle = blue ? 'rgba(170,230,255,1)' : 'rgba(255,214,60,1)';
   g.lineWidth = 16;
   g.lineJoin = 'round';
   for (const y of [40, 120, 200]) {
@@ -330,7 +330,14 @@ export interface TrackLook {
 /** Where the lit marks go along the road (same arc length as the frames' `s`). */
 export interface GlassMarks {
   /** `lat` and `width` (real metres) place a pad across the road; otherwise it's centred. */
-  marks: { kind: 'pad' | 'jump' | 'bigjump' | 'start'; s: number; lat?: number; width?: number }[];
+  marks: {
+    kind: 'pad' | 'jump' | 'bigjump' | 'start';
+    s: number;
+    lat?: number;
+    width?: number;
+    /** A blue super pad. */
+    super?: boolean;
+  }[];
   /** Spread the work: posts every this many metres (real). */
   postEvery?: number;
 }
@@ -385,6 +392,21 @@ export function buildGlass(F: Frame[], opts: GlassMarks, style: GlassStyle = 'cl
     side: THREE.DoubleSide,
   });
   const kickM = new THREE.MeshBasicMaterial({ color: 0xff7a1a });
+  // Super pads glow blue, with a halo of light round them.
+  const superM = new THREE.MeshBasicMaterial({
+    map: chevronTexture(true),
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  });
+  const superGlow = new THREE.MeshBasicMaterial({
+    color: 0x3aa0ff,
+    transparent: true,
+    opacity: 0.35,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    side: THREE.DoubleSide,
+  });
 
   const groups: [boolean, (k: string) => boolean][] = [
     [false, (k) => k !== 'air' && k !== 'tube'],
@@ -553,8 +575,8 @@ export function buildGlass(F: Frame[], opts: GlassMarks, style: GlassStyle = 'cl
     const f = at(ft.s);
     const r = side(f);
     if (ft.kind === 'pad') {
-      const g = new THREE.PlaneGeometry(ft.width ?? f.w * 0.7, 1.1);
-      const m = new THREE.Mesh(g, boostM);
+      const g = new THREE.PlaneGeometry(ft.width ?? f.w * 0.7, ft.super ? 1.6 : 1.1);
+      const m = new THREE.Mesh(g, ft.super ? superM : boostM);
       const basis = new THREE.Matrix4().makeBasis(r, f.t, f.up);
       m.quaternion.setFromRotationMatrix(basis);
       m.position
@@ -563,6 +585,19 @@ export function buildGlass(F: Frame[], opts: GlassMarks, style: GlassStyle = 'cl
         .addScaledVector(r, ft.lat ?? 0);
       m.renderOrder = 6;
       group.add(m);
+      if (ft.super) {
+        // A soft blue glow standing up off the pad, so you see it coming from far off.
+        const glow = new THREE.Mesh(
+          new THREE.BoxGeometry((ft.width ?? 0.4) + 0.1, 0.35, 1.7),
+          superGlow,
+        );
+        glow.quaternion.setFromRotationMatrix(
+          new THREE.Matrix4().makeBasis(r, f.up, f.t.clone().negate()),
+        );
+        glow.position.copy(m.position).addScaledVector(f.up, 0.17);
+        glow.renderOrder = 7;
+        group.add(glow);
+      }
     }
     if (ft.kind === 'jump' || ft.kind === 'bigjump') {
       // A glass wedge across the road with lit orange edges.

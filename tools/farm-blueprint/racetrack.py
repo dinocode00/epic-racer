@@ -70,7 +70,7 @@ def route():
     add('start', 'road', ROAD, (16.0, 174.6))
     feat('start', 'Start / finish')
     add('start', 'road', ROAD, (21.5, 173.4), (27.5, 171.0))
-    feat('pad', 'Boost pad')
+    feat('super', 'Super boost pad (blue)')
     add('start', 'road', ROAD, (32.6, 166.2), (37.5, 161.6), (44.0, 161.0))
     # 2. Curve north and under the clothes lines (they cross from (51, 174) to (58, 168)).
     add('clothes', 'road', ROAD, (49.6, 164.0), (53.2, 168.6), (55.6, 172.2))
@@ -187,7 +187,24 @@ def route():
     feat('trunks', 'Trunks are solid')
     west = wave(80.0, 20.0, 85.0, 78.0, 2.4, 4)
     for k, (x, y) in enumerate(west):
-        h = (1.4 if k % 4 == 2 else 0.0) if k < len(west) - 2 else 0.0
+        if k == 5:
+            # The middle crest is a big ramp: a boost pad, up, a long flight, down beyond.
+            add('forest', 'wide', FOREST, (x, y, 0.0))
+            feat('pad', 'Boost pad')
+            continue
+        if k == 6:
+            add('forest', 'wide', FOREST, (x, y, 1.4))
+            feat('bigjump', 'Big ramp over the trees')
+            continue
+        if k in (7, 8):
+            add('forest', 'air', FOREST, (x, y, 1.4))
+            if k == 7:
+                feat('treejump', 'Over the Christmas trees')
+            continue
+        if k == 9:
+            add('forest', 'wide', FOREST, (x, y, 0.6))
+            continue
+        h = (1.4 if k % 4 == 2 and k != 10 else 0.0) if k < len(west) - 2 else 0.0
         add('forest', 'wide', FOREST, (x, y, h))
         if h > 1:
             feat('jump', 'Hill crest: air')
@@ -242,11 +259,11 @@ def route():
     add('west', 'road', ROAD, (2.8, 26.0), (2.6, 40.0))
     feat('pad', 'Boost pad')
     add('west', 'road', ROAD, (2.6, 56.0))
-    feat('pad', 'Boost pad')
+    feat('super', 'Super boost pad (blue)')
     add('west', 'road', ROAD, (2.7, 72.0))
     feat('pad', 'Boost pad')
     add('west', 'road', ROAD, (3.0, 88.0))
-    feat('pad', 'Boost pad')
+    feat('super', 'Super boost pad (blue)')
     add('west', 'road', ROAD, (3.4, 99.0), (6.6, 104.6))
     # 13. The orchard: up and down the aisles between the tree lines (u along, v across), over
     # rollers for hang time, crossing a line only between two trees; out the north-west side.
@@ -361,6 +378,11 @@ def build():
             # are cut for the race); the two rows under the flight just stand there.
             if 57.0 < t['y'] < 66.0 and 18.0 < t['x'] < 56.0:
                 if not (37.6 < t['x'] < 46.4):
+                    cleared.append([t['x'], t['y']])
+                continue
+            # The same for the big ramp on the way west.
+            if 78.0 < t['y'] < 85.0 and 40.0 < t['x'] < 60.0:
+                if not (45.5 < t['x'] < 52.5):
                     cleared.append([t['x'], t['y']])
                 continue
             trunks.append([t['x'], t['y']])
