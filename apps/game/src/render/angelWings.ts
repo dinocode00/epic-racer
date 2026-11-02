@@ -3,7 +3,7 @@ import * as THREE from 'three';
 /**
  * Angel Wings (Grandpa's Farm's lift-ahead item, in place of the Great Eagle): a pair of big
  * white feathered wings that open from the kart's sides and beat slowly, a golden halo over it,
- * all softly glowing. Same interface as the eagle: a group sitting on the kart, and `flap(t)`.
+ * the feathers softly lit. Same interface as the eagle: a group sitting on the kart, and `flap(t)`.
  */
 export function angelWings(): { group: THREE.Group; flap: (t: number) => void } {
   const g = new THREE.Group();
@@ -71,18 +71,6 @@ export function angelWings(): { group: THREE.Group; flap: (t: number) => void } 
   halo.rotation.x = Math.PI / 2;
   halo.position.set(0, 2.4, 0.2);
   g.add(halo);
-  // A soft glow round the whole thing.
-  const glow = new THREE.Mesh(
-    new THREE.SphereGeometry(2.6, 20, 14),
-    new THREE.MeshBasicMaterial({
-      color: 0xdfeeff,
-      transparent: true,
-      opacity: 0.12,
-      depthWrite: false,
-    }),
-  );
-  glow.position.y = 1.0;
-  g.add(glow);
   return {
     group: g,
     flap: (t: number) => {
@@ -95,7 +83,6 @@ export function angelWings(): { group: THREE.Group; flap: (t: number) => void } 
       });
       halo.position.y = 2.4 + Math.sin(t * 2.1) * 0.08;
       halo.rotation.z = t * 0.6;
-      (glow.material as THREE.MeshBasicMaterial).opacity = 0.1 + 0.05 * (0.5 + 0.5 * a);
     },
   };
 }
