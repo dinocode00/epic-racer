@@ -125,5 +125,9 @@ alley; round the greenhouse and north of the wagons; zigzags through the Christm
 boost ramps with a big jump over the wagon; the west straight with boost pads; orchard rollers between the aisles; a
 corkscrew round the giant Scotch pine with a sky loop; dive back to the start.
 
-Open questions for the owner: lap length; grandpa crossing the track during races; how high over the house; which side
-of the barn ramp; widths.
+Draft 2 (owner's notes): section 6 goes round the outside of the north lilac and between it and the old well, then
+south up the ramp's north side into the north door; 15 boost pads and 18 kickers/crests round the lap; rolling hills
+with a crest on every leg through the Christmas trees (about 1.4 m, low branches over the road trimmed up) and crests
+of about 1.5 m along the orchard aisles.
+
+Open questions for the owner: lap length; grandpa crossing the track during races; how high over the house; widths.
