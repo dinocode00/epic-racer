@@ -237,7 +237,7 @@ export class RaceSession {
     this.itemViews.update(this.race.time, this.race.karts, fx, dt);
     fx.update(dt);
     this.world.setCamera(this.cams[0]?.camera ?? this.spectator?.camera ?? null);
-    this.world.update(dt);
+    this.world.update(dt, this.race.time);
 
     // Cameras and HUD.
     this.humans.forEach((ki, i) => {

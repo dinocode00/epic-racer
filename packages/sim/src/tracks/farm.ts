@@ -1,6 +1,7 @@
 import type { HazardDef, TrackDef, TrackPoint, V3 } from '@epic/shared';
 import { Track } from '../track.ts';
 import DRAFT from './farmDraft.json';
+import { grandpaSchedules } from './grandpaSchedule.ts';
 
 /**
  * Grandpa's Farm: the owner's route round the grandparents' farm (docs/farm), laid out at 1:10
@@ -68,6 +69,8 @@ interface Pt {
   /** Where along the draft this point is (real metres), for placing features. */
   ds: number;
   loop: boolean;
+  /** Along the ground (where grandpa can walk across it). */
+  low: boolean;
 }
 
 function centreLine(): Pt[] {
@@ -77,6 +80,7 @@ function centreLine(): Pt[] {
     w: q[3] * S,
     kind: q[4],
     ds: q[7],
+    low: q[2] < 0.3 && (q[4] === 'road' || q[4] === 'wide'),
   }));
   // Even spacing.
   const even: typeof src = [];
@@ -91,6 +95,7 @@ function centreLine(): Pt[] {
         w: a.w + (b.w - a.w) * t,
         kind: t < 0.5 ? a.kind : b.kind,
         ds: i + 1 < src.length ? a.ds + (b.ds - a.ds) * t : a.ds,
+        low: t < 0.5 ? a.low : b.low,
       });
     }
   }
@@ -142,7 +147,7 @@ function centreLine(): Pt[] {
     const p = addS(q.p, off, 1);
     const up0: V = [0, 1, 0];
     const up = norm(addS(up0, t, -dot(up0, t)));
-    out.push({ p, up, w: q.w, kind: q.kind, ds: q.ds, loop: false });
+    out.push({ p, up, w: q.w, kind: q.kind, ds: q.ds, loop: false, low: q.low });
     const next = even[i + 1];
     const loopHere = next && loopsAt.some((s) => q.ds <= s && next.ds > s);
     if (!loopHere) continue;
@@ -160,7 +165,15 @@ function centreLine(): Pt[] {
         right,
         sh,
       );
-      out.push({ p: pos, up: norm(sub(c, pos)), w: q.w, kind: 'tube', ds: q.ds, loop: true });
+      out.push({
+        p: pos,
+        up: norm(sub(c, pos)),
+        w: q.w,
+        kind: 'tube',
+        ds: q.ds,
+        loop: true,
+        low: false,
+      });
     }
     off = addS(off, right, LOOP_SHIFT);
     hold = HOLD;
@@ -270,6 +283,75 @@ for (let s = 350; s < L - 200; s += 900) {
   itemRows.push(at);
 }
 
+// Grandpa on his rounds: where his walks and the mower's run cross the road along the ground,
+// he's in the way (solid) for as long as he's on it. Sampled from his timetable four times a
+// second, so the race and the picture agree exactly.
+function grandpaHazards(): HazardDef[] {
+  const CELL = 30;
+  const grid = new Map<string, number[]>();
+  PTS.forEach((q, i) => {
+    if (!q.low) return;
+    const key = `${Math.floor(q.p[0] / CELL)},${Math.floor(q.p[2] / CELL)}`;
+    (grid.get(key) ?? grid.set(key, []).get(key)!).push(i);
+  });
+  const onRoad = (x: number, y: number, r: number): [number, number] | null => {
+    const gx = (x - 50) * S,
+      gz = -(y - 100) * S;
+    let best = -1,
+      bd = Infinity;
+    const cx = Math.floor(gx / CELL),
+      cz = Math.floor(gz / CELL);
+    for (let i = -1; i <= 1; i++)
+      for (let j = -1; j <= 1; j++)
+        for (const k of grid.get(`${cx + i},${cz + j}`) ?? []) {
+          const q = PTS[k]!.p;
+          const d = (q[0] - gx) ** 2 + (q[2] - gz) ** 2;
+          if (d < bd) {
+            bd = d;
+            best = k;
+          }
+        }
+    if (best < 0 || bd > 40 * 40) return null;
+    const q = PTS[best]!;
+    const pr = track.project(
+      { x: gx, y: q.p[1], z: gz },
+      Math.round(sOf[best]! / track.spacing),
+      30,
+    );
+    if (Math.abs(pr.lateral) > pr.frame.width / 2 + r || Math.abs(pr.height) > 6) return null;
+    return [pr.s, pr.lateral];
+  };
+  const DT = 0.25;
+  const out: HazardDef[] = [];
+  const add = (kind: string, r: number, period: number, at: (t: number) => [number, number]) => {
+    const n = Math.round(period / DT);
+    const s: number[] = [],
+      lat: number[] = [];
+    let any = false;
+    for (let i = 0; i < n; i++) {
+      const [x, y] = at((i * period) / n);
+      const hit = onRoad(x, y, r);
+      s.push(hit ? Math.round(hit[0] * 10) / 10 : 0);
+      lat.push(hit ? Math.round(hit[1] * 10) / 10 : 999);
+      if (hit) any = true;
+    }
+    if (any)
+      out.push({ kind, s: 0, lat: 0, r, effect: 'bump', schedule: { dt: period / n, s, lat } });
+  };
+  const G = grandpaSchedules();
+  for (const w of G.walkers)
+    add('grandpa', 3, w.sched.period, (t) => {
+      const p = w.sched.at(t);
+      return [p.x, p.y];
+    });
+  // The tractor, round its middle (half a metre ahead of the rear axle).
+  add('mower', 9, G.mower.period, (t) => {
+    const p = G.mower.at(t);
+    return [p.x + Math.cos(p.heading) * 0.45, p.y + Math.sin(p.heading) * 0.45];
+  });
+  return out;
+}
+
 export const FARM_MARKS: Record<string, number> = Object.fromEntries(
   D.sections.map((x) => [x.id, x.id === 'start' ? 0 : sForDraft(x.s)]),
 );
@@ -298,7 +380,7 @@ export const FARM_TRACK: TrackDef = {
   tunnels: ranges('barn'),
   tubes: ranges('tube'),
   crestAir: true,
-  hazards,
+  hazards: [...hazards, ...grandpaHazards()],
   itemRows,
   marks: FARM_MARKS,
 };

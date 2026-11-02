@@ -18,6 +18,10 @@ describe("Grandpa's Farm", () => {
     expect(FARM_TRACK.tunnels!.length).toBe(1);
     expect(FARM_TRACK.hazards!.filter((h) => h.kind === 'trunk').length).toBeGreaterThan(50);
     expect(FARM_TRACK.boostPads!.length).toBeGreaterThan(10);
+    // Blue super pads, and grandpa (walking, and on the mower) in the way at times.
+    expect(FARM_TRACK.pads!.filter((p) => p.super).length).toBe(3);
+    for (const kind of ['grandpa', 'mower'])
+      expect(FARM_TRACK.hazards!.some((h) => h.kind === kind && h.schedule)).toBe(true);
     // Loops: the road turns upside down somewhere.
     expect(race.track.frames.some((f) => f.up.y < -0.9)).toBe(true);
   });

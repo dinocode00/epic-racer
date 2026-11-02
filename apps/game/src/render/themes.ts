@@ -65,7 +65,7 @@ export interface RaceEnvironment {
   /** Ground height under a point (game metres). */
   groundHeight(x: number, z: number): number;
   /** Per frame, with the camera being drawn from (for things that follow the view). */
-  update(dt: number, camera: THREE.Camera | null): void;
+  update(dt: number, camera: THREE.Camera | null, raceTime: number): void;
   /** Centre the shadow map on a point, `half` metres each way. */
   focusSun(p: THREE.Vector3, half: number): void;
   /** The usual light and fog, and the light somewhere dark (the barn), with where it is. */

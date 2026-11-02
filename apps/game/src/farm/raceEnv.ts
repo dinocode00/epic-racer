@@ -140,8 +140,8 @@ function farmEnvironment(track: Track, renderer: THREE.WebGLRenderer): RaceEnvir
     sun: farm.sun,
     hemi: farm.hemi,
     groundHeight: (x, z) => farm.heightAt(x, z),
-    update: (dt, camera) => {
-      if (camera) farm.update(dt, camera);
+    update: (dt, camera, raceTime) => {
+      if (camera) farm.update(dt, camera, raceTime);
     },
     focusSun: (p, half) => farm.focusSun(p, half),
     day,

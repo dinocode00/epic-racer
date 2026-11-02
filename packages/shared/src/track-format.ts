@@ -31,6 +31,12 @@ export interface HazardDef {
   strike?: { period: number; warn: number; active: number; phase?: number };
   /** Only from this lap onward (1-based). */
   fromLap?: number;
+  /**
+   * Goes where a timetable says (grandpa on his rounds): every `dt` seconds of race time a
+   * place on the track, round and round every `s.length * dt` seconds. Off the road where
+   * `lat` is 999 (not there at all then).
+   */
+  schedule?: { dt: number; s: number[]; lat: number[] };
 }
 
 export interface TrackDef {

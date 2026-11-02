@@ -16,3 +16,4 @@ export {
   type FarmPiece,
   type FarmPieceKind,
 } from './tracks/farm.ts';
+export * from './tracks/grandpaSchedule.ts';

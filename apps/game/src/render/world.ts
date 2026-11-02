@@ -214,10 +214,11 @@ export class World {
   }
 
   /** Per-frame animation of props (mill wheels, water...). */
-  update(dt: number): void {
+  /** `raceTime`: the race clock (things that run to a timetable keep to it). */
+  update(dt: number, raceTime = this.t): void {
     this.t += dt;
     if (this.env) {
-      this.env.update(dt, this.camera);
+      this.env.update(dt, this.camera, raceTime);
       return;
     }
     windUniforms.uTime.value = this.t;

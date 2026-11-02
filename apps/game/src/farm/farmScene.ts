@@ -206,7 +206,8 @@ export class FarmScene {
     }
   }
 
-  update(dt: number, camera: THREE.Camera): void {
+  /** `clock`: what grandpa's timetable runs on (a race passes its own clock). */
+  update(dt: number, camera: THREE.Camera, clock?: number): void {
     this.t += dt;
     windUniforms.uTime.value = this.t;
     this.updateProps(this.t);
@@ -214,6 +215,6 @@ export class FarmScene {
     this.farm.worldToLocal(this.camLocal.copy(camera.position));
     this.grass.update(this.camLocal);
     this.critters.update(this.t, this.camLocal);
-    this.grandpa.update(this.t, dt, this.camLocal);
+    this.grandpa.update(clock ?? this.t, dt, this.camLocal);
   }
 }

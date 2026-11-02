@@ -904,6 +904,9 @@ const REGISTRY: Record<string, (h: HazardState) => HazardView> = {
   gateRight: () => ({ root: new THREE.Group(), update() {} }),
   // The farm draws its own Christmas trees; their trunks are just solid.
   trunk: () => ({ root: new THREE.Group(), update() {} }),
+  // Grandpa and his tractor: the farm draws them (on the same timetable the race uses).
+  grandpa: () => ({ root: new THREE.Group(), update() {} }),
+  mower: () => ({ root: new THREE.Group(), update() {} }),
   lavaBurst,
   eyeBeam,
   mud: simple(mud),
