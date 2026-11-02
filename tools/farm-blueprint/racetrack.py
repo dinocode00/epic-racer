@@ -220,7 +220,7 @@ def route():
     A = [46.0, 50.4, 54.8, 59.2, 63.6, 68.0, 72.4]
     add('orchard', 'road', ROAD, F(88.6, A[3]))
     feat('pad', 'Boost pad')
-    HI = 1.5
+    HI = 0.5  # low enough that they fly under the apple crowns
     hump = lambda u, v, h: (*F(u, v), HI if h else 0.0)  # noqa: E731
     def crest(u, v):
         add('orchard', 'road', ROAD, hump(u, v, 1))

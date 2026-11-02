@@ -49,7 +49,7 @@ function farmEnvironment(track: Track, renderer: THREE.WebGLRenderer): RaceEnvir
     any: XY[] = [];
   let w = 1.6;
   const flush = () => {
-    if (low.length > 1) grassCuts.push({ pts: low, width: w + 0.6 });
+    if (low.length > 1) grassCuts.push({ pts: low, width: w + 1.0 });
     if (any.length > 1) near.push({ pts: any, width: w });
     low = [];
     any = [];
@@ -63,9 +63,9 @@ function farmEnvironment(track: Track, renderer: THREE.WebGLRenderer): RaceEnvir
     if (Math.abs(f.w - w) > 0.5) flush();
     w = f.w;
     any.push([f.p.x, -f.p.z]);
-    if (above < 0.5) low.push([f.p.x, -f.p.z]);
+    if (above < 1.5) low.push([f.p.x, -f.p.z]);
     else if (low.length) {
-      if (low.length > 1) grassCuts.push({ pts: low, width: w + 0.6 });
+      if (low.length > 1) grassCuts.push({ pts: low, width: w + 1.0 });
       low = [];
     }
   }
