@@ -153,7 +153,7 @@ function chevronTexture(blue = false): THREE.CanvasTexture {
   c.width = 128;
   c.height = 256;
   const g = c.getContext('2d')!;
-  g.fillStyle = blue ? 'rgba(40,140,255,0.5)' : 'rgba(255,190,20,0.35)';
+  g.fillStyle = blue ? 'rgba(30,130,255,0.75)' : 'rgba(255,190,20,0.35)';
   g.fillRect(0, 0, 128, 256);
   g.strokeStyle = blue ? 'rgba(170,230,255,1)' : 'rgba(255,214,60,1)';
   g.lineWidth = 16;
@@ -392,19 +392,11 @@ export function buildGlass(F: Frame[], opts: GlassMarks, style: GlassStyle = 'cl
     side: THREE.DoubleSide,
   });
   const kickM = new THREE.MeshBasicMaterial({ color: 0xff7a1a });
-  // Super pads glow blue, with a halo of light round them.
+  // Super pads are blue (flat on the road, like the others).
   const superM = new THREE.MeshBasicMaterial({
     map: chevronTexture(true),
     transparent: true,
     depthWrite: false,
-    side: THREE.DoubleSide,
-  });
-  const superGlow = new THREE.MeshBasicMaterial({
-    color: 0x3aa0ff,
-    transparent: true,
-    opacity: 0.35,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending,
     side: THREE.DoubleSide,
   });
 
@@ -585,19 +577,6 @@ export function buildGlass(F: Frame[], opts: GlassMarks, style: GlassStyle = 'cl
         .addScaledVector(r, ft.lat ?? 0);
       m.renderOrder = 6;
       group.add(m);
-      if (ft.super) {
-        // A soft blue glow standing up off the pad, so you see it coming from far off.
-        const glow = new THREE.Mesh(
-          new THREE.BoxGeometry((ft.width ?? 0.4) + 0.1, 0.35, 1.7),
-          superGlow,
-        );
-        glow.quaternion.setFromRotationMatrix(
-          new THREE.Matrix4().makeBasis(r, f.up, f.t.clone().negate()),
-        );
-        glow.position.copy(m.position).addScaledVector(f.up, 0.17);
-        glow.renderOrder = 7;
-        group.add(glow);
-      }
     }
     if (ft.kind === 'jump' || ft.kind === 'bigjump') {
       // A glass wedge across the road with lit orange edges.

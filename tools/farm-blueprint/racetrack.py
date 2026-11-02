@@ -318,6 +318,9 @@ def route():
         add('pine', 'tube', ROAD, (pine[0] + R * math.cos(a), pine[1] + R * math.sin(a), h))
         if k == 0:
             feat('helix', 'Corkscrew round the Scotch pine')
+        # Boost pads on the way up, to keep the climb quick.
+        if k in (3, 6, 9):
+            feat('pad', 'Boost pad in the corkscrew')
     feat('loop', 'Sky loop: the whole farm below')
     # 15. Out of the tube at the top onto open road, over the crest at full height, and a dive
     # back down to the driveway: going over the top fast, you fly off it and land far down.
