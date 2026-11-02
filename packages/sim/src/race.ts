@@ -71,6 +71,12 @@ export class Race {
         }
         return null;
       },
+      runUp: (s) =>
+        (def.gaps ?? []).some(([g0]) => {
+          let ahead = g0 - s;
+          if (ahead < 0) ahead += L;
+          return ahead < 140;
+        }),
       rescueS: (s) => {
         // Never drop a kart just before a gap: back it up for a proper run-up.
         for (const [g0] of def.gaps ?? []) {
@@ -235,17 +241,20 @@ export class Race {
   }
 
   private applyBoostPads(): void {
-    const pads = this.track.def.boostPads ?? [];
+    const def = this.track.def;
+    // A pad is the centre strip of the road unless the track places its own.
+    const pads = def.pads ?? (def.boostPads ?? []).map((s) => ({ s, lat: 0, width: 6 }));
+    const power = def.padBoost ?? { time: 1.1, kick: 0 };
     this.karts.forEach((k, i) => {
       this.padCooldown[i] = Math.max(0, this.padCooldown[i]! - STEP);
       if (this.padCooldown[i]! > 0) return;
-      for (const s of pads) {
-        const ds = (((k.s - s) % this.track.length) + this.track.length) % this.track.length;
-        if (ds < 3 && !k.air) {
-          if (Math.abs(k.lat) < 3) {
-            k.boostTime = Math.max(k.boostTime, 1.1);
-            this.padCooldown[i] = 1;
-          }
+      for (const p of pads) {
+        const ds = (((k.s - p.s) % this.track.length) + this.track.length) % this.track.length;
+        if (ds < 3 && !k.air && Math.abs(k.lat - p.lat) < p.width / 2) {
+          k.boostTime = Math.max(k.boostTime, power.time);
+          // A shove on top of the boost, up to well past top speed.
+          if (power.kick) k.speed = Math.min(k.speed + power.kick, k.params.topSpeed * 1.5);
+          this.padCooldown[i] = 1;
         }
       }
     });

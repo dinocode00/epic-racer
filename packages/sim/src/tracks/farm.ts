@@ -42,7 +42,7 @@ export interface FarmPiece {
 }
 
 const LOOP_R = 26;
-const LOOP_SHIFT = 24;
+const LOOP_SHIFT = 22;
 const STEP = 4; // game metres between centre-line points
 
 type V = [number, number, number];
@@ -94,27 +94,61 @@ function centreLine(): Pt[] {
       });
     }
   }
+  // Iron out kinks where the draft's curves meet (a few passes of a 1-2-1 blur).
+  for (let pass = 0; pass < 4; pass++) {
+    const prev = even.map((q) => q.p);
+    const m = even.length;
+    for (let i = 0; i < m; i++) {
+      const a = prev[(i - 1 + m) % m]!,
+        b = prev[i]!,
+        c = prev[(i + 1) % m]!;
+      even[i]!.p = [
+        (a[0] + 2 * b[0] + c[0]) / 4,
+        (a[1] + 2 * b[1] + c[1]) / 4,
+        (a[2] + 2 * b[2] + c[2]) / 4,
+      ];
+    }
+  }
   const loopsAt = D.features.filter((f) => f.kind === 'loop').map((f) => f.s);
   const out: Pt[] = [];
-  let shift: V = [0, 0, 0],
-    left = 0;
-  const EASE = 80; // game metres to drift back over after a loop
+  // Each loop comes out to one side of where it went in; the road carries on from there (so it
+  // never runs back alongside the loop's own entry) and drifts back to the draft's line only
+  // well after the loop. Loops in a row all step the same way (to the left), so each one stands
+  // clear of the one before.
+  let off: V = [0, 0, 0],
+    from: V = [0, 0, 0],
+    hold = 0,
+    ease = 0,
+    dir = -1;
+  const HOLD = 90,
+    EASE = 220;
   for (let i = 0; i < even.length; i++) {
     const q = even[i]!;
     const t = norm(
       sub(even[(i + 1) % even.length]!.p, even[(i - 1 + even.length) % even.length]!.p),
     );
-    const k = left > 0 ? (left / EASE) ** 2 * (3 - (2 * left) / EASE) : 0;
-    const p = addS(q.p, shift, k);
+    if (hold > 0) {
+      hold -= STEP;
+      if (hold <= 0) {
+        from = off;
+        ease = EASE;
+      }
+    } else if (ease > 0) {
+      ease = Math.max(0, ease - STEP);
+      const k = ease / EASE;
+      const e = k * k * (3 - 2 * k);
+      off = [from[0] * e, from[1] * e, from[2] * e];
+    }
+    const p = addS(q.p, off, 1);
     const up0: V = [0, 1, 0];
     const up = norm(addS(up0, t, -dot(up0, t)));
     out.push({ p, up, w: q.w, kind: q.kind, ds: q.ds, loop: false });
-    if (left > 0) left = Math.max(0, left - STEP);
     const next = even[i + 1];
     const loopHere = next && loopsAt.some((s) => q.ds <= s && next.ds > s);
     if (!loopHere) continue;
-    // A full vertical loop: up and over, coming out to the right of where it went in.
-    const right = norm(cross(t, up));
+    // A full vertical loop: up and over, coming out to one side of where it went in.
+    const r0 = norm(cross(t, up));
+    const right: V = [r0[0] * dir, r0[1] * dir, r0[2] * dir];
     const N = Math.round((Math.PI * 2 * LOOP_R) / STEP);
     for (let j = 1; j < N; j++) {
       const u = j / N;
@@ -128,8 +162,9 @@ function centreLine(): Pt[] {
       );
       out.push({ p: pos, up: norm(sub(c, pos)), w: q.w, kind: 'tube', ds: q.ds, loop: true });
     }
-    shift = [right[0] * LOOP_SHIFT, right[1] * LOOP_SHIFT, right[2] * LOOP_SHIFT];
-    left = EASE;
+    off = addS(off, right, LOOP_SHIFT);
+    hold = HOLD;
+    ease = 0;
   }
   return out;
 }
@@ -234,9 +269,22 @@ export const FARM_MARKS: Record<string, number> = Object.fromEntries(
   D.sections.map((x) => [x.id, x.id === 'start' ? 0 : sForDraft(x.s)]),
 );
 
+// Boost pads: narrow (you have to aim for them), set off to one side or the other in turn,
+// and they kick hard.
+const PAD_W = 4;
+const pads = boostPads.map((s, i) => {
+  const w = track.frameAtS(s).width;
+  const side = [0, -1, 1, 1, -1, 0][i % 6]!;
+  const tube = FARM_PIECES.some((p) => p.kind === 'tube' && s >= p.s0 && s < p.s1);
+  // (In the tubes a pad spans the whole floor: the drop off the house needs the speed.)
+  return { s, lat: tube ? 0 : side * Math.max(0, w * 0.27 - PAD_W / 2), width: tube ? w : PAD_W };
+});
+
 export const FARM_TRACK: TrackDef = {
   ...base,
   boostPads,
+  pads,
+  padBoost: { time: 1.7, kick: 10 },
   kickers,
   gaps,
   tunnels: ranges('barn'),

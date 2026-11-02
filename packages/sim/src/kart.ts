@@ -136,6 +136,8 @@ export interface TrackRules {
   kickerBetween(s0: number, s1: number): number | null;
   /** Where to set a rescued kart down so it has a run-up before any gap. */
   rescueS(s: number): number;
+  /** Is this the run-up to a jump? A kart set down here gets going at full speed. */
+  runUp?(s: number): boolean;
 }
 
 export const NO_RULES: TrackRules = {
@@ -257,6 +259,11 @@ export function rescue(k: KartState, track: Track, rules: TrackRules = NO_RULES)
   k.stunTime = 0;
   k.wobbleTime = 0;
   k.boostTime = 0;
+  // Set down before a jump: the eagle lets go at full tilt with a boost, so the next try makes it.
+  if (rules.runUp?.(s)) {
+    k.speed = k.params.topSpeed;
+    k.boostTime = 2;
+  }
 }
 
 /** Advance one kart by dt seconds. Arcade physics: glued to the road unless airborne. */
@@ -327,6 +334,9 @@ export function stepKart(
     P.topSpeed * (specialMul || (boosting ? 1.3 : drafting)) * (k.slowTime > 0 ? 0.55 : 1);
   if (throttle > 0 && spd >= -0.5) {
     spd += throttle * P.accel * Math.max(0, 1 - spd / top) * dt * 1.6;
+  } else if (throttle > 0) {
+    // Knocked backwards (a wall, another kart): the gas stops the roll first, quickly.
+    spd = approach(spd, 0, 30 * throttle * dt);
   }
   if (boosting) spd = Math.max(spd, Math.min(top, spd + 30 * dt));
   if (spd > top) spd = approach(spd, top, (k.slowTime > 0 ? 30 : 12) * dt);
@@ -360,6 +370,10 @@ export function stepKart(
     const into = dot(fwd, n);
     if (into > 0) {
       fwd = norm(addScaled(fwd, n, -into * 1.15));
+      // However hard you hit it, a wall turns you along the road, never back the way you came.
+      const along = dot(fwd, p2.frame.tan);
+      if (along < 0.3 && dot(k.fwd, p2.frame.tan) > 0)
+        fwd = norm(addScaled(reject(fwd, n), p2.frame.tan, 0.3 - along));
       spd *= 1 - 0.55 * into;
       k.bump = Math.max(k.bump, into);
       if (into > 0.5 && k.drift.active) k.drift = { active: false, dir: 0, charge: 0 };

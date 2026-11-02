@@ -41,6 +41,13 @@ export interface TrackDef {
   laps: number;
   /** Arc-length positions (metres from the start line) of boost pads. */
   boostPads?: number[];
+  /**
+   * Boost pads placed across the road (instead of a strip down the middle): where along, how
+   * far off the centre line, and how wide. Used instead of boostPads when given.
+   */
+  pads?: { s: number; lat: number; width: number }[];
+  /** How hard boost pads push: seconds of boost and an instant kick (m/s). */
+  padBoost?: { time: number; kick: number };
   /** Arc-length positions of item box rows. */
   itemRows?: number[];
   /** Ramps that throw karts into the air at s, with this much extra upward speed (m/s). */

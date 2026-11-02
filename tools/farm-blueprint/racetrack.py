@@ -88,8 +88,9 @@ def route():
     add('spruces', 'tube', ROAD, (30.8, 184.8, 7.0), (27.2, 182.8, 9.5))
     feat('loop', 'Loop 3')
     # 4. Up and round in a climbing tube, then out over the farmhouse very high.
-    add('sky', 'tube', ROAD, (22.6, 182.0, 12.5), (19.4, 184.8, 15.0), (20.6, 189.4, 17.5),
-        (25.6, 190.0, 19.5))
+    # A steady climbing turn: an arc round (23, 186.2).
+    for k, a in enumerate(np.linspace(math.radians(-95), math.radians(-300), 10)):
+        add('sky', 'tube', ROAD, (23.0 + 5.0 * math.cos(a), 186.2 + 5.0 * math.sin(a), 12.5 + 7.0 * k / 9))
     feat('pad', 'Accelerator in the tube')
     add('sky', 'tube', ROAD, (31.0, 184.6, 22.0), (36.0, 179.4, 24.5))
     add('sky', 'tube', ROAD, (40.0, 175.6, 26.0))
@@ -147,10 +148,12 @@ def route():
     add('barn', 'road', ROAD, (60.6, 127.6))
     feat('door', 'Out the south door')
     # 8. Zigzags across the barnyard, then down the alley between two grape rows.
-    add('grapes', 'road', ROAD, (57.4, 124.8), (52.6, 124.6), (55.6, 120.0))
+    # Two easy S-bends (no tighter than the road can take at speed), a kicker on the straight.
+    add('grapes', 'road', ROAD, (57.6, 124.6), (54.8, 123.4))
     feat('jump', 'Kicker')
-    add('grapes', 'road', ROAD, (50.6, 118.6), (52.8, 114.6), (47.0, 114.4))
-    feat('zigzag', 'Zigzags')
+    add('grapes', 'road', ROAD, (52.2, 121.6), (51.6, 118.8), (49.6, 116.4))
+    feat('zigzag', 'S-bends')
+    add('grapes', 'road', ROAD, (46.2, 114.4))
     add('grapes', 'road', ROAD, (42.6, 112.8), (41.5, 111.2))
     feat('pad', 'Boost pad')
     add('grapes', 'road', ROAD, (38.4, 104.6), (35.6, 98.2), (34.4, 95.0))
@@ -167,28 +170,58 @@ def route():
     add('wagons', 'road', ROAD, (84.0, 102.6))
     feat('pad', 'Boost pad')
     add('wagons', 'road', ROAD, (86.4, 97.0))
-    # 10. The Christmas tree forest: wide, zigzagging, the trunks standing in the road.
-    corners = [(84.6, 90.0), (79.0, 86.0), (58.0, 80.0), (78.0, 71.0), (54.0, 62.0), (76.0, 53.0), (52.0, 44.0),
-               (78.0, 33.0)]
-    add('forest', 'wide', FOREST, (*corners[0], 0.0))
+    # 10. The Christmas tree forest: wide, the trunks standing in the road. West in long easy
+    # curves across the whole block, a wide U-turn at the west end, back east, then out at the
+    # south-east corner. Every bend is at least twice as wide as the road; hills all the way.
+    def wave(x0, x1, y0, y1, amp, n):
+        """Points from (x0, y0) to (x1, y1) swaying `amp` metres either side, n half-waves."""
+        out = []
+        for k in range(1, 4 * n):
+            t = k / (4 * n)
+            x = x0 + (x1 - x0) * t
+            y = y0 + (y1 - y0) * t + amp * math.sin(math.pi * n * t)
+            out.append((x, y))
+        return out
+
+    add('forest', 'wide', FOREST, (84.0, 89.0, 0.0))
     feat('trunks', 'Trunks are solid')
-    for a, b in zip(corners, corners[1:]):
-        a_, b_ = np.array(a), np.array(b)
-        if np.linalg.norm(b_ - a_) > 15:
-            add('forest', 'wide', FOREST, (*(a_ + (b_ - a_) * 0.32), 1.4))
+    west = wave(80.0, 20.0, 85.0, 78.0, 2.4, 4)
+    for k, (x, y) in enumerate(west):
+        h = (1.4 if k % 4 == 2 else 0.0) if k < len(west) - 2 else 0.0
+        add('forest', 'wide', FOREST, (x, y, h))
+        if h > 1:
             feat('jump', 'Hill crest: air')
-            add('forest', 'wide', FOREST, (*(a_ + (b_ - a_) * 0.62), 0.0), (*(a_ + (b_ - a_) * 0.82), 0.8))
-        add('forest', 'wide', FOREST, (*b, 0.2))
-    add('forest', 'road', ROAD, (86.0, 24.0))
+    # The U-turn at the west end: a half circle 6.5 m across... wide enough for the wide road,
+    # and clear of the west straight beside the trees.
+    cx, cy, R = 16.0, 71.0, 7.2
+    for a in np.linspace(math.radians(95), math.radians(265), 8):
+        add('forest', 'wide', FOREST, (cx + R * math.cos(a), cy + R * math.sin(a), 0.0))
+    # Out of the U-turn, a straight run-up: a boost pad, the big ramp, a flight over two rows of
+    # Christmas trees, and down onto the hill beyond.
+    add('forest', 'wide', FOREST, (19.0, 63.6), (23.0, 62.8), (26.6, 62.2))
+    feat('pad', 'Boost pad')
+    add('forest', 'wide', FOREST, (30.6, 61.6, 0.6), (34.0, 61.2, 1.4))
+    feat('bigjump', 'Big ramp over the trees')
+    add('forest', 'wide', FOREST, (36.4, 60.9, 1.4))
+    add('forest', 'air', FOREST, (39.0, 60.5, 1.4), (42.0, 60.1, 1.4), (45.0, 59.7, 1.4))
+    feat('treejump', 'Over the Christmas trees')
+    add('forest', 'wide', FOREST, (47.6, 59.3, 0.6), (51.0, 58.8, 0.0))
+    for k, (x, y) in enumerate(wave(51.0, 76.0, 58.8, 51.0, 1.4, 2)):
+        h = 1.4 if k == 3 else 0.0
+        add('forest', 'wide', FOREST, (x, y, h))
+        if h > 1:
+            feat('jump', 'Hill crest: air')
+    add('forest', 'wide', FOREST, (79.4, 48.6, 0.0), (82.4, 42.0, 0.0), (84.4, 34.0, 0.0))
+    add('forest', 'road', ROAD, (86.0, 26.0))
     feat('pad', 'Boost pad')
     # 11. Pumpkin patch, east to west: a wide field of kickers and boost ramps, and a big boost
     # ramp that throws them over the pumpkin wagon.
-    add('pumpkins', 'wide', WIDE, (87.6, 14.0), (84.0, 9.6), (78.0, 8.8))
+    add('pumpkins', 'wide', WIDE, (86.8, 18.6), (86.0, 14.0), (83.6, 11.0), (78.0, 9.6))
     feat('jump', 'Kicker')
-    add('pumpkins', 'wide', WIDE, (72.0, 11.6))
+    add('pumpkins', 'wide', WIDE, (72.0, 11.0))
     feat('boost', 'Boost ramp')
     # (No kicker just here: they need to be on the ground for the boost pad and the big ramp.)
-    add('pumpkins', 'wide', WIDE, (66.0, 9.6))
+    add('pumpkins', 'wide', WIDE, (66.0, 10.6))
     add('pumpkins', 'wide', WIDE, (60.0, 12.0))
     feat('pad', 'Boost pad')
     add('pumpkins', 'wide', WIDE, (55.6, 13.2, 0.0))
@@ -197,14 +230,14 @@ def route():
     # (The line over the gap stays flat: the karts fly their own arc over the wagon.)
     add('pumpkins', 'air', WIDE, (50.4, 13.4), (47.0, 13.5), (43.6, 13.4))
     feat('wagon', 'Over the pumpkin wagon')
-    add('pumpkins', 'wide', WIDE, (41.4, 13.3), (38.2, 13.2), (32.0, 10.8))
+    add('pumpkins', 'wide', WIDE, (41.4, 13.3), (38.2, 13.0), (32.0, 11.8))
     feat('jump', 'Kicker')
-    add('pumpkins', 'wide', WIDE, (25.0, 13.2))
+    add('pumpkins', 'wide', WIDE, (25.0, 12.8))
     feat('boost', 'Boost ramp')
-    add('pumpkins', 'wide', WIDE, (18.0, 10.6))
+    add('pumpkins', 'wide', WIDE, (18.0, 11.6))
     feat('jump', 'Kicker')
-    add('pumpkins', 'wide', WIDE, (10.4, 11.6))
-    add('pumpkins', 'road', ROAD, (4.6, 16.0))
+    add('pumpkins', 'wide', WIDE, (11.0, 12.4))
+    add('pumpkins', 'road', ROAD, (6.4, 15.4), (3.6, 20.4))
     # 12. Flat out up the west mowed path, the trees on the right.
     add('west', 'road', ROAD, (2.8, 26.0), (2.6, 40.0))
     feat('pad', 'Boost pad')
@@ -226,17 +259,29 @@ def route():
         add('orchard', 'road', ROAD, hump(u, v, 1))
         feat('jump', 'Crest: hang time under the apples')
 
+    def uturn(uc, va, vb, out):
+        """Half circle from aisle va to aisle vb round the end of the line between them."""
+        vm, R = (va + vb) / 2, abs(vb - va) / 2
+        for th in np.linspace(-math.pi / 2, math.pi / 2, 9)[1:-1]:
+            add('orchard', 'road', ROAD, F(uc + out * R * math.cos(th), vm + R * math.sin(th)))
+
     crest(95.0, A[3])
     add('orchard', 'road', ROAD, hump(101.0, A[3], 0))
     crest(107.0, A[3])
     add('orchard', 'road', ROAD, hump(113.0, A[3], 0))
-    add('orchard', 'road', ROAD, F(119.4, A[3]), F(122.1, (A[3] + A[4]) / 2), F(119.4, A[4]))
+    add('orchard', 'road', ROAD, F(116.4, A[3]), F(119.4, A[3]))
+    uturn(119.4, A[3], A[4], 1)
+    add('orchard', 'road', ROAD, F(119.4, A[4]), F(116.4, A[4]))
     crest(111.0, A[4])
     add('orchard', 'road', ROAD, hump(103.0, A[4], 0))
-    add('orchard', 'road', ROAD, F(95.4, A[4]), F(92.7, (A[4] + A[5]) / 2), F(95.4, A[5]))
+    add('orchard', 'road', ROAD, F(98.4, A[4]), F(95.4, A[4]))
+    uturn(95.4, A[4], A[5], -1)
+    add('orchard', 'road', ROAD, F(95.4, A[5]), F(98.4, A[5]))
     crest(103.0, A[5])
     add('orchard', 'road', ROAD, hump(111.0, A[5], 0))
-    add('orchard', 'road', ROAD, F(119.4, A[5]), F(122.1, (A[5] + A[6]) / 2), F(119.4, A[6]))
+    add('orchard', 'road', ROAD, F(116.4, A[5]), F(119.4, A[5]))
+    uturn(119.4, A[5], A[6], 1)
+    add('orchard', 'road', ROAD, F(119.4, A[6]), F(116.4, A[6]))
     crest(112.0, A[6])
     add('orchard', 'road', ROAD, F(107.4, A[6]), F(105.3, 74.6))
     feat('exit', 'Out between the pear and cherry trees')
@@ -305,13 +350,19 @@ def build():
     # Christmas tree trunks standing in the forest road (solid in the race).
     stumps = {tuple(p) for p in json.load(open(os.path.join(HERE, '../../apps/game/src/farm/grandpaRoutes.json')))['stumps']}
     forest = np.array([[xy[k][0], xy[k][1], pts[k][3]] for k in range(len(xy)) if meta[k][1] == 'forest' and meta[k][0] == 'wide'])
-    trunks = []
+    trunks, cleared = [], []
     for t in L['christmas_trees']:
         if (t['x'], t['y']) in stumps or t['heightFt'] < 2:
             continue
         d = np.hypot(forest[:, 0] - t['x'], forest[:, 1] - t['y'])
         i = int(np.argmin(d))
         if d[i] < forest[i, 2] / 2 - 0.25:
+            # The run-up to the big ramp and the landing past it are kept clear (those trees
+            # are cut for the race); the two rows under the flight just stand there.
+            if 57.0 < t['y'] < 66.0 and 18.0 < t['x'] < 56.0:
+                if not (37.6 < t['x'] < 46.4):
+                    cleared.append([t['x'], t['y']])
+                continue
             trunks.append([t['x'], t['y']])
     sec_s = {}
     for k, (_, sec) in enumerate(meta):
@@ -326,6 +377,7 @@ def build():
                 for (x, y, h, w), m, gh, ss in zip(pts, meta, ground, s)],
         'features': feats_out,
         'trunks': trunks,
+        'cleared': cleared,
     }
 
 
