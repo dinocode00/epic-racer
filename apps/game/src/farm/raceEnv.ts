@@ -100,7 +100,10 @@ function farmEnvironment(track: Track, renderer: THREE.WebGLRenderer): RaceEnvir
 
   const farm = new FarmScene(renderer);
   const marks: GlassMarks['marks'] = [{ kind: 'start', s: 0 }];
-  for (const s of track.def.boostPads ?? []) marks.push({ kind: 'pad', s });
+  // The pads exactly where (and as wide as) they work.
+  for (const p of track.def.pads ??
+    (track.def.boostPads ?? []).map((s) => ({ s, lat: 0, width: 6 })))
+    marks.push({ kind: 'pad', s: p.s, lat: p.lat / S, width: p.width / S });
   for (const k of track.def.kickers ?? [])
     marks.push({ kind: k.pop > 20 ? 'bigjump' : 'jump', s: k.s });
   const glass = buildGlass(F, { marks, postEvery: 6 }, 'smoky');

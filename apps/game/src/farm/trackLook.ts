@@ -329,7 +329,8 @@ export interface TrackLook {
 
 /** Where the lit marks go along the road (same arc length as the frames' `s`). */
 export interface GlassMarks {
-  marks: { kind: 'pad' | 'jump' | 'bigjump' | 'start'; s: number }[];
+  /** `lat` and `width` (real metres) place a pad across the road; otherwise it's centred. */
+  marks: { kind: 'pad' | 'jump' | 'bigjump' | 'start'; s: number; lat?: number; width?: number }[];
   /** Spread the work: posts every this many metres (real). */
   postEvery?: number;
 }
@@ -552,11 +553,14 @@ export function buildGlass(F: Frame[], opts: GlassMarks, style: GlassStyle = 'cl
     const f = at(ft.s);
     const r = side(f);
     if (ft.kind === 'pad') {
-      const g = new THREE.PlaneGeometry(f.w * 0.7, 1.1);
+      const g = new THREE.PlaneGeometry(ft.width ?? f.w * 0.7, 1.1);
       const m = new THREE.Mesh(g, boostM);
       const basis = new THREE.Matrix4().makeBasis(r, f.t, f.up);
       m.quaternion.setFromRotationMatrix(basis);
-      m.position.copy(f.p).addScaledVector(f.up, 0.008);
+      m.position
+        .copy(f.p)
+        .addScaledVector(f.up, 0.008)
+        .addScaledVector(r, ft.lat ?? 0);
       m.renderOrder = 6;
       group.add(m);
     }

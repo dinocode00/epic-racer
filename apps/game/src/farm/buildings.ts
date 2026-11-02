@@ -3,6 +3,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import * as tex from '../render/textures.ts';
 import { windGust, windUniforms, windy } from '../render/wind.ts';
 import { addGrime } from './grime.ts';
+import DRAFT from './racetrackDraft.json';
 import {
   BERM,
   CENTRE,
@@ -1173,7 +1174,7 @@ function barn(): THREE.Group {
   hoop.add(rim);
   hoop.position.set(-L / 2 - 0.25, 2.75, 0.4);
   g.add(hoop);
-  g.add(barnInside(L, W, ridge));
+  g.add(barnInside(L, W, ridge, st));
   // Wooden garage on the north end: red, roof falling north, its overhead door facing west
   // and rolled most of the way up, grandpa's sky-blue pickup parked inside.
   const G = FARM.wooden_garage;
@@ -1215,7 +1216,7 @@ function doorway(
  * Inside the barn: old boards in the dark, the sun coming through the cracks between them in
  * thin bright lines. Seen only from inside (the outside walls hide it).
  */
-function barnInside(L: number, W: number, ridge: number): THREE.Mesh {
+function barnInside(L: number, W: number, ridge: number, st: number): THREE.Group {
   const c = document.createElement('canvas');
   c.width = 512;
   c.height = 256;
@@ -1251,8 +1252,110 @@ function barnInside(L: number, W: number, ridge: number): THREE.Mesh {
     new THREE.MeshBasicMaterial({ map: t, side: THREE.BackSide }),
   );
   box.position.y = h / 2 - 1.2;
-  box.name = 'barn-inside';
-  return box;
+  const inside = new THREE.Group();
+  inside.name = 'barn-inside';
+  inside.add(box);
+
+  // The hay-mow floor the racetrack drives in on: old boards, just made out in the gloom,
+  // with a trapdoor standing open where the track drops through to the floor below.
+  const boards = (base: number, seed: number) => {
+    const bc = document.createElement('canvas');
+    bc.width = 256;
+    bc.height = 256;
+    const b = bc.getContext('2d')!;
+    let y = 0,
+      k = seed;
+    while (y < 256) {
+      const bh = 18 + (k % 5) * 2;
+      const v = base + ((k * 29) % 18) - 9;
+      b.fillStyle = `rgb(${v + 20},${v + 6},${v - 8})`;
+      b.fillRect(0, y, 256, bh - 2);
+      b.fillStyle = 'rgba(0,0,0,0.55)';
+      b.fillRect(0, y + bh - 2, 256, 2);
+      // Butt joints and the odd knot.
+      b.fillRect(((k * 97) % 230) + 10, y, 2, bh - 2);
+      b.fillStyle = 'rgba(40,25,12,0.6)';
+      b.beginPath();
+      b.ellipse(((k * 53) % 240) + 8, y + bh / 2, 4, 2, 0, 0, Math.PI * 2);
+      b.fill();
+      y += bh;
+      k++;
+    }
+    const t2 = new THREE.CanvasTexture(bc);
+    t2.colorSpace = THREE.SRGBColorSpace;
+    t2.wrapS = t2.wrapT = THREE.RepeatWrapping;
+    return t2;
+  };
+  // Where the track goes down through the floor (barn-local), from the approved line.
+  const B = FARM.barn;
+  const down = (DRAFT as unknown as { pts: [number, number, number, number, string, string][] }).pts
+    .filter((q) => (q[5] === 'barn' || q[5] === 'ramp') && q[2] > 0.8 && q[2] < st - 0.08)
+    .map((q) => local([q[0], q[1]], B.c, B.angle ?? 50));
+  const x0 = Math.min(...down.map((q) => q[0])) - 0.6,
+    x1 = Math.max(...down.map((q) => q[0])) + 0.6,
+    z0 = Math.min(...down.map((q) => q[1])) - 1.1,
+    z1 = Math.max(...down.map((q) => q[1])) + 1.1;
+  const fx = L / 2 - 0.25,
+    fz = W / 2 - 0.25;
+  const floor = new THREE.Shape([
+    new THREE.Vector2(-fx, -fz),
+    new THREE.Vector2(fx, -fz),
+    new THREE.Vector2(fx, fz),
+    new THREE.Vector2(-fx, fz),
+  ]);
+  // (The shape's y becomes -z once it's laid flat.)
+  floor.holes.push(
+    new THREE.Path([
+      new THREE.Vector2(x0, -z1),
+      new THREE.Vector2(x0, -z0),
+      new THREE.Vector2(x1, -z0),
+      new THREE.Vector2(x1, -z1),
+    ]),
+  );
+  const fg = new THREE.ShapeGeometry(floor);
+  fg.rotateX(-Math.PI / 2);
+  const uv = fg.attributes.uv!,
+    pos = fg.attributes.position!;
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, pos.getX(i) / 2.5, pos.getZ(i) / 2.5);
+  const upper = new THREE.Mesh(
+    fg,
+    new THREE.MeshStandardMaterial({ map: boards(70, 3), roughness: 0.95, side: THREE.DoubleSide }),
+  );
+  upper.position.y = st - 0.08;
+  upper.receiveShadow = true;
+  inside.add(upper);
+  // The lower floor, packed dirt and old boards.
+  const lower = new THREE.Mesh(
+    new THREE.PlaneGeometry(2 * fx, 2 * fz).rotateX(-Math.PI / 2),
+    new THREE.MeshStandardMaterial({ map: boards(48, 11), roughness: 1 }),
+  );
+  lower.position.y = 0.02;
+  lower.receiveShadow = true;
+  (lower.material as THREE.MeshStandardMaterial).map!.repeat.set(L / 2.5, W / 2.5);
+  inside.add(lower);
+  // The trapdoor: hinged along the side of the opening, swung up past upright beside the road.
+  const leafLen = x1 - x0,
+    leafW = z1 - z0;
+  const leaf = new THREE.Mesh(
+    new THREE.BoxGeometry(leafLen, 0.06, leafW),
+    new THREE.MeshStandardMaterial({ map: boards(78, 5), roughness: 0.9 }),
+  );
+  leaf.position.set(0, 0.03, -leafW / 2);
+  const hinge = new THREE.Group();
+  hinge.position.set((x0 + x1) / 2, st - 0.08, z1);
+  hinge.rotation.x = Math.PI * 0.58;
+  hinge.add(leaf);
+  // Two black strap hinges.
+  for (const xx of [-leafLen / 3, leafLen / 3]) {
+    const strap = new THREE.Mesh(
+      new THREE.BoxGeometry(0.07, 0.02, 0.5),
+      new THREE.MeshStandardMaterial({ color: 0x151515, metalness: 0.6, roughness: 0.5 }),
+    );
+    strap.position.set(xx, 0.07, -0.25);
+    hinge.add(strap);
+  }
+  inside.add(hinge);
+  return inside;
 }
 
 /** Lean-to wall in the x/y plane, `t` thick, with an optional rectangular opening. */
