@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { PLAYER_COLORS, VEHICLES } from '@epic/shared';
 import { FarmScene } from './farm/farmScene.ts';
+import { grassCuts } from './farm/grass.ts';
 import DRAFT from './farm/racetrackDraft.json';
 import { type Draft, type GlassStyle, buildTrackLook } from './farm/trackLook.ts';
 import { KartView } from './render/kartView.ts';
@@ -15,6 +16,20 @@ import { View } from './render/view.ts';
  * Hash options: #ride (default), #start, #loops, #sky, #over, #yard; ?style=clear|smoky|frosted.
  */
 
+const SECTIONS = ['start', 'clothes', 'spruces', 'sky', 'drop', 'ramp'];
+// Mow the grass away wherever this stretch runs along the ground.
+{
+  let run: [number, number][] = [];
+  for (const p of (DRAFT as unknown as Draft).pts) {
+    const low = SECTIONS.includes(p[5]) && p[2] < 0.4 && p[4] !== 'air';
+    if (low) run.push([p[0], p[1]]);
+    else if (run.length) {
+      if (run.length > 1) grassCuts.push({ pts: run, width: p[3] + 0.8 });
+      run = [];
+    }
+  }
+  if (run.length > 1) grassCuts.push({ pts: run, width: 2.4 });
+}
 const view = new View(document.getElementById('stage')!);
 const farm = new FarmScene(view.renderer);
 const S = 10; // FARM_SCALE
@@ -75,7 +90,7 @@ const at = (x: number, y: number, h: number) =>
 const VIEWS: Record<string, { name: string; pos: THREE.Vector3; target: THREE.Vector3 } | null> = {
   ride: null,
   start: { name: 'Start straight', pos: at(17, 171, 1.4), target: at(34, 167, 0.3) },
-  loops: { name: 'Under the loops', pos: at(41, 179, 1.0), target: at(33, 187, 5) },
+  loops: { name: 'Under the loops', pos: at(46, 182, 1.2), target: at(35, 188, 5) },
   sky: { name: 'Sky tube', pos: at(29, 188, 23), target: at(41, 174, 22) },
   over: { name: 'Over the house', pos: at(36, 168, 32), target: at(41, 175, 12) },
   yard: { name: 'From the front yard', pos: at(50, 147, 1.6), target: at(41, 175, 16) },

@@ -44,6 +44,13 @@ export function heightTexture(): THREE.DataTexture {
 }
 
 /** Where each layer grows: red = mowed lawn, green = tall wild grass, blue = wildflowers. */
+/**
+ * Strips of ground kept clear of grass (centre line in map metres and a width): under the
+ * racetrack where it runs along the ground, so the grass doesn't grow up through the glass.
+ * Set before the farm is built.
+ */
+export const grassCuts: { pts: XY[]; width: number }[] = [];
+
 function maskTexture(): THREE.CanvasTexture {
   const PPM = 2;
   const c = document.createElement('canvas');
@@ -143,6 +150,12 @@ function maskTexture(): THREE.CanvasTexture {
   for (const p of FARM.paths) {
     x.lineWidth = p.width * PPM;
     path(smoothLine(p.pts, 10), false);
+    x.stroke();
+  }
+  x.strokeStyle = 'rgb(0,0,0)';
+  for (const c of grassCuts) {
+    x.lineWidth = c.width * PPM;
+    path(c.pts, false);
     x.stroke();
   }
   // Soft edges so layers fade into each other rather than stopping on a line.

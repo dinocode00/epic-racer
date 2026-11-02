@@ -180,8 +180,9 @@ export function framesFor(d: Draft, sections: string[]): Frame[] {
   for (let i = 0; i < raw.length - 1; i++) {
     const a = raw[i]!,
       b = raw[i + 1]!;
-    const pa = new THREE.Vector3(a[0], meshHeight(a[0], a[1]) + a[2], -a[1]);
-    const pb = new THREE.Vector3(b[0], meshHeight(b[0], b[1]) + b[2], -b[1]);
+    // (Ground-level road sits a few centimetres up, clear of the lawn.)
+    const pa = new THREE.Vector3(a[0], meshHeight(a[0], a[1]) + Math.max(a[2], 0.06), -a[1]);
+    const pb = new THREE.Vector3(b[0], meshHeight(b[0], b[1]) + Math.max(b[2], 0.06), -b[1]);
     const n = Math.max(1, Math.round(pa.distanceTo(pb) / 0.25));
     for (let k = 0; k < n; k++)
       P.push({
