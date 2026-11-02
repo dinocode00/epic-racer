@@ -13,6 +13,7 @@ import {
   reject,
   rotateAround,
   scale,
+  sub,
   v3,
 } from './vec.ts';
 
@@ -146,6 +147,10 @@ export interface TrackRules {
   kickerBetween(s0: number, s1: number): number | null;
   /** Where to set a rescued kart down so it has a run-up before any gap. */
   rescueS(s: number): number;
+  /** Is this the run-up to a jump? A kart set down here gets going at full speed. */
+  runUp?(s: number): boolean;
+  /** Can a kart fly off a crest here (see TrackDef.crestAir)? */
+  crestAir?(s: number): boolean;
 }
 
 export const NO_RULES: TrackRules = {
@@ -268,6 +273,11 @@ export function rescue(k: KartState, track: Track, rules: TrackRules = NO_RULES)
   k.stunTime = 0;
   k.wobbleTime = 0;
   k.boostTime = 0;
+  // Set down before a jump: the eagle lets go at full tilt with a boost, so the next try makes it.
+  if (rules.runUp?.(s)) {
+    k.speed = k.params.topSpeed;
+    k.boostTime = 2;
+  }
 }
 
 /** Advance one kart by dt seconds. Arcade physics: glued to the road unless airborne. */
@@ -339,6 +349,9 @@ export function stepKart(
     P.topSpeed * (specialMul || (boosting ? 1.3 : drafting)) * (k.slowTime > 0 ? 0.55 : 1);
   if (throttle > 0 && spd >= -0.5) {
     spd += throttle * P.accel * Math.max(0, 1 - spd / top) * dt * 1.6;
+  } else if (throttle > 0) {
+    // Knocked backwards (a wall, another kart): the gas stops the roll first, quickly.
+    spd = approach(spd, 0, 30 * throttle * dt);
   }
   if (boosting) spd = Math.max(spd, Math.min(top, spd + 30 * dt));
   if (spd > top) spd = approach(spd, top, (k.slowTime > 0 ? 30 : 12) * dt);
@@ -373,6 +386,10 @@ export function stepKart(
     if (into > 0) {
       // Turned to run along the wall, plus a small kick away from it.
       fwd = norm(addScaled(fwd, n, -into * 1.07));
+      // However hard you hit it, a wall turns you along the road, never back the way you came.
+      const along = dot(fwd, p2.frame.tan);
+      if (along < 0.3 && dot(k.fwd, p2.frame.tan) > 0)
+        fwd = norm(addScaled(reject(fwd, n), p2.frame.tan, 0.3 - along));
       spd *= 1 - 0.55 * into;
       k.bump = Math.max(k.bump, into);
       if (into > 0.5 && k.drift.active) k.drift = { active: false, dir: 0, charge: 0 };
@@ -418,7 +435,21 @@ export function stepKart(
 
   // Kicker ramps throw you into the air.
   const pop = rules.kickerBetween(s0, p2.s);
-  if (pop !== null && spd > 8) launch(k, pop);
+  if (pop !== null && spd > 8) {
+    launch(k, pop);
+    return;
+  }
+  // Over a crest too fast for gravity to keep you on the road: off you go, flying on from
+  // where the road was taking you.
+  if (spd > 15 && rules.crestAir?.(p2.s)) {
+    const LOOK = 6;
+    const ahead = track.frameAtS(p2.s + LOOK);
+    const f = p2.frame;
+    // How fast the road bends away underneath (1/m): positive over a crest.
+    const bend = -dot(sub(ahead.tan, f.tan), f.up) / LOOK;
+    const hold = GRAVITY * Math.max(0, f.up.y);
+    if (bend > 0 && spd * spd * bend > hold * 1.15) launch(k, 0);
+  }
 }
 
 /** The Great Eagle carries the kart forward high over the road, then sets it down. */
@@ -489,7 +520,8 @@ function stepAir(k: KartState, pad: PadState, track: Track, dt: number, rules: T
   if (back < -track.length / 2) back += track.length;
   const overRoad = !gap && Math.abs(lat) <= p.frame.width / 2 && back > -1;
 
-  if (overRoad && falling && height <= k.params.rideHeight) {
+  // (A moment's grace after take-off, so going over a crest is a flight, not a stutter.)
+  if (overRoad && falling && height <= k.params.rideHeight && k.airTime > 0.12) {
     // Touch down.
     const along = dot(k.vel, p.frame.tan);
     const impact = -dot(k.vel, p.frame.up);

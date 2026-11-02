@@ -39,6 +39,24 @@ export function updateHazards(hs: HazardState[], time: number, leaderLap: number
     h.present = leaderLap >= (d.fromLap ?? 1);
     h.s = d.s;
     h.lat = d.lat;
+    let onRoad = true;
+    if (d.schedule) {
+      const sc = d.schedule,
+        n = sc.s.length;
+      const f = (((time / sc.dt) % n) + n) % n;
+      const i = Math.floor(f),
+        j = (i + 1) % n,
+        k = f - i;
+      const la = sc.lat[i]!,
+        lb = sc.lat[j]!;
+      onRoad = la < 900 && lb < 900;
+      if (onRoad) {
+        let ds = sc.s[j]! - sc.s[i]!;
+        if (Math.abs(ds) > 200) ds = 0; // (across the start line)
+        h.s = sc.s[i]! + ds * k;
+        h.lat = la + (lb - la) * k;
+      }
+    }
     if (d.move) {
       const off = d.move.amp * Math.sin((2 * Math.PI * t) / d.move.period + (d.move.phase ?? 0));
       if (d.move.axis === 'lat') h.lat += off;
@@ -56,6 +74,7 @@ export function updateHazards(hs: HazardState[], time: number, leaderLap: number
       h.active = true;
       h.cycle = (t % 4) / 4;
     }
+    if (!onRoad) h.present = false;
     if (!h.present) {
       h.active = false;
       h.warning = false;

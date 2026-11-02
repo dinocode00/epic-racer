@@ -31,6 +31,10 @@ export interface Projectile {
   life: number;
 }
 
+/** How long a trap lies on the road, and how long before it can catch the kart that dropped it. */
+const TRAP_LIFE = 45;
+const OWN_TRAP_GRACE = 4;
+
 export interface Trap {
   id: number;
   owner: number;
@@ -318,12 +322,13 @@ export class ItemSystem {
         break;
       }
       case 'trap':
+        // Always dropped off the back, a few metres behind the kart, never thrown ahead.
         this.traps.push({
           id: this.nextId++,
           owner: k.id,
-          s: (k.s + (back ? -4 : 24) + this.track.length) % this.track.length,
+          s: (k.s - 6 + this.track.length) % this.track.length,
           lat: k.lat,
-          life: 45,
+          life: TRAP_LIFE,
         });
         if (this.traps.length > MAX_TRAPS) this.traps.shift();
         break;
@@ -520,6 +525,8 @@ export class ItemSystem {
       for (const k of this.karts) {
         if (gone) break;
         if (k.air || k.eagleTime > 0) continue;
+        // Your own trap can't catch you while you're getting away from it.
+        if (k.id === tr.owner && tr.life > TRAP_LIFE - OWN_TRAP_GRACE) continue;
         if (Math.abs(sDelta(tr.s, k.s, this.track.length)) > 1.8) continue;
         if (Math.abs(tr.lat - k.lat) > 1.5) continue;
         if (k.trailing && k.item) {

@@ -70,7 +70,7 @@ interface Member {
 }
 
 const members: Member[] = [];
-let trackId = trackById(params.get('track') ?? 'middleEarth').def.id;
+let trackId = trackById(params.get('track') ?? TRACKS[0]!.def.id).def.id;
 const track = () => trackById(trackId);
 function cycleTrack(dir: number): void {
   const i = TRACKS.findIndex((t) => t.def.id === trackId);

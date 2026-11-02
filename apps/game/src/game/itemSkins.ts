@@ -37,9 +37,12 @@ export const SPECIAL_NAMES: Record<SpecialKind, ItemSkin> = {
   jacks: { icon: '🅰️', name: 'Auto-Jacks + Robot' },
 };
 
+/** Grandpa's Farm: the shared items, with Angel Wings carrying you ahead. */
+const FARM: Record<ItemKind, ItemSkin> = { ...GENERIC, eagle: { icon: '🪽', name: 'Angel Wings' } };
+
 export function itemSkin(trackId: string, kind: ItemKind, special?: SpecialKind): ItemSkin {
   if (kind === 'special' && special) return SPECIAL_NAMES[special];
-  return (trackId === 'middleEarth' ? MIDDLE_EARTH : GENERIC)[kind];
+  return (trackId === 'middleEarth' ? MIDDLE_EARTH : trackId === 'farm' ? FARM : GENERIC)[kind];
 }
 
 /** Icons cycled during the roulette. */

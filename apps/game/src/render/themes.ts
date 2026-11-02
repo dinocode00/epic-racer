@@ -50,6 +50,27 @@ export interface Theme {
   ) => (x: number, z: number, s: number) => FoliageKind | null;
   /** Add track-specific props. Returns a per-frame animation hook, if any. */
   dress?: (ctx: DressContext) => ((t: number, dt: number) => void) | void;
+  /**
+   * A whole ready-made world instead of the generated terrain, foliage and road (the farm):
+   * it brings its own sky, lights, ground and track.
+   */
+  environment?: (track: Track, renderer: THREE.WebGLRenderer) => RaceEnvironment;
+}
+
+/** A ready-made world for a race (see Theme.environment). */
+export interface RaceEnvironment {
+  scene: THREE.Scene;
+  sun: THREE.DirectionalLight;
+  hemi: THREE.HemisphereLight;
+  /** Ground height under a point (game metres). */
+  groundHeight(x: number, z: number): number;
+  /** Per frame, with the camera being drawn from (for things that follow the view). */
+  update(dt: number, camera: THREE.Camera | null, raceTime: number): void;
+  /** Centre the shadow map on a point, `half` metres each way. */
+  focusSun(p: THREE.Vector3, half: number): void;
+  /** The usual light and fog, and the light somewhere dark (the barn), with where it is. */
+  day: Atmosphere;
+  dark?: { atmosphere: Atmosphere; ranges: [number, number][] };
 }
 
 export interface DressContext {

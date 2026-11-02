@@ -31,6 +31,12 @@ export interface HazardDef {
   strike?: { period: number; warn: number; active: number; phase?: number };
   /** Only from this lap onward (1-based). */
   fromLap?: number;
+  /**
+   * Goes where a timetable says (grandpa on his rounds): every `dt` seconds of race time a
+   * place on the track, round and round every `s.length * dt` seconds. Off the road where
+   * `lat` is 999 (not there at all then).
+   */
+  schedule?: { dt: number; s: number[]; lat: number[] };
 }
 
 export interface TrackDef {
@@ -41,6 +47,15 @@ export interface TrackDef {
   laps: number;
   /** Arc-length positions (metres from the start line) of boost pads. */
   boostPads?: number[];
+  /**
+   * Boost pads placed across the road (instead of a strip down the middle): where along, how
+   * far off the centre line, and how wide. Used instead of boostPads when given.
+   */
+  pads?: { s: number; lat: number; width: number; super?: boolean }[];
+  /** How hard boost pads push: seconds of boost and an instant kick (m/s). */
+  padBoost?: { time: number; kick: number };
+  /** The (rarer, blue) super pads: a longer boost and a much bigger kick. */
+  superBoost?: { time: number; kick: number };
   /** Arc-length positions of item box rows. */
   itemRows?: number[];
   /** Ramps that throw karts into the air at s, with this much extra upward speed (m/s). */
@@ -50,6 +65,13 @@ export interface TrackDef {
   /** Ranges with no side walls: drive off the edge and you fall. */
   open?: [number, number][];
   hazards?: HazardDef[];
+  /** Ranges that are closed tubes: you can't fly out of them. */
+  tubes?: [number, number][];
+  /**
+   * Over a crest faster than gravity can hold you down, you leave the road and fly (instead
+   * of being glued to it), except in the tubes.
+   */
+  crestAir?: boolean;
   /** Ranges that are underground (no sky, no terrain shaping). */
   tunnels?: [number, number][];
   /** Named landmark positions (arc length), for dressing the scene. */

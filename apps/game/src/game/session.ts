@@ -114,6 +114,7 @@ export class RaceSession {
               '#28c4c4',
               '#f070b0',
             ][i % 8]!,
+        track.id === 'farm' ? 'angel' : 'eagle',
       );
       this.world.scene.add(v.root);
       return v;
@@ -129,7 +130,7 @@ export class RaceSession {
     const underground = (s: number) => tunnels.some(([a, b]) => s >= a - 10 && s <= b + 10);
     this.cams.forEach((c, i) => {
       const k = this.race.karts[this.humans[i]!]!;
-      c.groundAt = (x, z) => (underground(k.s) ? -Infinity : this.world.terrain.height(x, z));
+      c.groundAt = (x, z) => (underground(k.s) ? -Infinity : this.world.groundHeight(x, z));
     });
 
     this.hudRoot = document.getElementById('hud')!;
@@ -241,7 +242,8 @@ export class RaceSession {
     this.hazardViews.update(this.race.hazards, fx, dt);
     this.itemViews.update(this.race.time, this.race.karts, fx, dt);
     fx.update(dt);
-    this.world.update(dt);
+    this.world.setCamera(this.cams[0]?.camera ?? this.spectator?.camera ?? null);
+    this.world.update(dt, this.race.time);
 
     // Cameras and HUD.
     this.humans.forEach((ki, i) => {

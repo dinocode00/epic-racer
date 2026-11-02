@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import * as tex from './textures.ts';
+import { type WindOptions, addWind, windDepth, windUniforms } from './wind.ts';
 
 /**
  * Organic foliage: lumpy, smoothly shaded canopies fringed with alpha-cut leaf cards,
@@ -8,7 +9,7 @@ import * as tex from './textures.ts';
  * Everything sways a little in the wind (one shared clock).
  */
 
-export const windUniforms = { uTime: { value: 0 } };
+export { windUniforms };
 
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
 
@@ -270,29 +271,15 @@ export function rockGeo(): THREE.BufferGeometry {
 
 // ------------------------------------------------------------------ materials
 
-/** Sway in the wind, more the higher up the tree; leaf cards also flutter. */
-function windPatch(m: THREE.Material, amount: number, flutter: number, key: string): void {
-  m.onBeforeCompile = (sh) => {
-    sh.uniforms.uTime = windUniforms.uTime;
-    sh.vertexShader = sh.vertexShader
-      .replace('#include <common>', '#include <common>\nuniform float uTime;')
-      .replace(
-        '#include <begin_vertex>',
-        `#include <begin_vertex>
-        #ifdef USE_INSTANCING
-          vec3 ip = instanceMatrix[3].xyz;
-        #else
-          vec3 ip = vec3(0.0);
-        #endif
-        float ph = ip.x * 0.05 + ip.z * 0.07;
-        float hgt = max(position.y - 1.2, 0.0);
-        transformed.x += sin(uTime * 1.3 + ph) * ${amount.toFixed(3)} * hgt;
-        transformed.z += cos(uTime * 1.1 + ph * 1.3) * ${(amount * 0.7).toFixed(3)} * hgt;
-        transformed += normal * sin(uTime * 4.0 + position.x * 3.0 + position.z * 2.0 + ph) * ${flutter.toFixed(3)};`,
-      );
-  };
-  m.customProgramCacheKey = () => 'wind-' + key;
-}
+/** Trees bend away from the breeze and sway, more the higher up; leaf cards also flutter. */
+const treeWind = (amount: number, flutter: number): WindOptions => ({
+  lean: amount * 1.4,
+  sway: amount,
+  flutter,
+  h0: 1.2,
+});
+const BARK_WIND = treeWind(0.012, 0);
+const LEAF_WIND = treeWind(0.014, 0.05);
 
 let leafMap: THREE.Texture | null = null;
 let needleMap: THREE.Texture | null = null;
@@ -300,8 +287,13 @@ let grassMap: THREE.Texture | null = null;
 
 export function barkMaterial(): THREE.MeshStandardMaterial {
   const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.92 });
-  windPatch(m, 0.012, 0, 'solid');
+  addWind(m, BARK_WIND, 'solid');
   return m;
+}
+
+/** Shadow caster for tree bodies that sways with them. */
+export function barkDepth(): THREE.MeshDepthMaterial {
+  return windDepth(BARK_WIND, 'solid');
 }
 
 export function leafMaterial(needles = false): THREE.MeshStandardMaterial {
@@ -313,16 +305,13 @@ export function leafMaterial(needles = false): THREE.MeshStandardMaterial {
     side: THREE.DoubleSide,
     roughness: 0.85,
   });
-  windPatch(m, 0.014, 0.05, needles ? 'needles' : 'leaves');
+  addWind(m, LEAF_WIND, needles ? 'needles' : 'leaves');
   return m;
 }
 
 export function leafDepth(needles = false): THREE.MeshDepthMaterial {
-  return new THREE.MeshDepthMaterial({
-    depthPacking: THREE.RGBADepthPacking,
-    map: needles ? (needleMap ??= tex.needleCluster()) : (leafMap ??= tex.leafCluster()),
-    alphaTest: 0.45,
-  });
+  const map = needles ? (needleMap ??= tex.needleCluster()) : (leafMap ??= tex.leafCluster());
+  return windDepth(LEAF_WIND, needles ? 'needles' : 'leaves', map, 0.45);
 }
 
 // ------------------------------------------------------------------ grass
@@ -379,3 +368,6 @@ export function uprightNormals(g: THREE.BufferGeometry): THREE.BufferGeometry {
   for (let i = 0; i < n.count; i++) n.setXYZ(i, 0, 1, 0);
   return g;
 }
+
+/** The pieces the tree builders use, for scenes that model their own species. */
+export const treeKit = { wobble, shade, blob, cards, bark, branch, merge };
