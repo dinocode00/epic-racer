@@ -29,6 +29,8 @@ export const SPECIAL_OF: Record<string, SpecialKind> = {
   mach5: 'jacks',
   corolla: 'flame',
   landcruiser: 'jacks',
+  delorean: 'flame',
+  mystery: 'missile',
 };
 /** Top-speed multiplier while a special runs (the jacks ride on a normal boost). */
 const SPECIAL_SPEED: Record<SpecialKind, number> = {

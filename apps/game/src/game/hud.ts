@@ -83,17 +83,17 @@ export class Hud {
       cls = '';
     if (k.rollTime > 0) {
       const kind = ROULETTE[Math.floor(t * 14) % ROULETTE.length]!;
-      icon = itemSkin(this.trackId, kind, special).icon;
+      icon = itemSkin(this.trackId, kind, special, k.vehicle.id).icon;
       cls = 'roll';
     } else if (k.item) {
-      const skin = itemSkin(this.trackId, k.item, special);
+      const skin = itemSkin(this.trackId, k.item, special, k.vehicle.id);
       icon = skin.icon;
       name = skin.name;
       count = k.item === 'boost3' && k.itemCount > 1 ? `×${k.itemCount}` : '';
       cls = k.trailing ? 'have hold' : 'have';
     }
     const active = k.special
-      ? `${itemSkin(this.trackId, 'special', k.special.kind).icon} ${itemSkin(this.trackId, 'special', k.special.kind).name}!`
+      ? `${itemSkin(this.trackId, 'special', k.special.kind, k.vehicle.id).icon} ${itemSkin(this.trackId, 'special', k.special.kind, k.vehicle.id).name}!`
       : k.eagleTime > 0
         ? this.trackId === 'farm'
           ? '🪽 Angel Wings!'

@@ -13,6 +13,8 @@ const SPECIALS: Record<string, string> = {
   mach5: '<b>Auto-Jacks + Robot</b>: leaps up, a robot chases the racer ahead.',
   corolla: '<b>Flame Vent</b>: speed burst, fire jet scorches anyone behind.',
   landcruiser: '<b>Auto-Jacks + Robot</b>: leaps up, a robot chases the racer ahead.',
+  delorean: '<b>88 MPH</b>: hits 88, leaves trails of fire that scorch anyone behind.',
+  mystery: '<b>Zoinks! Rush</b>: the gang floors it and rams racers aside.',
 };
 
 const ITEMS: [string, string, string][] = [

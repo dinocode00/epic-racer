@@ -510,7 +510,7 @@ let hudTimer = 0;
 function phoneItem(k: KartState): string | null {
   if (k.rollTime > 0) return '🎲|…';
   if (!k.item) return null;
-  const skin = itemSkin(track().def.id, k.item, SPECIAL_OF[k.vehicle.id]);
+  const skin = itemSkin(track().def.id, k.item, SPECIAL_OF[k.vehicle.id], k.vehicle.id);
   const n = k.item === 'boost3' && k.itemCount > 1 ? ` ×${k.itemCount}` : '';
   return `${skin.icon}|${skin.name}${n}`;
 }

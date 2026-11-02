@@ -40,8 +40,20 @@ export const SPECIAL_NAMES: Record<SpecialKind, ItemSkin> = {
 /** Grandpa's Farm: the shared items, with Angel Wings carrying you ahead. */
 const FARM: Record<ItemKind, ItemSkin> = { ...GENERIC, eagle: { icon: '🪽', name: 'Angel Wings' } };
 
-export function itemSkin(trackId: string, kind: ItemKind, special?: SpecialKind): ItemSkin {
-  if (kind === 'special' && special) return SPECIAL_NAMES[special];
+/** Vehicles that share a special's effect but give it their own name. */
+const VEHICLE_SPECIAL_NAMES: Record<string, ItemSkin> = {
+  delorean: { icon: '⚡', name: '88 MPH' },
+  mystery: { icon: '🐶', name: 'Zoinks! Rush' },
+};
+
+export function itemSkin(
+  trackId: string,
+  kind: ItemKind,
+  special?: SpecialKind,
+  vehicleId?: string,
+): ItemSkin {
+  if (kind === 'special' && special)
+    return (vehicleId && VEHICLE_SPECIAL_NAMES[vehicleId]) || SPECIAL_NAMES[special];
   return (trackId === 'middleEarth' ? MIDDLE_EARTH : trackId === 'farm' ? FARM : GENERIC)[kind];
 }
 
