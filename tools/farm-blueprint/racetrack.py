@@ -94,22 +94,48 @@ def route():
     add('sky', 'tube', ROAD, (31.0, 184.6, 22.0), (36.0, 179.4, 24.5))
     add('sky', 'tube', ROAD, (40.0, 175.6, 26.0))
     feat('peak', 'Peak: about 26 m up, right over the house')
-    add('sky', 'road', ROAD, (42.6, 172.6, 25.6))
+    # 5. The drop, laid out from the game's physics (gravity 21 m/s^2 and 40 m/s at the lip in
+    # the game is 2.1 and 4.0 here): over the top the road dips into a lip pointing 30 degrees
+    # down, then there's no road while they fall; a steep landing hill follows the fall and
+    # curves out level at the bottom. Faster karts land further down the hill.
+    d = np.array([0.51, -0.86])
+    d /= np.linalg.norm(d)
+    add('sky', 'tube', ROAD, (41.2, 174.4, 25.85))
+    lip = np.array([42.6, 172.3])
+    add('sky', 'road', ROAD, (lip[0] - d[0] * 0.8, lip[1] - d[1] * 0.8, 25.35), (*lip, 24.95))
     feat('launch', 'Launch lip')
-    # 5. Off the lip: a long fall past the front of the house onto a landing ramp.
-    add('drop', 'air', ROAD, (44.0, 168.8, 21.0), (45.2, 165.0, 13.5))
-    add('drop', 'road', ROAD, (46.4, 161.2, 6.0))
-    feat('land', 'Landing ramp')
-    add('drop', 'road', ROAD, (47.6, 157.4, 3.2), (48.8, 154.4, 1.2))
+    g, v0, pitch = 2.1, 4.0, math.radians(30)
+    vh, vz = v0 * math.cos(pitch), -v0 * math.sin(pitch)
+    h0, h_gap = 24.95, 16.0
+    # Time to fall from the lip to where the landing hill starts (vz is negative: falling).
+    t_end = (vz + math.sqrt(vz * vz + 2 * g * (h0 - h_gap))) / g
+    for t in np.linspace(0, t_end, 9)[1:-1]:
+        q = lip + d * vh * t
+        add('drop', 'air', ROAD, (*q, h0 + vz * t - 0.5 * g * t * t))
+    q = lip + d * vh * t_end
+    slope = math.atan2(-(vz - g * t_end), vh)  # how steeply they're falling at the gap's end
+    add('drop', 'road', ROAD, (*q, h_gap))
+    feat('land', 'Landing hill')
+    R = 7.0
+    h_curve = R * (1 - math.cos(slope))
+    run = (h_gap - h_curve) / math.tan(slope)
+    for k in (1, 2, 3):
+        qq = q + d * run * k / 3
+        add('drop', 'road', ROAD, (*qq, h_gap - (h_gap - h_curve) * k / 3))
+    q = q + d * run
+    for k in range(1, 7):
+        a_ = slope * (1 - k / 6)
+        add('drop', 'road', ROAD, (*(q + d * R * (math.sin(slope) - math.sin(a_))), R * (1 - math.cos(a_))))
+    end = q + d * R * math.sin(slope)
     # 6. A weave to the north, then up the north side of the ramp to the barn's north door.
-    add('ramp', 'road', ROAD, (51.6, 153.2))
+    add('ramp', 'road', ROAD, (*(end + d * 1.6), 0.0))
     feat('pad', 'Boost pad')
-    add('ramp', 'road', ROAD, (54.4, 156.4), (58.0, 157.6))
+    add('ramp', 'road', ROAD, (56.4, 153.2), (58.6, 155.6), (61.4, 157.2))
     feat('weave', 'Weave north')
     # Round the outside of the north lilac (62.1, 151.7), between it and the old well
     # (67.5, 148.8), then south up the ramp's north side and left into the north door. Ramp:
     # bottom edge (52.5, 143)-(59.5, 151.3), top at the barn wall (60.9, 137.1)-(66.8, 144.1).
-    add('ramp', 'road', ROAD, (62.0, 155.6, 0.1), (64.4, 153.4, 0.2), (65.0, 150.2, 0.4))
+    add('ramp', 'road', ROAD, (64.0, 155.6, 0.1), (65.2, 152.8, 0.2), (65.0, 150.2, 0.4))
     feat('lilac', 'Between the lilac and the well')
     add('ramp', 'road', ROAD, (63.4, 146.6, 1.5), (63.3, 143.6, 2.2))
     add('ramp', 'barn', ROAD, (65.2, 141.6, 2.44))
@@ -161,13 +187,17 @@ def route():
     feat('jump', 'Kicker')
     add('pumpkins', 'wide', WIDE, (72.0, 11.6))
     feat('boost', 'Boost ramp')
+    # (No kicker just here: they need to be on the ground for the boost pad and the big ramp.)
     add('pumpkins', 'wide', WIDE, (66.0, 9.6))
-    feat('jump', 'Kicker')
-    add('pumpkins', 'wide', WIDE, (60.0, 12.0), (55.6, 13.2, 0.0))
+    add('pumpkins', 'wide', WIDE, (60.0, 12.0))
+    feat('pad', 'Boost pad')
+    add('pumpkins', 'wide', WIDE, (55.6, 13.2, 0.0))
     feat('bigjump', 'Big boost ramp')
-    add('pumpkins', 'air', WIDE, (51.4, 13.4, 2.6), (47.0, 13.5, 3.6), (42.6, 13.4, 2.6))
+    add('pumpkins', 'wide', WIDE, (52.6, 13.3))
+    # (The line over the gap stays flat: the karts fly their own arc over the wagon.)
+    add('pumpkins', 'air', WIDE, (50.4, 13.4), (47.0, 13.5), (43.6, 13.4))
     feat('wagon', 'Over the pumpkin wagon')
-    add('pumpkins', 'wide', WIDE, (38.2, 13.2), (32.0, 10.8))
+    add('pumpkins', 'wide', WIDE, (41.4, 13.3), (38.2, 13.2), (32.0, 10.8))
     feat('jump', 'Kicker')
     add('pumpkins', 'wide', WIDE, (25.0, 13.2))
     feat('boost', 'Boost ramp')
@@ -272,6 +302,17 @@ def build():
     feats_out = [{'kind': k, 'label': lab, 's': round(float(s[first[i]]), 1),
                   'x': round(float(xy[first[i]][0]), 2), 'y': round(float(xy[first[i]][1]), 2),
                   'h': round(float(pts[first[i]][2]), 2)} for i, k, lab in feats]
+    # Christmas tree trunks standing in the forest road (solid in the race).
+    stumps = {tuple(p) for p in json.load(open(os.path.join(HERE, '../../apps/game/src/farm/grandpaRoutes.json')))['stumps']}
+    forest = np.array([[xy[k][0], xy[k][1], pts[k][3]] for k in range(len(xy)) if meta[k][1] == 'forest' and meta[k][0] == 'wide'])
+    trunks = []
+    for t in L['christmas_trees']:
+        if (t['x'], t['y']) in stumps or t['heightFt'] < 2:
+            continue
+        d = np.hypot(forest[:, 0] - t['x'], forest[:, 1] - t['y'])
+        i = int(np.argmin(d))
+        if d[i] < forest[i, 2] / 2 - 0.25:
+            trunks.append([t['x'], t['y']])
     sec_s = {}
     for k, (_, sec) in enumerate(meta):
         sec_s.setdefault(sec, float(s[k]))
@@ -284,6 +325,7 @@ def build():
                  round(float(gh), 2), round(float(ss), 1)]
                 for (x, y, h, w), m, gh, ss in zip(pts, meta, ground, s)],
         'features': feats_out,
+        'trunks': trunks,
     }
 
 
@@ -295,6 +337,6 @@ if __name__ == '__main__':
     kinds = {}
     for p in T['pts']:
         kinds[p[4]] = kinds.get(p[4], 0) + 1
-    print(kinds, 'max h', max(p[2] for p in T['pts']))
+    print(kinds, 'max h', max(p[2] for p in T['pts']), 'trunks', len(T['trunks']))
     if len(sys.argv) > 1:
         json.dump(T, open(sys.argv[1], 'w'), separators=(',', ':'))
