@@ -97,6 +97,16 @@ export class FarmScene {
     patchScene(s);
   }
 
+  /** Put something in the farm group (real metres, map x east, z south). */
+  addToFarm(o: THREE.Object3D): void {
+    this.farm.add(o);
+  }
+
+  /** Farm-local (real metres) to game-world, in place. */
+  farmToWorld(v: THREE.Vector3): THREE.Vector3 {
+    return this.farm.localToWorld(v);
+  }
+
   /** Game-world position of where one of the grandpas is now (at his chest height). */
   grandpaAt(i: number, out: THREE.Vector3): THREE.Vector3 {
     const p = this.grandpa.folks[i]!.pos;
