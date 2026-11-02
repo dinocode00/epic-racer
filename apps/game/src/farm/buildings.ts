@@ -2032,6 +2032,20 @@ function stove(): THREE.Group {
   door.rotation.y = -Math.PI / 2;
   door.position.set(-len / 2 - 0.01, cy, 0);
   g.add(door, box(0.04, 0.05, 0.22, m.galv, -len / 2 - 0.04, cy, 0.18));
+  // It's lit: firelight glowing round the edge of the door and through the air holes.
+  const fire = new THREE.MeshBasicMaterial({ color: 0xff7a22, transparent: true, opacity: 0.9 });
+  const rim = new THREE.Mesh(new THREE.RingGeometry(0.3, 0.34, 24), fire);
+  rim.rotation.y = -Math.PI / 2;
+  rim.position.set(-len / 2 - 0.012, cy, 0);
+  g.add(rim);
+  for (let i = 0; i < 5; i++) {
+    const hole = new THREE.Mesh(new THREE.CircleGeometry(0.03, 8), fire);
+    hole.rotation.y = -Math.PI / 2;
+    hole.position.set(-len / 2 - 0.015, cy - 0.12, -0.14 + i * 0.07);
+    g.add(hole);
+  }
+  g.userData.fire = fire;
+  g.userData.smokeFrom = new THREE.Vector3(0.4, cy + r + 1.36, 0);
   for (let i = 0; i < 6; i++) {
     const p = boxM(
       1.1 + Math.random() * 0.6,
@@ -2181,6 +2195,67 @@ function rampBerms(): THREE.Group {
   return g;
 }
 
+/**
+ * Wood smoke out of the barrel stove's pipe: soft grey puffs that pour out, rise, spread and
+ * drift off downwind, thinning as they go, and the fire flickering in the door.
+ */
+function stoveSmoke(st: THREE.Object3D): { group: THREE.Group; update: (t: number) => void } {
+  const g = new THREE.Group();
+  g.name = 'stove-smoke';
+  st.updateMatrixWorld(true);
+  const from = st.localToWorld((st.userData.smokeFrom as THREE.Vector3).clone());
+  const fire = st.userData.fire as THREE.MeshBasicMaterial;
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const x = c.getContext('2d')!;
+  const gr = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, 'rgba(255,255,255,1)');
+  gr.addColorStop(0.5, 'rgba(255,255,255,0.55)');
+  gr.addColorStop(1, 'rgba(255,255,255,0)');
+  x.fillStyle = gr;
+  x.fillRect(0, 0, 64, 64);
+  const tex = new THREE.CanvasTexture(c);
+  const N = 30,
+    LIFE = 7;
+  const puffs = Array.from({ length: N }, (_, i) => {
+    const m = new THREE.SpriteMaterial({
+      map: tex,
+      color: 0x8c8c8c,
+      transparent: true,
+      depthWrite: false,
+      opacity: 0,
+    });
+    const sp = new THREE.Sprite(m);
+    g.add(sp);
+    return { sp, m, off: (i / N) * LIFE, seed: i * 12.9898 };
+  });
+  const wd = windUniforms.uWindDir.value;
+  const update = (t: number) => {
+    const wl = Math.hypot(wd.x, wd.y) || 1;
+    const gust = 0.6 + 0.8 * windGust(from.x - CENTRE[0], from.z + CENTRE[1], t);
+    for (const p of puffs) {
+      const a = ((t + p.off) % LIFE) / LIFE; // 0 at the pipe .. 1 gone
+      const age = a * LIFE;
+      const wob = Math.sin(age * 1.3 + p.seed) * 0.25 * a;
+      // Up quickly out of the pipe, slowing as it cools; carried away by the breeze.
+      const rise = 2.6 * (1 - Math.exp(-age * 0.55)) + age * 0.18;
+      const drift = age * age * 0.09 * gust + age * 0.35;
+      p.sp.position.set(
+        from.x + (wd.x / wl) * drift + wob,
+        from.y + rise,
+        from.z + (wd.y / wl) * drift + Math.cos(age + p.seed) * 0.2 * a,
+      );
+      p.sp.scale.setScalar(0.35 + a * 3.2);
+      // Darker and thicker as it leaves the pipe, paling and thinning to nothing.
+      p.m.opacity = Math.min(1, a * 10) * (1 - a) ** 1.4 * 0.55;
+      p.m.color.setScalar(0.42 + a * 0.4);
+      p.m.rotation = p.seed + age * 0.3;
+    }
+    fire.opacity = 0.65 + 0.3 * Math.sin(t * 13.1) * Math.sin(t * 7.3 + 1);
+  };
+  return { group: g, update };
+}
+
 // ---------------------------------------------------------------- all
 
 export interface Buildings {
@@ -2211,7 +2286,10 @@ export function buildBuildings(): Buildings {
   add(place(sandbox(), F.sandbox.c, F.sandbox.angle ?? 50));
   add(clothesLines());
   // Turned so the feed door (local -x) faces east on the farm grid.
-  add(place(stove(), F.stove, F.farmGridDeg + 90));
+  const st = place(stove(), F.stove, F.farmGridDeg + 90);
+  add(st);
+  const smoke = stoveSmoke(st);
+  group.add(smoke.group);
   add(place(mailbox(), F.mailbox, F.farmGridDeg - 90));
   for (const w of F.wagons) add(place(wagon(), w.c, w.angle));
   add(ramp());
@@ -2230,6 +2308,7 @@ export function buildBuildings(): Buildings {
   let last = 0,
     spin = 0;
   const update = (t: number) => {
+    smoke.update(t);
     const dt = Math.min(0.1, Math.max(0, t - last));
     last = t;
     const wd = windUniforms.uWindDir.value;

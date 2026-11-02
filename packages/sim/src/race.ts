@@ -71,6 +71,18 @@ export class Race {
         }
         return null;
       },
+      // Not in the tubes, and not on the run-up to a ramp or a gap (the ramp does the throwing).
+      crestAir: (s) => {
+        if (!def.crestAir) return false;
+        if ((def.tubes ?? []).some(([a, b]) => s >= a - 4 && s <= b + 4)) return false;
+        const before = (at: number, d: number) => {
+          let ahead = at - s;
+          if (ahead < -L / 2) ahead += L;
+          return ahead > -4 && ahead < d;
+        };
+        if (kickers.some((k) => before(k.s, 40))) return false;
+        return !(def.gaps ?? []).some(([g0]) => before(g0, 90));
+      },
       runUp: (s) =>
         (def.gaps ?? []).some(([g0]) => {
           let ahead = g0 - s;

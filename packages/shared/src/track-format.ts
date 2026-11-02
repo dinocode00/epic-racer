@@ -59,6 +59,13 @@ export interface TrackDef {
   /** Ranges with no side walls: drive off the edge and you fall. */
   open?: [number, number][];
   hazards?: HazardDef[];
+  /** Ranges that are closed tubes: you can't fly out of them. */
+  tubes?: [number, number][];
+  /**
+   * Over a crest faster than gravity can hold you down, you leave the road and fly (instead
+   * of being glued to it), except in the tubes.
+   */
+  crestAir?: boolean;
   /** Ranges that are underground (no sky, no terrain shaping). */
   tunnels?: [number, number][];
   /** Named landmark positions (arc length), for dressing the scene. */

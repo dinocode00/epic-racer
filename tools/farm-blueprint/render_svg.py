@@ -15,6 +15,7 @@ LAYOUT: dict = {}
 # The old hay wagons stay where they were placed in v10 (map metres).
 WAGON_A = np.array([73.4, 103.0])
 WAGON_B = np.array([78.9, 99.0])
+SPRUCES_CLEAR_OF_TRACK = [[35.9, 194.1], [30.2, 194.1], [14.0, 182.2], [41.2, 196.0], [46.9, 182.6]]
 WAGON_C = np.array([47.0, 13.5])  # v14: a third trailer out in the pumpkin patch, piled with pumpkins
 GRID = 50.0  # farm grid: long axis of barn, perpendicular to the NE property line (deg)
 K = b.M_PER_PX / 0.19  # hand-placed metre positions below were set at the old 0.19 scale
@@ -356,6 +357,8 @@ def render():
     out.append('</g><g id="lm-conifers">')
     for i, p in enumerate(P(F['nw_conifers']['pts'])):
         p = np.array(b.SPRUCE_MOVED_M.get(i, p), float)
+        # Racetrack round 3: moved clear of the loops and the sky tube so they don't hide the road.
+        p = np.array(SPRUCES_CLEAR_OF_TRACK[i], float)
         LAYOUT.setdefault('big_spruces', []).append(p.tolist())
         out.append(conifer(p, 4.2, 'spruce big'))
     out.append('</g><g id="lm-arborvitae">')

@@ -319,9 +319,11 @@ def route():
         if k == 0:
             feat('helix', 'Corkscrew round the Scotch pine')
     feat('loop', 'Sky loop: the whole farm below')
-    # 15. A dive back down to the driveway.
-    add('home', 'tube', ROAD, (5.6, 159.6, 13.0))
-    add('home', 'road', ROAD, (6.6, 165.8, 6.0), (8.4, 171.0, 1.2))
+    # 15. Out of the tube at the top onto open road, over the crest at full height, and a dive
+    # back down to the driveway: going over the top fast, you fly off it and land far down.
+    add('home', 'road', ROAD, (5.2, 155.8, 19.2))
+    feat('crest', 'Over the top: big air')
+    add('home', 'road', ROAD, (5.5, 159.8, 15.0), (6.6, 165.8, 6.0), (8.4, 171.0, 1.2))
     feat('pad', 'Boost pad onto the straight')
     add('home', 'road', ROAD, (12.6, 174.6, 0.0))
     return P, F_

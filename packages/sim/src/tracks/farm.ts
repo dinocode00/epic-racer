@@ -296,6 +296,8 @@ export const FARM_TRACK: TrackDef = {
   kickers,
   gaps,
   tunnels: ranges('barn'),
+  tubes: ranges('tube'),
+  crestAir: true,
   hazards,
   itemRows,
   marks: FARM_MARKS,
