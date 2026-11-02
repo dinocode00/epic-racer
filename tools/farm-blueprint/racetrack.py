@@ -97,10 +97,10 @@ def route():
     add('sky', 'road', ROAD, (42.6, 172.6, 25.6))
     feat('launch', 'Launch lip')
     # 5. Off the lip: a long fall past the front of the house onto a landing ramp.
-    add('drop', 'air', ROAD, (44.0, 168.8, 22.0), (45.4, 164.6, 15.0), (46.6, 160.6, 7.5))
-    add('drop', 'road', ROAD, (47.6, 157.4, 2.5))
+    add('drop', 'air', ROAD, (44.0, 168.8, 21.0), (45.2, 165.0, 13.5))
+    add('drop', 'road', ROAD, (46.4, 161.2, 6.0))
     feat('land', 'Landing ramp')
-    add('drop', 'road', ROAD, (48.6, 154.2, 0.0))
+    add('drop', 'road', ROAD, (47.6, 157.4, 3.2), (48.8, 154.4, 1.2))
     # 6. A weave to the north, then up the north side of the ramp to the barn's north door.
     add('ramp', 'road', ROAD, (51.6, 153.2))
     feat('pad', 'Boost pad')

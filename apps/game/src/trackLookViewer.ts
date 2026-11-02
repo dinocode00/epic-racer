@@ -90,7 +90,7 @@ const at = (x: number, y: number, h: number) =>
 const VIEWS: Record<string, { name: string; pos: THREE.Vector3; target: THREE.Vector3 } | null> = {
   ride: null,
   start: { name: 'Start straight', pos: at(17, 171, 1.4), target: at(34, 167, 0.3) },
-  loops: { name: 'Under the loops', pos: at(46, 182, 1.2), target: at(35, 188, 5) },
+  loops: { name: 'The loops', pos: at(50, 197, 11), target: at(35, 187, 5) },
   sky: { name: 'Sky tube', pos: at(29, 188, 23), target: at(41, 174, 22) },
   over: { name: 'Over the house', pos: at(36, 168, 32), target: at(41, 175, 12) },
   yard: { name: 'From the front yard', pos: at(50, 147, 1.6), target: at(41, 175, 16) },
