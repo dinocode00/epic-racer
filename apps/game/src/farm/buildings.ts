@@ -1256,7 +1256,8 @@ function barnInside(L: number, W: number, ridge: number, st: number): THREE.Grou
   inside.name = 'barn-inside';
   inside.add(box);
 
-  // The hay-mow floor the racetrack drives in on: old boards, just made out in the gloom,
+  // The hay-mow floor the racetrack drives in on: old boards, just made out in the gloom (lit
+  // faintly on their own, as if by the light through the cracks, so the dark doesn't swallow them),
   // with a trapdoor standing open where the track drops through to the floor below.
   const boards = (base: number, seed: number) => {
     const bc = document.createElement('canvas');
@@ -1319,7 +1320,7 @@ function barnInside(L: number, W: number, ridge: number, st: number): THREE.Grou
   for (let i = 0; i < uv.count; i++) uv.setXY(i, pos.getX(i) / 2.5, pos.getZ(i) / 2.5);
   const upper = new THREE.Mesh(
     fg,
-    new THREE.MeshStandardMaterial({ map: boards(70, 3), roughness: 0.95, side: THREE.DoubleSide }),
+    new THREE.MeshBasicMaterial({ map: boards(70, 3), color: 0x8a7a68, side: THREE.DoubleSide }),
   );
   upper.position.y = st - 0.08;
   upper.receiveShadow = true;
@@ -1327,18 +1328,18 @@ function barnInside(L: number, W: number, ridge: number, st: number): THREE.Grou
   // The lower floor, packed dirt and old boards.
   const lower = new THREE.Mesh(
     new THREE.PlaneGeometry(2 * fx, 2 * fz).rotateX(-Math.PI / 2),
-    new THREE.MeshStandardMaterial({ map: boards(48, 11), roughness: 1 }),
+    new THREE.MeshBasicMaterial({ map: boards(48, 11), color: 0x6a5c4e }),
   );
   lower.position.y = 0.02;
   lower.receiveShadow = true;
-  (lower.material as THREE.MeshStandardMaterial).map!.repeat.set(L / 2.5, W / 2.5);
+  (lower.material as THREE.MeshBasicMaterial).map!.repeat.set(L / 2.5, W / 2.5);
   inside.add(lower);
   // The trapdoor: hinged along the side of the opening, swung up past upright beside the road.
   const leafLen = x1 - x0,
     leafW = z1 - z0;
   const leaf = new THREE.Mesh(
     new THREE.BoxGeometry(leafLen, 0.06, leafW),
-    new THREE.MeshStandardMaterial({ map: boards(78, 5), roughness: 0.9 }),
+    new THREE.MeshBasicMaterial({ map: boards(78, 5), color: 0x9a8a76 }),
   );
   leaf.position.set(0, 0.03, -leafW / 2);
   const hinge = new THREE.Group();
