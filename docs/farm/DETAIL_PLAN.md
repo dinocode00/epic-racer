@@ -110,3 +110,20 @@ Performance:
 - Level rays for laying details are binned by height (the build went from ~10 s to ~2 s).
 - Detail levels: full within 10 m, then a coarse head and hair (same vertices, every 4th row) and no tiny parts, then only what reads from afar. He isn't drawn past 90 m but keeps going.
 - Explorer buttons follow each grandpa (`#grandpa-crib`, `#grandpa-mower`, `#grandpa-pumpkins`, `#grandpa-orchard`).
+
+## The racetrack (draft line on the blueprint, waiting for the owner)
+
+The owner's route, drawn as blueprint v17 ("The racetrack"): `docs/farm/racetrack_draft.json`, made by
+`tools/farm-blueprint/racetrack.py <out.json>` (real metres; `h` is the road above the ground; the game builds it at 1:10).
+About 975 m a lap (9.7 km in the game, about 2¼ Middle-earth laps). Walled road 1.6 m wide (16 m in the game), wide
+areas in the Christmas trees (5 m, trunks solid) and the pumpkin patch (6 m), tubes for the loops and everything high.
+
+15 sections: start on the driveway; under the clothes lines; three climbing loops in the big spruces; sky tube to about
+26 m over the farmhouse; launch lip and the big drop to a landing ramp; weave and up the north half of the barn ramp;
+through the dark barn (in the north door, down to the lower floor, out the south door); barnyard zigzags and a grape
+alley; round the greenhouse and north of the wagons; zigzags through the Christmas tree forest; pumpkin patch kickers and
+boost ramps with a big jump over the wagon; the west straight with boost pads; orchard rollers between the aisles; a
+corkscrew round the giant Scotch pine with a sky loop; dive back to the start.
+
+Open questions for the owner: lap length; grandpa crossing the track during races; how high over the house; which side
+of the barn ramp; widths.
