@@ -95,9 +95,8 @@ export class Hud {
     const active = k.special
       ? `${itemSkin(this.trackId, 'special', k.special.kind, k.vehicle.id).icon} ${itemSkin(this.trackId, 'special', k.special.kind, k.vehicle.id).name}!`
       : k.eagleTime > 0
-        ? this.trackId === 'farm'
-          ? '🪽 Angel Wings!'
-          : '🦅 The Eagles are coming!'
+        ? (this.trackId === 'farm' ? '🪽 Angel Wings!' : '🦅 The Eagles are coming!') +
+          (k.eagleChase ? ' Catching up…' : '')
         : '';
     const threat =
       k.threat === 'whip'

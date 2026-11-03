@@ -1,6 +1,6 @@
 import type { PadState } from '@epic/shared';
 import { sDelta } from './hazards.ts';
-import { type ItemKind, type KartState, SPECIAL_OF, launch, spinOut } from './kart.ts';
+import { EAGLE_CARRY, type ItemKind, type KartState, SPECIAL_OF, launch, spinOut } from './kart.ts';
 import type { Track } from './track.ts';
 import { cross, dot, sub } from './vec.ts';
 
@@ -66,6 +66,8 @@ const IMMUNE_AFTER_HIT = 2;
 const MAX_TRAPS = 24;
 /** No whip in the closing stretch of the last lap. */
 const WHIP_CUTOFF = 0.92;
+/** A last-place eagle sets you down this far (m) behind the racer ahead. */
+const CHASE_BEHIND = 15;
 
 type Table = [ItemKind, number][];
 /**
@@ -230,6 +232,7 @@ export class ItemSystem {
       if (this.isAi[i]) this.aiUse(k, dt);
       else this.humanUse(k, pads[i]);
     });
+    this.eagleChases();
     this.specials(dt);
     this.moveProjectiles(dt);
     this.checkTraps(dt);
@@ -344,13 +347,43 @@ export class ItemSystem {
         this.strikes.push({ id: this.nextId++, owner: k.id, target: target.id, time: 1.8 });
         break;
       }
-      case 'eagle':
+      case 'eagle': {
         k.eagleTime = 2.6;
         k.drift = { active: false, dir: 0, charge: 0 };
+        // From last place it flies you all the way up to just behind the racer ahead (seventh
+        // of eight), when that's further than the plain carry would take you.
+        const ahead = k.place === this.karts.length ? this.neighbour(k, 1) : undefined;
+        k.eagleChase =
+          ahead && ahead.progress - k.progress > EAGLE_CARRY + CHASE_BEHIND
+            ? {
+                target: ahead.id,
+                goal: ahead.progress - CHASE_BEHIND,
+                pace: ahead.speed,
+                v: Math.max(k.speed, 40),
+                time: 0,
+                done: false,
+              }
+            : null;
         break;
+      }
       case 'special':
         this.startSpecial(k);
         break;
+    }
+  }
+
+  /** Keep each last-place eagle aimed just behind the racer it's catching up with. */
+  private eagleChases(): void {
+    for (const k of this.karts) {
+      const c = k.eagleChase;
+      if (!c || c.done) continue;
+      const t = this.karts[c.target];
+      if (!t || t.finished) {
+        c.done = true;
+        continue;
+      }
+      c.goal = t.progress - CHASE_BEHIND;
+      c.pace = t.air ? Math.hypot(t.vel.x, t.vel.y, t.vel.z) : Math.max(0, t.speed);
     }
   }
 

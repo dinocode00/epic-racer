@@ -24,7 +24,11 @@ const ITEMS: [string, string, string][] = [
   ['✴️', 'Trap <i>(Orc caltrops)</i>', 'Lands on the road; whoever drives over it spins.'],
   ['🛡️', 'Shield <i>(Mithril)</i>', 'Blocks the next hit for 8 seconds.'],
   ['🔥', "Leader strike <i>(Balrog's whip)</i>", 'Lashes whoever is 1st (2nd if that is you).'],
-  ['🦅', 'Great Eagle', 'Carries you forward high over everything.'],
+  [
+    '🦅',
+    'Great Eagle',
+    'Carries you forward high over everything. From last place it flies you all the way up behind the racer ahead.',
+  ],
   ['⭐', 'Special', "Your own vehicle's power (see Vehicles)."],
 ];
 

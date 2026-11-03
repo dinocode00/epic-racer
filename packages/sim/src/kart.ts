@@ -119,6 +119,12 @@ export interface KartState {
   special: { kind: SpecialKind; time: number; side: number } | null;
   /** Carried forward by a Great Eagle (the track item). */
   eagleTime: number;
+  /**
+   * Used from last place, the eagle (Angel Wings at the farm) flies the kart all the way up to
+   * just behind the racer ahead. The items keep `goal` (race progress to reach) and `pace` (that
+   * racer's speed) up to date; `v` is how fast we're flying, `time` how long we've been at it.
+   */
+  eagleChase: EagleChase | null;
   /** An attack is closing in (for the HUD warning). */
   threat: 'homing' | 'whip' | null;
   /** Slowed by mud, a searchlight... */
@@ -205,6 +211,7 @@ export function createKart(
     immuneTime: 0,
     special: null,
     eagleTime: 0,
+    eagleChase: null,
     threat: null,
     slowTime: 0,
     bump: 0,
@@ -454,14 +461,47 @@ export function stepKart(
   }
 }
 
+export interface EagleChase {
+  /** The racer we're flying up behind. */
+  target: number;
+  goal: number;
+  pace: number;
+  v: number;
+  time: number;
+  /** Caught up (or gave up): now setting down. */
+  done: boolean;
+}
+
 /** The Great Eagle carries the kart forward high over the road, then sets it down. */
 const EAGLE_SPEED = 70;
 const EAGLE_HEIGHT = 7;
+/** The plain carry's length (m), roughly: a chase is only worth it for a bigger gap than this. */
+export const EAGLE_CARRY = EAGLE_SPEED * 2.6;
+/** Chasing: top flying speed (m/s), how fast it gets there, and the longest a chase may last. */
+const CHASE_MAX = 600;
+const CHASE_ACCEL = 260;
+const CHASE_LIMIT = 14;
+/** While chasing, the carry's clock is held here: wings up, kart high. */
+const CHASE_HOLD = 0.5;
 function stepEagle(k: KartState, track: Track, dt: number, rules: TrackRules): void {
   k.eagleTime = Math.max(0, k.eagleTime - dt);
+  let v = EAGLE_SPEED;
+  const c = k.eagleChase;
+  if (c) {
+    c.time += dt;
+    const left = c.goal - k.progress;
+    if (!c.done && (left < 3 || c.time > CHASE_LIMIT)) c.done = true;
+    if (!c.done) {
+      k.eagleTime = Math.max(k.eagleTime, CHASE_HOLD);
+      // Close the gap fast, easing off to the other racer's pace as we come up behind them.
+      const want = Math.min(CHASE_MAX, Math.max(c.pace, 30) + left * 2.5);
+      c.v = Math.min(want, c.v + CHASE_ACCEL * dt);
+    }
+    v = c.v;
+  }
   // Never set down over a gap: keep flying until there's road underneath.
   if (k.eagleTime === 0 && rules.isGap((k.s + 8) % track.length)) k.eagleTime = 0.1;
-  const s = (k.s + EAGLE_SPEED * dt) % track.length;
+  const s = (k.s + v * dt) % track.length;
   const f = track.frameAtS(s);
   const lat = k.lat * Math.exp(-dt * 2);
   const lift = k.eagleTime > 0 ? Math.min(1, k.eagleTime * 2, (2.6 - k.eagleTime) * 3 + 0.3) : 0;
@@ -478,7 +518,9 @@ function stepEagle(k: KartState, track: Track, dt: number, rules: TrackRules): v
   k.wobbleTime = 0;
   k.boostTime = Math.max(0, k.boostTime - dt);
   if (k.eagleTime === 0) {
-    k.speed = Math.max(k.speed, 36);
+    // Set down rolling (after a chase, at the pace of the racer just ahead).
+    k.speed = Math.max(k.speed, 36, c ? Math.min(c.v, k.params.topSpeed) : 0);
+    k.eagleChase = null;
     k.boostTime = Math.max(k.boostTime, 0.6);
     k.safeS = s;
   }

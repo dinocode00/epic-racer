@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { type PadState, VEHICLES, neutralPad, vehicleById } from '@epic/shared';
-import { type ItemKind, type KartState, MIDDLE_EARTH, PROVING, Race, clone } from '../src/index.ts';
+import {
+  FARM_TRACK,
+  type ItemKind,
+  type KartState,
+  MIDDLE_EARTH,
+  PROVING,
+  Race,
+  clone,
+} from '../src/index.ts';
 
 /** Human karts on the proving ground's start straight, already racing. */
 function setup(ids: string[], at: [number, number][]) {
@@ -239,6 +247,67 @@ describe('items', () => {
     expect(k.rescueTime).toBe(0);
     const gap = MIDDLE_EARTH.gaps!.find(([a, b]) => k.s > a && k.s < b);
     expect(gap).toBeUndefined();
+  });
+
+  it('from last place the eagle flies you all the way up to just behind the racer ahead', () => {
+    for (const def of [MIDDLE_EARTH, FARM_TRACK]) {
+      const n = 8;
+      const race = new Race(
+        def,
+        Array.from({ length: n }, (_, i) => ({
+          vehicle: VEHICLES[i % VEHICLES.length]!,
+          human: true,
+        })),
+        2,
+      );
+      race.phase = 'racing';
+      race.time = 1;
+      // Seventh place well up the road, the rest of the field ahead of it, us far behind.
+      const at = [3200, 3260, 3320, 3380, 3440, 3500, 2600, 300];
+      race.karts.forEach((k, i) => place(race, k, at[i]!, 0));
+      run(race, 1);
+      const me = race.karts[n - 1]!;
+      const seventh = race.karts[n - 2]!;
+      expect(me.place).toBe(n);
+      expect(seventh.place).toBe(n - 1);
+      give(me, 'eagle');
+      race.items.use(me);
+      expect(me.eagleChase).not.toBeNull();
+      let steps = 0;
+      while ((me.eagleTime > 0 || me.eagleChase) && steps < 60 * 20) {
+        run(race, 1);
+        steps++;
+      }
+      expect(me.eagleTime).toBe(0);
+      expect(me.rescueTime).toBe(0);
+      const behind = seventh.progress - me.progress;
+      expect(behind).toBeGreaterThan(0);
+      expect(behind).toBeLessThan(40);
+      expect(steps / 60).toBeLessThan(15);
+      run(race, 60 * 2);
+      expect(me.rescueTime).toBe(0);
+    }
+  });
+
+  it('not in last place (or close behind the racer ahead), the eagle is the usual carry', () => {
+    const race = setup(
+      ['bat', 'pod', 'nazgul'],
+      [
+        [1200, 0],
+        [400, 0],
+        [100, 0],
+      ],
+    );
+    run(race, 1);
+    const [, second, last] = race.karts;
+    give(second!, 'eagle');
+    race.items.use(second!);
+    expect(second!.eagleChase).toBeNull();
+    // Last, but only a short hop behind: the plain carry already gets you there.
+    place(race, last!, 330, 0);
+    give(last!, 'eagle');
+    race.items.use(last!);
+    expect(last!.eagleChase).toBeNull();
   });
 
   it("the Balrog's whip warns the leader, then lashes; late in the race it becomes boosts", () => {
