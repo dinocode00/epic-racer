@@ -1186,7 +1186,7 @@ function barn(): THREE.Group {
   hoop.add(rim);
   hoop.position.set(-L / 2 - 0.25, 2.75, 0.4);
   g.add(hoop);
-  g.add(barnInside(L, W, ridge, st));
+  g.add(barnInside(L, W, eave, ridge, st));
   // Wooden garage on the north end: red, roof falling north, its overhead door facing west
   // and rolled most of the way up, grandpa's sky-blue pickup parked inside.
   const G = FARM.wooden_garage;
@@ -1228,7 +1228,7 @@ function doorway(
  * Inside the barn: old boards in the dark, the sun coming through the cracks between them in
  * thin bright lines. Seen only from inside (the outside walls hide it).
  */
-function barnInside(L: number, W: number, ridge: number, st: number): THREE.Group {
+function barnInside(L: number, W: number, eave: number, ridge: number, st: number): THREE.Group {
   const c = document.createElement('canvas');
   c.width = 512;
   c.height = 256;
@@ -1258,11 +1258,22 @@ function barnInside(L: number, W: number, ridge: number, st: number): THREE.Grou
   t.colorSpace = THREE.SRGBColorSpace;
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.repeat.set(5, 2);
+  // The dark inside: walls up to the eaves and a pitched ceiling just under the roof slopes, so
+  // none of it shows through the roof from outside (a plain box as tall as the ridge did).
   const h = ridge + 1.2;
-  const box = new THREE.Mesh(
-    new THREE.BoxGeometry(L - 0.4, h, W - 0.4),
-    new THREE.MeshBasicMaterial({ map: t, side: THREE.BackSide }),
-  );
+  const shell = new THREE.BoxGeometry(L - 0.4, h, W - 0.4, 1, 1, 2);
+  {
+    const p = shell.attributes.position!;
+    const half = (W - 0.4) / 2;
+    for (let i = 0; i < p.count; i++) {
+      if (p.getY(i) < h / 2 - 1e-4) continue;
+      const k = Math.min(1, Math.abs(p.getZ(i)) / half);
+      const top = ridge - 0.35 + (eave - 0.12 - (ridge - 0.35)) * k;
+      p.setY(i, top - (h / 2 - 1.2));
+    }
+    shell.computeVertexNormals();
+  }
+  const box = new THREE.Mesh(shell, new THREE.MeshBasicMaterial({ map: t, side: THREE.BackSide }));
   box.position.y = h / 2 - 1.2;
   const inside = new THREE.Group();
   inside.name = 'barn-inside';

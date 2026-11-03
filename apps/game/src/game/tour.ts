@@ -11,7 +11,8 @@ import type { TrackEntry } from './tracks.ts';
  * each part of the course (long parts get two). For each shot the drone stands out toward the
  * edge of the map on that part's outer side and looks in across it (there's nothing to see
  * looking out past the boundary), choosing a spot with a clear view. It then pans slowly
- * sideways across the scene (17 to 26 seconds a shot) while craning up or settling down, somewhere between 6 ft off the
+ * sideways across the scene (9 to 14 seconds a shot), its view sweeping left and right, while
+ * craning up or settling down, somewhere between 6 ft off the
  * ground and 30 ft, never looking straight down. Between shots it glides over to the next spot
  * in a gentle arc. It keeps clear of roofs and trees by looking down at what's under it and
  * just ahead.
@@ -35,16 +36,22 @@ interface Shot {
   name: string;
   /** Arc length in the middle of the part (for the light, e.g. Middle-earth's lands). */
   s: number;
-  /** Camera slides from a to b (ground plane), looking from la to lb. */
+  /** Camera slides from a to b (ground plane), looking across the scene round `target`. */
   a: THREE.Vector2;
   b: THREE.Vector2;
-  la: THREE.Vector3;
-  lb: THREE.Vector3;
+  target: THREE.Vector3;
+  /** Sideways (ground plane, unit) and how far the view sweeps left and right of the target. */
+  side: THREE.Vector2;
+  amp: number;
   feet: [number, number];
   dur: number;
-  /** The glide over to the next shot. */
+  /** The glide over to the next shot, and how high it arcs to keep the view open. */
   move: number;
+  lift?: number;
 }
+
+/** Planned tours by track, so going back into a tour starts at once. */
+const PLANS = new Map<string, Shot[]>();
 
 const smooth = (u: number) => {
   const c = Math.min(1, Math.max(0, u));
@@ -72,6 +79,9 @@ export class MapTour {
   private alt = NaN;
   private look = new THREE.Vector3();
   private lookInit = false;
+  /** Extra height while something blocks the view, and when to look again. */
+  private boost = 0;
+  private losTimer = 0;
   /** `world`: the lobby's world of the same track, flown through instead of building another. */
   private ownWorld: boolean;
 
@@ -87,7 +97,12 @@ export class MapTour {
     this.sc = entry.tourScale ?? 1;
     this.ray.camera = this.camera;
     this.collectSolids();
-    this.planShots();
+    const planned = PLANS.get(entry.def.id);
+    if (planned) this.useShots(planned);
+    else {
+      this.planShots();
+      PLANS.set(entry.def.id, this.shots);
+    }
   }
 
   // ---------------------------------------------------------------- what's solid
@@ -108,6 +123,13 @@ export class MapTour {
       if (box.isEmpty() || !Number.isFinite(box.min.x)) return;
       // Skip the sky dome and other things wrapped round the whole world.
       if (box.max.x - box.min.x > 3000 * this.sc) return;
+      // And small things (flowers, fruit, pumpkins): they can't block a shot, and there are
+      // thousands of them to test.
+      const g = m.geometry;
+      g.boundingSphere ?? g.computeBoundingSphere();
+      const e = new THREE.Vector3();
+      m.matrixWorld.decompose(new THREE.Vector3(), new THREE.Quaternion(), e);
+      if (g.boundingSphere!.radius * Math.max(e.x, e.y, e.z) < 0.5 * this.sc) return;
       this.solids.push({ obj: m, box });
     });
   }
@@ -141,6 +163,23 @@ export class MapTour {
     const dir = new THREE.Vector3().subVectors(to, from);
     const len = dir.length();
     dir.normalize();
+    // The ground itself first (hills between the lens and the view).
+    const N = Math.max(8, Math.ceil(len / (1.5 * this.sc)));
+    let ground = 1;
+    for (let i = 1; i < N; i++) {
+      const k = i / N;
+      const x = from.x + (to.x - from.x) * k,
+        y = from.y + (to.y - from.y) * k,
+        z = from.z + (to.z - from.z) * k;
+      if (y < this.world.groundHeight(x, z) + 0.2 * this.sc) {
+        ground = k;
+        break;
+      }
+    }
+    return Math.min(ground, this.solidsView(from, dir, len));
+  }
+
+  private solidsView(from: THREE.Vector3, dir: THREE.Vector3, len: number): number {
     const r = new THREE.Ray(from, dir);
     const hits = this.solids.filter((s) => r.intersectsBox(s.box));
     if (!hits.length) return 1;
@@ -218,75 +257,140 @@ export class MapTour {
         C.y,
       );
 
-      // Stand out on the part's outer side, looking in across it toward the middle of the map.
+      // Stand out on the part's outer side, looking in across it toward the middle of the map,
+      // somewhere the view stays open for the whole shot: every point of the slide, looking
+      // left, ahead and right. Rings farther out are tried too, in case something big (a barn,
+      // a stand of trees) is in the way close in.
       const r = Math.min(Math.max(extent * 0.8 + 10 * sc, 22 * sc), 75 * sc);
-      let best: THREE.Vector2 | null = null,
-        bestScore = -Infinity;
-      // Try a ring of spots, and rings farther out in case something big (a barn) is in the way.
-      for (const [ri, rm] of [1, 1.45, 1.9].entries())
-        for (let i = 0; i < 20; i++) {
-          const a = (i / 20) * Math.PI * 2;
-          const cand = new THREE.Vector2(C.x + Math.cos(a) * r * rm, C.y + Math.sin(a) * r * rm);
+      const span = Math.min(extent * 0.7, 20 * sc);
+      const feet = PROFILES[this.shots.length % PROFILES.length]!;
+      const nextPart = parts[(k + 1) % parts.length]!;
+      const np = pts.find((p) => p.s >= nextPart.s0) ?? pts[0]!;
+      const eye = new THREE.Vector3(),
+        look = new THREE.Vector3();
+      // First rank every spot cheaply (out by the edge, looking in), then check the views of
+      // the best ones in turn, taking the first that stays fully open (a dozen is usually
+      // plenty; in a forest it keeps looking).
+      const cands: { shot: Shot; cheap: number }[] = [];
+      for (const [ri, rm] of [1, 1.4, 1.85].entries())
+        for (let i = 0; i < 14; i++) {
+          const ang = (i / 14) * Math.PI * 2 + ri * 0.2;
+          const cand = new THREE.Vector2(
+            C.x + Math.cos(ang) * r * rm,
+            C.y + Math.sin(ang) * r * rm,
+          );
           if (cand.x < x0 || cand.x > x1 || cand.y < z0 || cand.y > z1) continue;
           const toC = new THREE.Vector2().subVectors(C, cand).normalize();
           const toM = new THREE.Vector2().subVectors(M, cand);
           const inward = toM.length() > 1e-6 ? toC.dot(toM.normalize()) : 0;
           const edge = cand.distanceTo(M) / Math.max(reach, 1);
-          const eye = new THREE.Vector3(
-            cand.x,
-            Math.max(this.topAt(cand.x, cand.y), this.world.groundHeight(cand.x, cand.y)) +
-              14 * FT * sc,
-            cand.y,
-          );
-          const dist = eye.distanceTo(target);
-          const clear = this.clearView(eye, target);
-          // Open space in front of the lens matters most: no wall filling the frame.
-          const open = Math.min(1, (clear * dist) / (28 * sc));
-          const score = edge + inward * 0.9 + clear * 0.8 + open * 1.2 - ri * 0.12;
-          if (score > bestScore) {
-            bestScore = score;
-            best = cand;
+          // Slide sideways across the scene, heading the way the next part lies.
+          const side = new THREE.Vector2(-toC.y, toC.x);
+          if (side.dot(new THREE.Vector2(np.x - C.x, np.z - C.y)) < 0) side.negate();
+          cands.push({
+            cheap: edge + inward * 0.9 - ri * 0.12,
+            shot: {
+              name: part.name,
+              s: (part.s0 + part.s1) / 2,
+              a: cand.clone().addScaledVector(side, -span / 2),
+              b: cand.clone().addScaledVector(side, span / 2),
+              target,
+              side,
+              amp: Math.min(Math.max(extent * 0.7, 8 * sc), r * rm * 0.75),
+              feet,
+              dur: Math.min(14, Math.max(9, span / (1.8 * sc))),
+              move: 0,
+            },
+          });
+        }
+      cands.sort((p, q) => q.cheap - p.cheap);
+      let best: Shot | null = null,
+        bestScore = -Infinity,
+        bestClear = false,
+        tried = 0;
+      for (const { shot, cheap } of cands) {
+        // A dozen tries is plenty when one of them has an open view; otherwise keep looking.
+        if (tried++ >= 12 && bestClear) break;
+        let minClear = 1,
+          minOpen = 1;
+        for (const u of [0, 0.5, 1]) {
+          this.shotPose(shot, u, eye, look);
+          eye.y = Math.max(eye.y, this.topAt(eye.x, eye.z) + 1.6 * sc);
+          const dist = eye.distanceTo(look);
+          const clear = this.clearView(eye, look);
+          minClear = Math.min(minClear, this.blocked(clear * dist, dist) ? 0 : clear);
+          minOpen = Math.min(minOpen, (clear * dist) / (30 * sc));
+          if (minClear < 0.5) break;
+        }
+        const score =
+          cheap + minClear * 1.2 + Math.min(1, minOpen) * 1.2 - (minClear < 0.85 ? 3 : 0);
+        if (score > bestScore) {
+          bestScore = score;
+          best = shot;
+          bestClear = minClear >= 0.85;
+        }
+        if (minClear > 0.97 && minOpen >= 1) break;
+      }
+      if (best) this.shots.push(best);
+    });
+    this.useShots(this.shots);
+    // Glides: arc high enough that nothing comes between the lens and the view on the way.
+    const pos = new THREE.Vector3(),
+      look = new THREE.Vector3();
+    let t0 = 0;
+    for (const sh of this.shots) {
+      t0 += sh.dur;
+      sh.lift = 0;
+      for (let tries = 0; tries < 8; tries++) {
+        let bad = false;
+        for (const k of [0.15, 0.35, 0.5, 0.65, 0.85]) {
+          this.pose(t0 + sh.move * k, pos, look);
+          pos.y = Math.max(pos.y, this.topAt(pos.x, pos.z) + 1.6 * sc);
+          const d = pos.distanceTo(look);
+          if (this.blocked(this.clearView(pos, look) * d, d)) {
+            bad = true;
+            break;
           }
         }
-      if (!best) best = new THREE.Vector2(C.x, C.y).add(new THREE.Vector2(r, 0));
-      // Pan sideways across the scene, heading the way the next part lies.
-      const toC = new THREE.Vector2().subVectors(C, best).normalize();
-      const side = new THREE.Vector2(-toC.y, toC.x);
-      const span = Math.min(extent * 0.6, 16 * sc);
-      const nextPart = parts[(k + 1) % parts.length]!;
-      const np = pts.find((p) => p.s >= nextPart.s0) ?? pts[0]!;
-      if (side.dot(new THREE.Vector2(np.x - C.x, np.z - C.y)) < 0) side.negate();
-      const a = best.clone().addScaledVector(side, -span / 2),
-        b = best.clone().addScaledVector(side, span / 2);
-      const la = target
-        .clone()
-        .add(new THREE.Vector3(side.x, 0, side.y).multiplyScalar(-span * 0.3));
-      const lb = target
-        .clone()
-        .add(new THREE.Vector3(side.x, 0, side.y).multiplyScalar(span * 0.3));
-      // Slow: an easy stroll across the scene, 17 to 26 seconds a shot.
-      const dur = Math.min(26, Math.max(17, span / (0.9 * sc)));
-      this.shots.push({
-        name: part.name,
-        s: (part.s0 + part.s1) / 2,
-        a,
-        b,
-        la,
-        lb,
-        feet: PROFILES[this.shots.length % PROFILES.length]!,
-        dur,
-        move: 0,
-      });
-    });
+        if (!bad) break;
+        sh.lift += 3 * sc;
+      }
+      t0 += sh.move;
+    }
+  }
+
+  /** Is the view blocked: something close in front of the lens (not the subject itself)? */
+  private blocked(open: number, dist: number): boolean {
+    return open < Math.min(dist * 0.6, 15 * this.sc);
+  }
+
+  private useShots(shots: Shot[]): void {
+    const sc = this.sc;
+    this.shots = shots;
     // Glides between shots: a few seconds, longer for longer hops.
     this.shots.forEach((sh, i) => {
       const nx = this.shots[(i + 1) % this.shots.length]!;
-      sh.move = Math.min(12, Math.max(4.5, sh.b.distanceTo(nx.a) / (8 * sc)));
+      sh.move = Math.min(7, Math.max(3, sh.b.distanceTo(nx.a) / (14 * sc)));
     });
     this.total = this.shots.reduce((a, sh) => a + sh.dur + sh.move, 0);
   }
 
   // ---------------------------------------------------------------- flying
+
+  /**
+   * Within a shot (u 0..1): the drone slides steadily across while the view sweeps left, across
+   * to the right and back, and the height cranes from the shot's first height to its last.
+   */
+  private shotPose(sh: Shot, u: number, pos: THREE.Vector3, look: THREE.Vector3): void {
+    const sc = this.sc;
+    const e = 0.85 * u + 0.15 * smooth(u);
+    const x = sh.a.x + (sh.b.x - sh.a.x) * e,
+      z = sh.a.y + (sh.b.y - sh.a.y) * e;
+    const ft = sh.feet[0] + (sh.feet[1] - sh.feet[0]) * smooth(u);
+    pos.set(x, this.world.groundHeight(x, z) + ft * FT * sc, z);
+    const sweep = -Math.cos(u * Math.PI * 2) * sh.amp;
+    look.set(sh.target.x + sh.side.x * sweep, sh.target.y, sh.target.z + sh.side.y * sweep);
+  }
 
   /** Where the drone wants to be (and look) at tour time t. */
   private pose(t: number, pos: THREE.Vector3, look: THREE.Vector3): Shot {
@@ -295,13 +399,7 @@ export class MapTour {
     for (let i = 0; i < this.shots.length; i++) {
       const sh = this.shots[i]!;
       if (u < sh.dur) {
-        // A steady pan with the gentlest ease at either end.
-        const e = 0.8 * (u / sh.dur) + 0.2 * smooth(u / sh.dur);
-        const x = sh.a.x + (sh.b.x - sh.a.x) * e,
-          z = sh.a.y + (sh.b.y - sh.a.y) * e;
-        const ft = sh.feet[0] + (sh.feet[1] - sh.feet[0]) * smooth(u / sh.dur);
-        pos.set(x, this.world.groundHeight(x, z) + ft * FT * sc, z);
-        look.lerpVectors(sh.la, sh.lb, e);
+        this.shotPose(sh, u / sh.dur, pos, look);
         return sh;
       }
       u -= sh.dur;
@@ -312,10 +410,17 @@ export class MapTour {
           z = sh.b.y + (nx.a.y - sh.b.y) * k;
         const hA = sh.feet[1] * FT * sc,
           hB = nx.feet[0] * FT * sc;
-        const lift = Math.min(sh.b.distanceTo(nx.a) * 0.08, 8 * sc) * Math.sin(Math.PI * k);
+        const lift =
+          Math.max(Math.min(sh.b.distanceTo(nx.a) * 0.08, 8 * sc), sh.lift ?? 0) *
+          Math.sin(Math.PI * k);
         pos.set(x, this.world.groundHeight(x, z) + hA + (hB - hA) * k + lift, z);
         // Turn toward the next scene a little ahead of getting there.
-        look.lerpVectors(sh.lb, nx.la, smooth(Math.min(1, (u / sh.move) * 1.25)));
+        const lb = new THREE.Vector3(),
+          la = new THREE.Vector3(),
+          tmp = new THREE.Vector3();
+        this.shotPose(sh, 1, tmp, lb);
+        this.shotPose(nx, 0, tmp, la);
+        look.lerpVectors(lb, la, smooth(Math.min(1, (u / sh.move) * 1.25)));
         return k < 0.5 ? sh : nx;
       }
       u -= sh.move;
@@ -333,15 +438,45 @@ export class MapTour {
       ahead = new THREE.Vector3(),
       tmp = new THREE.Vector3();
     const shot = this.pose(this.t, pos, look);
-    // Keep clear of anything under the drone now and just ahead of it.
-    const clear = 1.6 * this.sc;
-    let floor = this.topAt(pos.x, pos.z) + clear;
-    for (const k of [0.8, 1.6, 2.4]) {
+    // Keep clear of anything under the drone or right beside it, now and just ahead.
+    const sc = this.sc;
+    const clear = 1.6 * sc;
+    const ring = (x: number, z: number) => {
+      let top = this.topAt(x, z);
+      for (const [dx, dz] of [
+        [1.4, 0],
+        [-1.4, 0],
+        [0, 1.4],
+        [0, -1.4],
+      ])
+        top = Math.max(top, this.topAt(x + dx * sc, z + dz * sc));
+      return top;
+    };
+    let floor = ring(pos.x, pos.z) + clear;
+    for (const k of [0.7, 1.4, 2.1]) {
       this.pose(this.t + k, ahead, tmp);
-      floor = Math.max(floor, this.topAt(ahead.x, ahead.z) + clear);
+      floor = Math.max(floor, ring(ahead.x, ahead.z) + clear);
+    }
+    // And keep the view open: if something gets between the lens and the scene, rise over it.
+    this.losTimer -= dt;
+    if (this.losTimer <= 0 && !Number.isNaN(this.alt)) {
+      this.losTimer = 0.2;
+      // Now, and a second ahead (so it starts climbing before the view closes).
+      const eye = new THREE.Vector3(pos.x, this.alt, pos.z);
+      const dist = eye.distanceTo(look);
+      let shut = this.blocked(this.clearView(eye, look) * dist, dist);
+      if (!shut) {
+        const lk = new THREE.Vector3();
+        this.pose(this.t + 1, ahead, lk);
+        ahead.y = Math.max(ahead.y + this.boost, this.alt);
+        const d2 = ahead.distanceTo(lk);
+        shut = this.blocked(this.clearView(ahead, lk) * d2, d2);
+      }
+      if (shut) this.boost = Math.min(this.boost + 3 * sc, 22 * sc);
+      else this.boost = Math.max(0, this.boost - 0.6 * sc);
     }
     floor = Math.max(floor, this.world.groundHeight(pos.x, pos.z) + LOW * this.sc * 0.8);
-    const want = Math.max(pos.y, floor);
+    const want = Math.max(pos.y + this.boost, floor);
     if (Number.isNaN(this.alt)) this.alt = want;
     // Rise quickly when something's in the way, settle back down gently.
     this.alt += (want - this.alt) * Math.min(1, dt * (want > this.alt ? 2.5 : 0.8));
