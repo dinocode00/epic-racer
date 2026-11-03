@@ -51,20 +51,27 @@ def nearest_s(poly, p):
 def route_crib_patio():
     crib = np.array(L['corn_crib'])
     pad = np.array(L['house_pad']['c'])
-    # Out: leave the crib's west side, drift across the barnyard west of the sandbox,
-    # skirt the lilac and the foot of the ramp, then angle up the gravel to the patio.
+    # Out: leave the crib's west side, drift across the barnyard west of the sandbox, skirt the
+    # lilac and the foot of the ramp, then wander the open yard between the ramp and the house
+    # (where the racers see most of it) before angling up the gravel to the patio.
     out = [crib + [-1.9, 0.2], (59.4, 124.2), (55.4, 127.8), (51.6, 132.0), (48.8, 136.6),
-           (47.0, 141.6), (46.9, 146.6), (48.4, 151.2), (46.8, 155.6), (44.0, 158.9),
-           (41.4, 162.0), pad + [0.2, -1.2]]
-    # Back: a little wider of the ramp and closer to the shed on the way home.
-    back = [pad + [1.4, -2.0], (44.9, 160.4), (49.6, 157.2), (50.9, 152.4), (49.2, 147.0),
-            (49.0, 142.0), (50.0, 138.0), (53.2, 132.8), (56.8, 128.4), (60.6, 124.9)]
+           (47.0, 141.6), (46.9, 146.6), (44.4, 149.6), (43.8, 153.6), (46.2, 156.2),
+           (44.0, 158.9), (41.4, 162.0), pad + [0.2, -1.2]]
+    # Back: down the yard's east side past the ramp and the lilac, a look round there, then
+    # home past the sandbox to the crib.
+    back = [pad + [1.4, -2.0], (44.9, 160.4), (48.6, 156.4), (51.2, 153.2), (53.4, 149.6),
+            (54.4, 146.4), (53.0, 144.0), (50.4, 141.8), (50.0, 138.0), (53.2, 132.8),
+            (56.8, 128.4), (60.6, 124.9)]
     pts = out + back
     poly = catmull(pts)
     s_stop, i = nearest_s(poly, pad + [0.2, -1.2])
     orchard_c = np.array([22.0, 120.0])
     stops = [('wave', s_stop, 12.0, orchard_c.tolist()),
-             ('pause', nearest_s(poly, crib + [-1.9, 0.2])[0], 6.0, None)]
+             # He takes his time in the yard (where the racers go by most)...
+             ('pause', nearest_s(poly, (54.4, 146.4))[0], 20.0, None),
+             ('pause', nearest_s(poly, (43.8, 153.6))[0], 15.0, None),
+             # ...and doesn't hang about at the crib.
+             ('pause', nearest_s(poly, crib + [-1.9, 0.2])[0], 3.0, None)]
     return poly, stops
 
 
