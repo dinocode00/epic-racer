@@ -12,8 +12,9 @@ import * as tex from '../render/textures.ts';
 import { windy } from '../render/wind.ts';
 import { bake } from './bake.ts';
 import { type BeeSpot, bees } from './bees.ts';
-import { type FlowerKind, FlowerField, pick } from './flowers.ts';
+import { type FlowerKind, FlowerField, keptClear, pick } from './flowers.ts';
 import { addPerch } from './perches.ts';
+import DRAFT from './racetrackDraft.json';
 import {
   BERM,
   FARM,
@@ -366,8 +367,8 @@ export function buildPlants(): THREE.Group {
   for (const b of Object.values(orch)) root.add(b.done());
   root.add(fruit);
 
-  // ---- Woods beyond the line, and neighbouring farms behind the trees (NE and SW).
-  const woods = WOODS.map((make) => new TreeBatch(normalise(make), 60, true));
+  // ---- Woods beyond the line (NE and SW); no neighbours' houses in view.
+  const woods = WOODS.map((make) => new TreeBatch(normalise(make), 90, true));
   const wood = () => woods[(rnd() * woods.length) | 0]!;
   for (const c of FARM.neighbourWoods)
     for (let i = 0; i < 14; i++)
@@ -387,11 +388,20 @@ export function buildPlants(): THREE.Group {
     const out = 16 + rnd() * 50;
     wood().add(px - 0.64 * out, py + 0.77 * out, 8 + rnd() * 7, 0.9 + rnd() * 0.3, vary(0.12));
   }
+  // The west border: clumps of mixed trees standing back from the line, flowers between.
+  const west = westBorder(wood);
   for (const w of woods) root.add(w.done());
-  root.add(neighbourFarm([FARM.neighbourWoods[0]![0] + 26, FARM.neighbourWoods[0]![1] + 4], 0.3));
-  root.add(neighbourFarm([FARM.neighbourWoods[1]![0] - 28, FARM.neighbourWoods[1]![1] - 6], 2.1));
+  root.add(west);
 
-  root.add(arborvitae(), lilacs(), grapes(), garden(), yardFlowers(), pumpkins());
+  root.add(
+    arborvitae(),
+    lilacs(),
+    grapes(),
+    garden(),
+    yardFlowers(),
+    roadsideFlowers(),
+    pumpkins(),
+  );
   meadowBees();
   const hive = bees(SPOTS);
   root.add(hive.mesh);
@@ -1085,26 +1095,142 @@ function pumpkins(): THREE.Group {
   return g;
 }
 
-/** A neighbouring farmhouse and barn glimpsed behind the trees. */
-function neighbourFarm(c: XY, angle: number): THREE.Group {
-  const g = new THREE.Group();
-  const white = new THREE.MeshStandardMaterial({ color: 0xe9e6dc, roughness: 0.8 });
-  const red = new THREE.MeshStandardMaterial({ color: 0x8e3a30, roughness: 0.85 });
-  const roof = new THREE.MeshStandardMaterial({ color: 0x3a3c40, roughness: 0.9 });
-  const house = new THREE.Mesh(new THREE.BoxGeometry(9, 6, 7), white);
-  house.position.set(0, 3, 0);
-  const hr = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 5.2, 3.2, 4, 1), roof);
-  hr.rotation.y = Math.PI / 4;
-  hr.scale.set(1.25, 1, 0.95);
-  hr.position.set(0, 7.6, 0);
-  const b = new THREE.Mesh(new THREE.BoxGeometry(18, 8, 11), red);
-  b.position.set(16, 4, 6);
-  const br = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 9, 5, 4, 1), roof);
-  br.rotation.y = Math.PI / 4;
-  br.scale.set(1.45, 1, 0.9);
-  br.position.set(16, 10.5, 6);
-  g.add(house, hr, b, br);
-  g.position.set(c[0], groundHeight(c[0], c[1]), -c[1]);
-  g.rotation.y = angle;
-  return g;
+/**
+ * Along the west side of the property (outside the line): clumps of mixed trees set well back,
+ * with drifts of prairie flowers in the grass between them and along the line itself. Nothing
+ * stands where the racetrack runs.
+ */
+function westBorder(wood: () => TreeBatch): THREE.Group {
+  const B = FARM.boundary;
+  // The west line: the property's west side up to the corner by the road.
+  const i0 = B.findIndex(([x, y]) => x === 0 && y === 0);
+  const line: XY[] = [B[i0]!, B[i0 + 1]!, B[i0 + 2]!];
+  const f = new FlowerField();
+  const mix: [FlowerKind, number][] = [
+    ['susan', 4],
+    ['coneflower', 3],
+    ['bergamot', 2],
+    ['queenAnne', 3],
+    ['chicory', 2],
+    ['milkweedOrange', 2],
+    ['goldenrod', 3],
+    ['daylily', 1],
+  ];
+  const clear = (x: number, y: number, r: number) =>
+    !keptClear(x, y) &&
+    !keptClear(x + r, y) &&
+    !keptClear(x - r, y) &&
+    !keptClear(x, y + r) &&
+    !keptClear(x, y - r);
+  for (let k = 0; k < line.length - 1; k++) {
+    const [a, b] = [line[k]!, line[k + 1]!];
+    const dx = b[0] - a[0],
+      dy = b[1] - a[1];
+    const len = Math.hypot(dx, dy);
+    // Outward (west) normal.
+    let nx = -dy / len,
+      ny = dx / len;
+    if (nx > 0) [nx, ny] = [-nx, -ny];
+    for (let d = 2; d < len - 2; d += 9 + rnd() * 6) {
+      const px = a[0] + (dx / len) * d,
+        py = a[1] + (dy / len) * d;
+      // A clump of two to four trees, eight to twenty metres out.
+      const out = 8 + rnd() * 12;
+      const n = 2 + ((rnd() * 3) | 0);
+      for (let j = 0; j < n; j++) {
+        const x = px + nx * (out + rnd() * 6) + (rnd() - 0.5) * 6,
+          y = py + ny * (out + rnd() * 6) + (rnd() - 0.5) * 6;
+        if (clear(x, y, 4)) wood().add(x, y, 6 + rnd() * 8, 0.85 + rnd() * 0.3, vary(0.12));
+      }
+      // Flower drifts nearer the line and between the clumps.
+      for (let j = 0; j < 3; j++) {
+        const o = 1.5 + rnd() * 9;
+        const cx = px + nx * o + (dx / len) * (rnd() - 0.5) * 8,
+          cy = py + ny * o + (dy / len) * (rnd() - 0.5) * 8;
+        const kind = pick(mix);
+        for (let q = 0; q < 4; q++) {
+          const x = cx + (rnd() - 0.5) * 1.6,
+            y = cy + (rnd() - 0.5) * 1.6;
+          f.add(kind, x, groundHeight(x, y) - 0.02, -y, 0.9 + rnd() * 0.3);
+        }
+        if (j === 0) SPOTS.push({ x: cx, y: groundHeight(cx, cy) + 0.5, z: -cy, r: 1.5, n: 2 });
+      }
+    }
+  }
+  return f.build();
+}
+
+/**
+ * Wildflower clumps along the edges of the racetrack where it runs on the ground, every dozen
+ * metres or so on alternating sides: the bees and butterflies work them and goldfinches perch
+ * on them, so the life of the farm is right beside you as you race. None in the barn, on the
+ * gravel or against a building.
+ */
+function roadsideFlowers(): THREE.Group {
+  const f = new FlowerField();
+  const pts = (DRAFT as unknown as { pts: [number, number, number, number, string][] }).pts;
+  const mix: [FlowerKind, number][] = [
+    ['susan', 4],
+    ['coneflower', 3],
+    ['bergamot', 2],
+    ['queenAnne', 2],
+    ['chicory', 2],
+    ['milkweedOrange', 2],
+    ['goldenrod', 1],
+  ];
+  const rects = [
+    FARM.barn,
+    FARM.wooden_garage,
+    FARM.red_garage,
+    FARM.shed,
+    FARM.greenhouse,
+    FARM.playhouse,
+    FARM.sandbox,
+    FARM.garden,
+    { ...FARM.house.main, angle: FARM.house.angle },
+    { ...FARM.house.wing, angle: FARM.house.angle },
+    { ...FARM.house.porch, angle: FARM.house.angle },
+    FARM.house_pad,
+  ];
+  const inBuilding = (x: number, y: number) =>
+    rects.some((r) => {
+      const th = ((r.angle ?? 0) * Math.PI) / 180;
+      const dx = x - r.c[0],
+        dy = y - r.c[1];
+      const u = dx * Math.cos(th) + dy * Math.sin(th),
+        v = -dx * Math.sin(th) + dy * Math.cos(th);
+      return Math.abs(u) < r.w / 2 + 1.5 && Math.abs(v) < r.h / 2 + 1.5;
+    });
+  let since = 0,
+    side = 1;
+  for (let i = 1; i < pts.length; i++) {
+    const [x, y, h, w, kind] = pts[i]!;
+    const [px, py] = pts[i - 1]!;
+    since += Math.hypot(x - px, y - py);
+    if (since < 11 || h > 0.6 || kind === 'barn' || kind === 'air' || kind === 'tube') continue;
+    since = 0;
+    side = -side;
+    const dx = x - px,
+      dy = y - py,
+      L = Math.hypot(dx, dy) || 1;
+    const off = w / 2 + 1.4 + rnd() * 1.2;
+    const cx = x + (-dy / L) * off * side,
+      cy = y + (dx / L) * off * side;
+    if (inBuilding(cx, cy) || inside(cx, cy, FARM.gravel)) continue;
+    const kindF = pick(mix);
+    let planted = 0;
+    for (let q = 0; q < 5; q++) {
+      const fx = cx + (rnd() - 0.5) * 1.4,
+        fy = cy + (rnd() - 0.5) * 1.4;
+      if (f.add(kindF, fx, groundHeight(fx, fy) - 0.02, -fy, 0.85 + rnd() * 0.3)) planted++;
+    }
+    if (planted >= 2) {
+      SPOTS.push({ x: cx, y: groundHeight(cx, cy) + 0.45, z: -cy, r: 1.2, n: 2 });
+      // A patch of lawn beside it for the robins and bluebirds to hunt.
+      const lx = cx + (-dy / L) * 1.2 * side,
+        ly = cy + (dx / L) * 1.2 * side;
+      addPerch(lx, groundHeight(lx, ly), -ly, 'lawn', true);
+    }
+  }
+  return f.build();
 }

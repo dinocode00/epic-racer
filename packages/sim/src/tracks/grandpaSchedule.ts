@@ -1,3 +1,4 @@
+import DRAFT from './farmDraft.json';
 import ROUTES from './grandpaRoutes.json';
 
 /**
@@ -317,11 +318,81 @@ export class MowerSchedule {
 }
 
 /** All four of him, as the farm has them: three walking rounds and the mower. */
+/** The racing line (map metres, in order), and where it runs along the ground. */
+const LINE: [number, number, number][] = (DRAFT as unknown as { pts: [number, number, number][] })
+  .pts;
+const LOW_ROAD: XY[] = LINE.filter((p) => p[2] < 3).map((p) => [p[0], p[1]]);
+
+/** How much of the course has a point in view ahead (within 40 m, in front): metres of road. */
+function inView(x: number, y: number): number {
+  let m = 0;
+  for (let i = 0; i < LINE.length - 1; i++) {
+    const [ax, ay] = LINE[i]!,
+      [bx, by] = LINE[i + 1]!;
+    const dx = x - ax,
+      dy = y - ay,
+      d = Math.hypot(dx, dy);
+    if (d > 40 || d < 1) continue;
+    const fx = bx - ax,
+      fy = by - ay,
+      fl = Math.hypot(fx, fy);
+    if (fl < 1e-6) continue;
+    if ((dx * fx + dy * fy) / (d * fl) > 0.75) m += fl;
+  }
+  return m;
+}
+
+/**
+ * His rounds with a couple of extra stops where he's in view of the racers longest (off the
+ * road, never on it): there he stops, turns to the track and waves the racers by for about a
+ * minute, so you've a good chance of seeing him as you come past.
+ */
+export function watchingStops(r: RouteData, spots = 2): RouteData {
+  if (r.mode !== 'walk') return r;
+  const loop = new Loop(r.pts);
+  const nearRoad = (x: number, y: number): [number, XY] => {
+    let best = Infinity,
+      at: XY = [x, y];
+    for (const q of LOW_ROAD) {
+      const d = Math.hypot(q[0] - x, q[1] - y);
+      if (d < best) {
+        best = d;
+        at = q;
+      }
+    }
+    return [best, at];
+  };
+  const cands: { s: number; seen: number; face: XY }[] = [];
+  for (let s = 0; s < loop.length; s += 2) {
+    const [x, y] = loop.at(s);
+    const [d, face] = nearRoad(x, y);
+    if (d < 2.5) continue;
+    cands.push({ s, seen: inView(x, y), face });
+  }
+  cands.sort((a, b) => b.seen - a.seen);
+  const gap = (a: number, b: number) => {
+    const d = Math.abs(a - b) % loop.length;
+    return Math.min(d, loop.length - d);
+  };
+  const chosen: typeof cands = [];
+  for (const c of cands) {
+    if (chosen.length >= spots) break;
+    if (chosen.some((o) => gap(o.s, c.s) < 20)) continue;
+    if (r.stops.some(([, s]) => gap(s, c.s) < 6)) continue;
+    chosen.push(c);
+  }
+  const stops = [...r.stops];
+  for (const c of chosen)
+    // Five waves in a row: about a minute there, waving the racers by.
+    for (let k = 0; k < 5; k++) stops.push(['wave', c.s + k * 0.01, 10, c.face]);
+  return { ...r, stops };
+}
+
 export function grandpaSchedules(): {
   walkers: { name: string; sched: WalkerSchedule }[];
   mower: MowerSchedule;
 } {
-  const by = (n: string) => GRANDPA_ROUTES.routes.find((r) => r.name === n)!;
+  const by = (n: string) => watchingStops(GRANDPA_ROUTES.routes.find((r) => r.name === n)!);
   return {
     // Each round starts somewhere different along it, so they don't all set off together.
     walkers: [

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { groundHeight } from './layout.ts';
 import type { Perch, PerchTag } from './perches.ts';
+import DRAFT from './racetrackDraft.json';
 
 /**
  * Wisconsin's bright summer songbirds going about the farm: northern cardinals (and their
@@ -499,6 +500,30 @@ interface Bird {
 
 const MAX_DRAW = 140;
 
+/**
+ * How much more a bird likes a perch near the racetrack (so you see them as you race): four
+ * times as much right beside the road, fading out by 25 m or so.
+ */
+const TRACK_CELLS = new Map<string, [number, number][]>();
+for (const p of (DRAFT as unknown as { pts: [number, number][] }).pts) {
+  const k = `${Math.floor(p[0] / 10)},${Math.floor(p[1] / 10)}`;
+  const list = TRACK_CELLS.get(k) ?? [];
+  list.push([p[0], p[1]]);
+  TRACK_CELLS.set(k, list);
+}
+function byTrack(q: { x: number; z: number }): number {
+  const x = q.x,
+    y = -q.z;
+  let d = 40;
+  const cx = Math.floor(x / 10),
+    cy = Math.floor(y / 10);
+  for (let i = -3; i <= 3; i++)
+    for (let j = -3; j <= 3; j++)
+      for (const [px, py] of TRACK_CELLS.get(`${cx + i},${cy + j}`) ?? [])
+        d = Math.min(d, Math.hypot(px - x, py - y));
+  return 1 + 3 * Math.exp(-d / 10);
+}
+
 export function buildSongbirds(perches: Perch[], obstacles: Obstacle[]) {
   const group = new THREE.Group();
   group.name = 'songbirds';
@@ -515,7 +540,11 @@ export function buildSongbirds(perches: Perch[], obstacles: Obstacle[]) {
 
   const startPerch = (sp: Species): Perch => {
     const ok = usable.filter((p) => (sp.likes[p.tag] ?? 0) > 0 && free(p));
-    return ok[(rnd() * ok.length) | 0] ?? usable[(rnd() * usable.length) | 0]!;
+    if (!ok.length) return usable[(rnd() * usable.length) | 0]!;
+    const w = ok.map(byTrack);
+    let r = rnd() * w.reduce((a, b) => a + b, 0);
+    for (let i = 0; i < ok.length; i++) if ((r -= w[i]!) <= 0) return ok[i]!;
+    return ok[ok.length - 1]!;
   };
   const spotOn = (p: Perch, out: THREE.Vector3): THREE.Vector3 => {
     if (!p.ground) return out.set(p.x, p.y, p.z);
@@ -602,7 +631,7 @@ export function buildSongbirds(perches: Perch[], obstacles: Obstacle[]) {
       if (!like) continue;
       const d = Math.hypot(q.x - b.at.x, q.z - b.at.z);
       if (d < 4 || d > 95) continue;
-      const w = like * Math.exp(-d / 32);
+      const w = like * Math.exp(-d / 32) * byTrack(q);
       opts.push([q, w]);
       total += w;
     }

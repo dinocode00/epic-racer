@@ -1314,13 +1314,18 @@ function barnInside(L: number, W: number, eave: number, ridge: number, st: numbe
   const B = FARM.barn;
   const down = (DRAFT as unknown as { pts: [number, number, number, number, string, string][] }).pts
     .filter((q) => (q[5] === 'barn' || q[5] === 'ramp') && q[2] > 0.8 && q[2] < st - 0.08)
-    .map((q) => local([q[0], q[1]], B.c, B.angle ?? 50));
-  const x0 = Math.min(...down.map((q) => q[0])) - 0.6,
-    x1 = Math.max(...down.map((q) => q[0])) + 0.6,
-    z0 = Math.min(...down.map((q) => q[1])) - 1.1,
-    z1 = Math.max(...down.map((q) => q[1])) + 1.1;
+    .map((q) => local([q[0], q[1]], B.c, B.angle ?? 50))
+    // Only where the road is inside the barn (not on the earth ramp up to it).
+    .filter((q) => Math.abs(q[0]) < L / 2 - 0.6 && Math.abs(q[1]) < W / 2 - 0.6);
+  if (!down.length) down.push([0, 0]);
   const fx = L / 2 - 0.25,
     fz = W / 2 - 0.25;
+  // The opening, kept inside the floor with a margin (a hole reaching past the floor's edge
+  // breaks the floor's shape and pokes it out through the walls).
+  const x0 = Math.max(-fx + 0.4, Math.min(...down.map((q) => q[0])) - 0.6),
+    x1 = Math.min(fx - 0.4, Math.max(...down.map((q) => q[0])) + 0.6),
+    z0 = Math.max(-fz + 0.4, Math.min(...down.map((q) => q[1])) - 1.1),
+    z1 = Math.min(fz - 0.4, Math.max(...down.map((q) => q[1])) + 1.1);
   const floor = new THREE.Shape([
     new THREE.Vector2(-fx, -fz),
     new THREE.Vector2(fx, -fz),
