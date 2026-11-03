@@ -37,7 +37,7 @@ export const SPECIAL_NAMES: Record<SpecialKind, ItemSkin> = {
   jacks: { icon: '🅰️', name: 'Auto-Jacks + Robot' },
 };
 
-/** Grandpa's Farm: the shared items, with Angel Wings carrying you ahead. */
+/** The Drefahl Farm: the shared items, with Angel Wings carrying you ahead. */
 const FARM: Record<ItemKind, ItemSkin> = { ...GENERIC, eagle: { icon: '🪽', name: 'Angel Wings' } };
 
 /** Vehicles that share a special's effect but give it their own name. */

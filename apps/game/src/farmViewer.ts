@@ -7,7 +7,7 @@ import { KartView } from './render/kartView.ts';
 import { View } from './render/view.ts';
 
 /**
- * Grandparents' Farm viewer: see the farm before any racetrack exists. Fly over it like a
+ * The Drefahl Farm viewer: see the farm before any racetrack exists. Fly over it like a
  * drone, jump to each landmark, or drop in a miniature kart and drive around to feel the
  * scale (1:10, so a kart is RC-car sized).
  *
@@ -327,7 +327,7 @@ let mode: Mode = 'drone';
 const ui = document.getElementById('ui')!;
 ui.insertAdjacentHTML(
   'beforeend',
-  `<div class="farm-title">Grandparents' Farm<small>1:10 scale · first look, no racetrack yet</small></div>
+  `<div class="farm-title">The Drefahl Farm<small>1:10 scale · first look, no racetrack yet</small></div>
    <div class="farm-panel" id="panel"></div>
    <div class="farm-help" id="help"></div>
    <div class="farm-speed" id="speed"></div>

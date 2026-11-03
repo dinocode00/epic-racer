@@ -17,7 +17,7 @@ import { type Obstacle, buildSongbirds } from './songbirds.ts';
 import { addCloudShadow, farmSky } from './sky.ts';
 
 /**
- * The Grandparents' Farm scene: lush green summer into early fall, sunshine, built from the
+ * The Drefahl Farm scene (grandpa and grandma's farm): lush green summer into early fall, sunshine, built from the
  * locked blueprint at FARM_SCALE so racers are miniatures. The farm is modelled in real
  * metres inside one scaled group; everything outside it (cameras, karts) is in game metres.
  */

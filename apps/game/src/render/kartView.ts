@@ -53,7 +53,7 @@ export class KartView {
 
   /**
    * `lift`: what carries the kart forward (the lift-ahead item) and rescues it after a fall:
-   * the Great Eagles, or on Grandpa's Farm, Angel Wings.
+   * the Great Eagles, or on the Drefahl Farm, Angel Wings.
    */
   constructor(
     vehicleId: string,

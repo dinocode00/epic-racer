@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 /**
- * Angel Wings (Grandpa's Farm's lift-ahead item, in place of the Great Eagle): a pair of big
+ * Angel Wings (the Drefahl Farm's lift-ahead item, in place of the Great Eagle): a pair of big
  * white feathered wings that open from the kart's sides and beat slowly, a golden halo over it,
  * the feathers softly lit. Same interface as the eagle: a group sitting on the kart, and `flap(t)`.
  */

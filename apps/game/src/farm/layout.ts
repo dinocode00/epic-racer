@@ -2,7 +2,7 @@ import RAW from './farmLayout.json';
 import ROUNDS from './grandpaRoutes.json';
 
 /**
- * Grandparents' Farm: the locked blueprint (docs/farm), exported by
+ * The Drefahl Farm: the locked blueprint (docs/farm), exported by
  * tools/farm-blueprint/export_game.py. All map data is in real-world metres with x east and
  * y north. The game builds the farm at FARM_SCALE so racers are miniatures: at 1:10 a kart
  * is RC-car sized and the barn is the size of a stadium.

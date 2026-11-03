@@ -1,4 +1,4 @@
-# Grandparents' Farm (new map, blueprint stage)
+# The Drefahl Farm (the grandparents' farm map)
 
 A future Epic Racer map built from a childhood memory of the grandparents' farm. We are
 still in the **blueprint stage**: getting the land, landmarks and their looks right. Race

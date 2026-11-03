@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { VEHICLES, neutralPad } from '@epic/shared';
 import { FARM_PIECES, FARM_TRACK, Race, Track } from '../src/index.ts';
 
-describe("Grandpa's Farm", () => {
+describe('The Drefahl Farm', () => {
   it('is a long lap with loops, a drop, the barn and trunks in the forest', () => {
     const race = new Race(FARM_TRACK, [{ vehicle: VEHICLES[0]!, human: false }]);
     const L = race.track.length;
@@ -55,7 +55,7 @@ describe("Grandpa's Farm", () => {
   }, 60000);
 });
 
-describe("Grandpa's Farm road shape", () => {
+describe('The Drefahl Farm road shape', () => {
   const t = new Track(FARM_TRACK);
   it('has no bend tighter than the road can take', () => {
     const tight: string[] = [];
@@ -97,7 +97,7 @@ describe("Grandpa's Farm road shape", () => {
   });
 });
 
-describe("Grandpa's Farm, driven badly", () => {
+describe('The Drefahl Farm, driven badly', () => {
   it('wobbly drivers bouncing off the walls still get round without glitches', () => {
     const N = 6;
     const race = new Race(

@@ -15,7 +15,7 @@ import DRAFT from './racetrackDraft.json';
 import { type Frame, type GlassMarks, buildGlass } from './trackLook.ts';
 
 /**
- * Racing at Grandpa's Farm: the farm scene (everything the explorer shows, grandpa on his rounds
+ * Racing at the Drefahl Farm: the farm scene (everything the explorer shows, grandpa on his rounds
  * included) with the racetrack built in smoky glass along exactly the line the karts drive.
  * Where the road runs along the ground the grass is mowed away under it, the pumpkins are
  * cleared off the pumpkin-patch road and the Christmas trees standing in the forest road are

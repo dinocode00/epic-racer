@@ -4,7 +4,7 @@ import DRAFT from './farmDraft.json';
 import { grandpaSchedules } from './grandpaSchedule.ts';
 
 /**
- * Grandpa's Farm: the owner's route round the grandparents' farm (docs/farm), laid out at 1:10
+ * The Drefahl Farm: the owner's route round the grandparents' farm (docs/farm), laid out at 1:10
  * so the karts are RC-car sized among the buildings and trees. The centre line comes from the
  * approved draft (tools/farm-blueprint/racetrack.py, real metres); here it is scaled into game
  * metres, the loop-de-loops are put in as real loops, and the jumps, boost pads, item boxes
@@ -188,7 +188,7 @@ const points: TrackPoint[] = PTS.map((q) => ({
   up: [q.up[0], q.up[1], q.up[2]],
   width: q.w,
 }));
-const base: TrackDef = { id: 'farm', name: "Grandpa's Farm", points, defaultWidth: 16, laps: 2 };
+const base: TrackDef = { id: 'farm', name: 'The Drefahl Farm', points, defaultWidth: 16, laps: 2 };
 const track = new Track(base);
 const L = track.length;
 
