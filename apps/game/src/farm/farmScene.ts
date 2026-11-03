@@ -78,6 +78,7 @@ export class FarmScene {
     farm.position.set(-CENTRE[0] * S, 0, CENTRE[1] * S);
     setGrimeFrame(farm);
     const land = buildGround();
+    land.userData.tourIgnore = true;
     farm.add(land);
     this.grass = buildGrass((land.material as THREE.MeshStandardMaterial).map!);
     farm.add(this.grass.group);

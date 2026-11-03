@@ -109,6 +109,7 @@ function farmEnvironment(track: Track, renderer: THREE.WebGLRenderer): RaceEnvir
   for (const k of track.def.kickers ?? [])
     marks.push({ kind: k.pop > 20 ? 'bigjump' : 'jump', s: k.s });
   const glass = buildGlass(F, { marks, postEvery: 6 }, 'smoky');
+  glass.group.userData.tourIgnore = true;
   farm.addToFarm(glass.group);
 
   const day: Atmosphere = {

@@ -56,6 +56,8 @@ Phones need the home setup above.
 | Join / ready               | Enter           | Enter / Space             | A                  | READY                 |
 | Change ride (lobby)        | ← →             | ← → / A D                 | Stick / D-pad      | Tap a ride            |
 | Change track (lobby)       | T               | T                         | LB / RB            | ◀ ▶                   |
+| Map tour (lobby)           | M               | M                         | X                  | —                     |
+| Tournament on/off (lobby)  | G               | G                         | View               | —                     |
 | Steer                      | ← → or A D      | ← → / A D                 | Left stick / D-pad | Drag on the left half |
 | Accelerate                 | ↑ or W          | ↑ / W                     | RT                 | GAS                   |
 | Brake / reverse            | ↓ or S          | ↓ / S                     | LT                 | BRAKE                 |

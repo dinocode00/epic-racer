@@ -708,3 +708,242 @@ body {
   font-size: 1.9vh;
   opacity: 0.65;
 }
+
+/* ---------- map tour ---------- */
+.tour-hud {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(#0a081880, transparent 18%, transparent 82%, #0a081899);
+}
+.tour-hud .tour-title {
+  position: absolute;
+  top: 3vh;
+  left: 3vw;
+  font-size: 3vh;
+  letter-spacing: 0.08em;
+  text-shadow: 0 0.4vh 0 var(--shadow);
+}
+.tour-hud .tour-title b {
+  color: var(--gold);
+}
+.tour-hud .tour-caption {
+  position: absolute;
+  bottom: 11vh;
+  left: 3vw;
+  font-size: 4.6vh;
+  font-style: italic;
+  text-shadow: 0 0.5vh 0 var(--shadow), 0 0 3vh #0009;
+  opacity: 0;
+  transform: translateY(1vh);
+}
+.tour-hud .tour-caption.show {
+  animation: tourcap 6s ease forwards;
+}
+@keyframes tourcap {
+  0% { opacity: 0; transform: translateY(1vh); }
+  10%, 75% { opacity: 1; transform: none; }
+  100% { opacity: 0; transform: none; }
+}
+.tour-hud .tour-foot {
+  position: absolute;
+  bottom: 4vh;
+  left: 3vw;
+  right: 3vw;
+  display: flex;
+  align-items: center;
+  gap: 2vw;
+  font-size: 2.2vh;
+}
+.tour-hud .tour-bar {
+  flex: 1;
+  height: 0.8vh;
+  background: #ffffff33;
+  border-radius: 99px;
+  overflow: hidden;
+}
+.tour-hud .tour-bar i {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: var(--gold);
+}
+.tour-hud .tour-exit {
+  pointer-events: auto;
+  cursor: pointer;
+  opacity: 0.85;
+}
+.lobby .foot #tour-btn {
+  margin-left: auto;
+  margin-right: 1.4vw;
+}
+
+/* ---------- tournament ---------- */
+.lobby .foot .cup-btn.on {
+  background: var(--gold);
+  color: #1a1426;
+}
+.lobby .foot .cup-btn {
+  margin-left: auto;
+  margin-right: 1.4vw;
+}
+.lobby .foot #tour-btn {
+  margin-left: 0;
+}
+.cup {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(92vw, 150vh);
+  padding: 3vh 4vh;
+  background: #121022f0;
+  border: 3px solid var(--gold);
+  border-radius: 18px;
+  box-shadow: 0 2vh 6vh #0009;
+}
+.cup h2 {
+  color: var(--gold);
+  text-align: center;
+  margin: 0 0 1.2vh;
+  font-size: 4.4vh;
+}
+.cup h3 {
+  margin: 0 0 1vh;
+  font-size: 2.2vh;
+  letter-spacing: 0.12em;
+  opacity: 0.75;
+}
+.cup .cup-path {
+  text-align: center;
+  font-size: 2vh;
+  margin-bottom: 2vh;
+}
+.cup .cup-dot {
+  padding: 0.4vh 1.2vh;
+  border-radius: 99px;
+  background: #ffffff14;
+  opacity: 0.6;
+}
+.cup .cup-dot.done {
+  opacity: 0.9;
+}
+.cup .cup-dot.now {
+  background: var(--gold);
+  color: #1a1426;
+  opacity: 1;
+}
+.cup .cup-sep {
+  margin: 0 0.8vh;
+  opacity: 0.5;
+}
+.cup .cup-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4vh;
+}
+.cup .row {
+  display: grid;
+  grid-template-columns: 4.5vh 1fr auto auto;
+  gap: 1.4vh;
+  align-items: center;
+  padding: 0.5vh 1vh;
+  border-radius: 8px;
+  font-size: 2.7vh;
+}
+.cup .cup-col:last-child .row {
+  grid-template-columns: 4.5vh 1fr auto;
+}
+.cup .row.human {
+  background: #ffffff1a;
+}
+.cup .row .sw {
+  display: inline-block;
+  width: 1.5vh;
+  height: 1.5vh;
+  border-radius: 50%;
+  margin-right: 1vh;
+}
+.cup .row .pts {
+  color: var(--gold);
+  text-align: right;
+  min-width: 5vh;
+}
+.cup .row .mv {
+  display: inline-block;
+  width: 2.4vh;
+  font-style: normal;
+  font-size: 1.6vh;
+}
+.cup .row .mv.up {
+  color: #5bff7a;
+}
+.cup .row .mv.down {
+  color: #ff6a5a;
+}
+.cup .row.podium.p1 {
+  background: #ffd23f33;
+}
+.cup .row.podium.p2 {
+  background: #d8dde633;
+}
+.cup .row.podium.p3 {
+  background: #cd7f3233;
+}
+.cup .hint {
+  text-align: center;
+  opacity: 0.85;
+  margin-top: 2.4vh;
+  font-size: 2.3vh;
+}
+.cup .champion {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 3vh;
+  margin-bottom: 1.4vh;
+}
+.cup .champion .trophy {
+  font-size: 11vh;
+  filter: drop-shadow(0 0 3vh #ffd23f99);
+}
+.cup .champion .ch-label {
+  color: var(--gold);
+  letter-spacing: 0.14em;
+  font-size: 2.6vh;
+}
+.cup .champion .ch-name {
+  font-size: 7vh;
+  font-style: italic;
+  text-shadow: 0 0.6vh 0 var(--shadow);
+}
+.cup .champion .ch-pts {
+  font-size: 2.4vh;
+  opacity: 0.85;
+}
+
+/* Lobby footer: the track line takes what's left; the buttons stay on one line each. */
+.lobby .foot {
+  gap: 1.2vw;
+}
+.lobby .foot .track {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 2.3vh;
+}
+.lobby .foot .howto-btn {
+  white-space: nowrap;
+  font-size: 2vh;
+  padding: 0.9vh 1.6vh;
+}
+.lobby .foot .cup-btn,
+.lobby .foot #tour-btn {
+  margin: 0;
+}
+.lobby .foot .go {
+  white-space: nowrap;
+  font-size: 2.4vh;
+  max-width: 22vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

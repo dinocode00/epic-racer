@@ -48,6 +48,8 @@ export function howToHtml(): string {
     <li><b>Phones:</b> scan the QR code on the TV. The first time, Safari warns the connection is not private; tap <i>Show Details</i>, then <i>visit this website</i>.</li>
     <li><b>Xbox pad:</b> press A. <b>Keyboard:</b> Enter (arrow keys) or Space (WASD).</li>
     <li>Pick a ride, then READY. The race starts when everyone is ready. Change track with T or LB/RB.</li>
+    <li><b>🎥 Map Tour</b> (M, or X on a pad): a drone flies you round the whole map of the chosen track, low among things and high over them. B or Esc comes back.</li>
+    <li><b>🏆 Tournament</b> (G, or View on a pad): race every track in turn, starting with the chosen one. Points each race (15, 12, 10, 8, 6, 4, 2, 1); most points wins the cup.</li>
     <li>First across the line after the last lap wins!</li>
   </ul></section>
 

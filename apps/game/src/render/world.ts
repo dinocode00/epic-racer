@@ -82,21 +82,24 @@ export class World {
     s.add(this.sun, this.sun.target);
 
     this.terrain = new Terrain(track, theme.terrain(track));
-    s.add(buildTerrain(this.terrain, theme.terrainPaint?.(track) ?? theme.terrainLook));
+    const land = buildTerrain(this.terrain, theme.terrainPaint?.(track) ?? theme.terrainLook);
+    // The map tour reads the ground from groundHeight() and flies over the road, not on it.
+    land.userData.tourIgnore = true;
+    s.add(land);
     const R = theme.regions;
-    s.add(
-      buildTrackMesh(
-        track,
-        R
-          ? {
-              styleAt: (sv) => R.looks[this.regionAt(sv)]!.road,
-              boundaries: (track.def.regions ?? []).map((r) => r[1]),
-              gaps: track.def.gaps,
-              open: track.def.open,
-            }
-          : theme.road(track),
-      ),
+    const road = buildTrackMesh(
+      track,
+      R
+        ? {
+            styleAt: (sv) => R.looks[this.regionAt(sv)]!.road,
+            boundaries: (track.def.regions ?? []).map((r) => r[1]),
+            gaps: track.def.gaps,
+            open: track.def.open,
+          }
+        : theme.road(track),
     );
+    road.userData.tourIgnore = true;
+    s.add(road);
     s.add(
       buildFoliage(this.terrain, {
         ...theme.foliage,
@@ -113,6 +116,7 @@ export class World {
     if (theme.grandstand) s.add(buildGrandstand(track));
     if (theme.clouds) {
       const clouds = buildClouds(this.terrain);
+      clouds.userData.tourIgnore = true;
       clouds.traverse((o) => {
         if ((o as THREE.Mesh).isMesh)
           this.cloudMat = (o as THREE.Mesh).material as THREE.MeshStandardMaterial;
@@ -146,7 +150,8 @@ export class World {
   }
 
   /** The blended atmosphere at an arc length (multi-land tracks only). */
-  atmosphereAt(sv: number): Atmosphere | null {
+  atmosphereAt(sv: number, outdoors = false): Atmosphere | null {
+    if (this.env && outdoors) return this.env.day;
     if (this.env) {
       // Fade into the dark over 30 m either side of the barn doors.
       const d = this.env.dark;
@@ -176,11 +181,12 @@ export class World {
         a = mixAtmos(prev, next, (d + W) / (2 * W));
       }
     }
-    // Fade to darkness underground.
-    for (const [t0, t1] of this.track.def.tunnels ?? []) {
-      const inside = Math.min(sv - t0, t1 - sv);
-      if (inside > -10) a = mixAtmos(a, R.underground, Math.min(1, (inside + 10) / 40));
-    }
+    // Fade to darkness underground (unless looking from up above).
+    if (!outdoors)
+      for (const [t0, t1] of this.track.def.tunnels ?? []) {
+        const inside = Math.min(sv - t0, t1 - sv);
+        if (inside > -10) a = mixAtmos(a, R.underground, Math.min(1, (inside + 10) / 40));
+      }
     return a;
   }
 

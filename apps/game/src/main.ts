@@ -21,6 +21,8 @@ import {
 import { Net } from './game/net.ts';
 import { type PlayerSetup, RaceSession } from './game/session.ts';
 import { Showroom } from './game/showroom.ts';
+import { MapTour } from './game/tour.ts';
+import { Tournament } from './game/tournament.ts';
 import { TRACKS, trackById } from './game/tracks.ts';
 import { itemSkin } from './game/itemSkins.ts';
 import { AutoQuality, FpsMeter, LEVELS } from './game/quality.ts';
@@ -34,6 +36,7 @@ import { type KartState, SPECIAL_OF } from '@epic/sim';
  *   ?quick=1 skip the lobby   ?players=1..4  ?demo=1 (autopilot humans)  ?t=20 (skip ahead)
  *   ?look=retro  ?vehicles=pod,bat,nazgul,mach5  ?laps=3  ?scene=showroom  ?fixed=1
  *   ?fps=1 (frame-rate display)  ?quality=high|low (fixed quality instead of automatic)
+ *   ?tour=1 (start the map tour of ?track=...)  ?cup=1 (tournament mode on)
  */
 const params = new URLSearchParams(location.search);
 const view = new View(document.getElementById('stage')!);
@@ -48,6 +51,7 @@ function applyQuality(): void {
   view.setQuality(quality.settings);
   session?.world.setGrassDensity(quality.settings.grass);
   showroom?.world.setGrassDensity(quality.settings.grass);
+  tour?.world.setGrassDensity(quality.settings.grass);
 }
 const ui = document.getElementById('ui')!;
 const keyboard = new KeyboardSource();
@@ -79,7 +83,13 @@ function cycleTrack(dir: number): void {
   showroom = null;
   toLobby();
 }
-let state: 'lobby' | 'race' | 'results' = 'lobby';
+let state: 'lobby' | 'race' | 'results' | 'tour' = 'lobby';
+let tour: MapTour | null = null;
+/** Tournament mode (toggled in the lobby), and the cup being run. */
+let cupMode = params.has('cup');
+let cup: Tournament | null = null;
+/** The track picked in the lobby, to come back to after a cup. */
+let cupHome = '';
 let session: RaceSession | null = null;
 let showroom: Showroom | null = null;
 let startAt = 0; // lobby countdown deadline (ms), 0 = not counting
@@ -140,7 +150,7 @@ net.onMsg = (slot, msg) => {
   if (msg.t === 'pickVehicle' && state === 'lobby' && VEHICLES.some((v) => v.id === msg.vehicle))
     m.vehicle = msg.vehicle;
   if (msg.t === 'ready' && state === 'lobby') m.ready = msg.ready;
-  if (msg.t === 'menu' && msg.action === 'confirm' && state === 'results') toLobby();
+  if (msg.t === 'menu' && msg.action === 'confirm' && state === 'results') afterResults();
   if (msg.t === 'pause') pauseAction(msg.action);
   if (
     msg.t === 'menu' &&
@@ -239,6 +249,7 @@ function restartRace(): void {
 }
 function exitRace(): void {
   setPaused(false);
+  endCup();
   toLobby();
 }
 function pauseAction(a: PauseAction): void {
@@ -262,6 +273,8 @@ function pollMenuButtons(): void {
     const now: Record<string, boolean> = {
       a: !!raw.buttons[0]?.pressed,
       b: !!raw.buttons[1]?.pressed,
+      x: !!raw.buttons[2]?.pressed,
+      view: !!raw.buttons[8]?.pressed,
       y: !!raw.buttons[3]?.pressed,
       start: !!raw.buttons[9]?.pressed,
       up: !!raw.buttons[12]?.pressed || y0 < -0.6,
@@ -275,6 +288,9 @@ function pollMenuButtons(): void {
       continue;
     }
     if (state === 'lobby' && hit('y')) toggleHowTo(true);
+    if (state === 'lobby' && hit('x')) startTour();
+    if (state === 'lobby' && hit('view')) toggleCup();
+    if (state === 'tour' && (hit('b') || hit('start') || hit('x'))) endTour();
     if (state !== 'race') continue;
     if (hit('start')) setPaused(!paused);
     else if (paused) {
@@ -337,7 +353,7 @@ function handleLocal(
   const e = edges(key, p);
   // A short grace period so a drift button held over the line doesn't skip the results.
   if (state === 'results' && (e.a || e.start) && performance.now() - resultsAt > 2500)
-    return toLobby();
+    return afterResults();
   if (state !== 'lobby') return;
   if (e.lb || e.rb) return cycleTrack(e.rb ? 1 : -1);
   const m = members.find((x) => x.key === key);
@@ -371,6 +387,80 @@ function handleLocal(
     else members.splice(members.indexOf(m), 1);
     renderLobby();
   }
+}
+
+// ---------------- map tour ----------------
+// From the lobby (M, X on a pad, or the button): a drone fly-by of the selected track's map.
+function startTour(): void {
+  if (state !== 'lobby' || tour) return;
+  startAt = 0;
+  members.forEach((m) => (m.ready = false));
+  members.forEach(syncPhone);
+  state = 'tour';
+  howTo.hidden = true;
+  ui.innerHTML = `<div class="tour-hud">
+    <div class="tour-title">MAP TOUR · <b>${track().def.name}</b></div>
+    <div class="tour-caption" id="tour-caption"></div>
+    <div class="tour-foot"><div class="tour-bar"><i id="tour-bar"></i></div>
+    <span class="tour-exit" id="tour-exit">B / Esc to return to the lobby</span></div>
+  </div>`;
+  document.getElementById('tour-exit')!.onclick = () => endTour();
+  // Fly through the lobby's own world of this track (it's already built).
+  tour = new MapTour(view, track(), showroom?.world);
+  applyQuality();
+  (window as unknown as { __epic: unknown }).__epic = { tour, view };
+}
+let tourCaption = '';
+function tourHud(): void {
+  if (!tour) return;
+  const bar = document.getElementById('tour-bar');
+  if (bar) bar.style.width = `${(tour.progress * 100).toFixed(1)}%`;
+  if (tour.caption !== tourCaption) {
+    tourCaption = tour.caption;
+    const el = document.getElementById('tour-caption');
+    if (el) {
+      el.classList.remove('show');
+      el.textContent = tourCaption;
+      // Restart the fade-in for the new name.
+      void el.offsetWidth;
+      if (tourCaption) el.classList.add('show');
+    }
+  }
+}
+function endTour(): void {
+  if (!tour) return;
+  tour.dispose();
+  tour = null;
+  tourCaption = '';
+  toLobby();
+}
+
+// ---------------- tournament ----------------
+function toggleCup(): void {
+  if (state !== 'lobby') return;
+  cupMode = !cupMode;
+  members.forEach((m) => (m.ready = false));
+  renderLobby();
+}
+/** Leave the cup (finished or abandoned): back to the track picked in the lobby. */
+function endCup(): void {
+  if (!cup) return;
+  cup = null;
+  trackId = cupHome;
+}
+/** On from the results: the cup's next race, or back to the lobby. */
+function afterResults(): void {
+  if (state !== 'results') return;
+  if (cup && !cup.last && lastRace) {
+    cup.next();
+    trackId = cup.trackId;
+    session?.dispose();
+    session = null;
+    startRace(lastRace.players);
+    return;
+  }
+  endCup();
+  toLobby();
 }
 
 // ---------------- lobby ----------------
@@ -449,9 +539,15 @@ function renderLobby(): void {
     </div>`
     }
     <div class="slots">${slots}</div>
-    <div class="foot"><span class="track">Track: <b>${track().def.name}</b> · ${track().def.laps} laps · ${track().blurb} <i class="hint">(LB/RB or T to change)</i></span><span class="howto-btn" id="howto-btn">? HOW TO PLAY <i class="hint">(H / Y)</i></span><span class="go" id="go">${allReady ? 'Starting…' : members.length ? 'Waiting for everyone to be ready' : ''}</span></div>
+    <div class="foot"><span class="track">${
+      cupMode
+        ? `Tournament: <b>${new Tournament(trackId).tracks.map((id) => trackById(id).def.name).join(' › ')}</b> · points every race <i class="hint">(LB/RB or T: first track)</i>`
+        : `Track: <b>${track().def.name}</b> · ${track().def.laps} laps · ${track().blurb} <i class="hint">(LB/RB or T to change)</i>`
+    }</span><span class="howto-btn cup-btn ${cupMode ? 'on' : ''}" id="cup-btn">🏆 TOURNAMENT ${cupMode ? 'ON' : 'OFF'} <i class="hint">(G / View)</i></span><span class="howto-btn" id="tour-btn">🎥 MAP TOUR <i class="hint">(M / X)</i></span><span class="howto-btn" id="howto-btn">? HOW TO PLAY <i class="hint">(H / Y)</i></span><span class="go" id="go">${allReady ? 'Starting…' : members.length ? 'Waiting for everyone to be ready' : ''}</span></div>
   </div>`;
   document.getElementById('howto-btn')!.onclick = () => toggleHowTo(true);
+  document.getElementById('tour-btn')!.onclick = () => startTour();
+  document.getElementById('cup-btn')!.onclick = () => toggleCup();
 }
 net.onInfo = () => renderLobby();
 
@@ -468,12 +564,22 @@ function startRace(players: PlayerSetup[], laps = track().def.laps): void {
     setPaused(false);
     state = 'results';
     resultsAt = performance.now();
-    ui.innerHTML = `<div class="results"><h2>RESULTS</h2>${order
-      .map(
-        (r, i) =>
-          `<div class="row ${r.human ? 'human' : ''}"><span>${i + 1}</span><span><i class="sw" style="background:${r.color}"></i>${r.name} · ${r.vehicle}</span><span>${Number.isNaN(r.time) ? '--' : r.time.toFixed(2) + 's'}</span></div>`,
-      )
-      .join('')}<div class="hint">Press A / Enter, or tap Continue on your phone</div></div>`;
+    if (cup) {
+      cup.score(order);
+      ui.innerHTML = cup.html(
+        order,
+        (id) => trackById(id).def.name,
+        cup.last
+          ? 'Press A / Enter, or tap Continue on your phone, to return to the lobby'
+          : `Next race: <b>${trackById(cup.tracks[cup.race + 1]!).def.name}</b> · press A / Enter, or tap Continue on your phone`,
+      );
+    } else
+      ui.innerHTML = `<div class="results"><h2>RESULTS</h2>${order
+        .map(
+          (r, i) =>
+            `<div class="row ${r.human ? 'human' : ''}"><span>${i + 1}</span><span><i class="sw" style="background:${r.color}"></i>${r.name} · ${r.vehicle}</span><span>${Number.isNaN(r.time) ? '--' : r.time.toFixed(2) + 's'}</span></div>`,
+        )
+        .join('')}<div class="hint">Press A / Enter, or tap Continue on your phone</div></div>`;
     order.forEach((r, i) => {
       const m = members.find((x) => x.name === r.name && r.human);
       if (m?.kind === 'phone' && m.slot !== undefined)
@@ -482,10 +588,22 @@ function startRace(players: PlayerSetup[], laps = track().def.laps): void {
   };
   for (const m of members)
     if (m.kind === 'phone' && m.slot !== undefined) net.send(m.slot, { t: 'race' });
-  (window as unknown as { __epic: unknown }).__epic = { session, view, members, net };
+  (window as unknown as { __epic: unknown }).__epic = {
+    session,
+    view,
+    members,
+    net,
+    cup,
+    afterResults,
+  };
 }
 
 function startFromLobby(): void {
+  if (cupMode) {
+    cup = new Tournament(trackId);
+    cupHome = trackId;
+    trackId = cup.trackId;
+  }
   // A lone keyboard player gets every key; two share the keyboard half each.
   const kbPlayers = members.filter((m) => m.kind === 'keyboard').length;
   startRace(
@@ -563,6 +681,11 @@ if (params.get('scene') === 'showroom') {
   const vehicles = (params.get('vehicles') ?? 'pod,bat,nazgul,mach5').split(',');
   const nobody: InputSource = { kind: 'auto', label: 'Autopilot', poll: neutralPad };
   const names = ['REX', 'SAM', 'JO', 'KAI'];
+  if (cupMode) {
+    cup = new Tournament(trackId);
+    cupHome = trackId;
+    trackId = cup.trackId;
+  }
   startRace(
     Array.from({ length: n }, (_, i) => {
       const source: InputSource =
@@ -585,6 +708,7 @@ if (params.get('scene') === 'showroom') {
   if (t > 0) session!.fastForward(t);
 } else {
   toLobby();
+  if (params.has('tour')) startTour();
 }
 net.start();
 
@@ -597,10 +721,14 @@ function loop(now: number): void {
   if (quality.frame(real)) applyQuality();
   fpsMeter?.frame(real, quality, () => view.bufferSize);
   pollLocal();
-  if (session) {
+  if (tour) {
+    tour.frame(dt);
+    tourHud();
+    if (tour.done) endTour();
+  } else if (session) {
     session.frame(dt);
     sendPhoneHud(dt);
-    if (state === 'results' && now - resultsAt > 20000) toLobby();
+    if (state === 'results' && now - resultsAt > (cup ? 45000 : 20000)) afterResults();
   } else if (showroom) {
     showroom.frame(dt, !params.has('fixed'));
     if (state === 'lobby' && startAt && now >= startAt) startFromLobby();
@@ -620,6 +748,9 @@ window.addEventListener('keydown', (e) => {
     return;
   }
   if (state === 'lobby' && e.code === 'KeyH') toggleHowTo(true);
+  if (state === 'lobby' && e.code === 'KeyM') startTour();
+  if (state === 'lobby' && e.code === 'KeyG') toggleCup();
+  else if (state === 'tour' && ['Escape', 'Backspace', 'KeyM', 'KeyB'].includes(e.code)) endTour();
   if (state !== 'race') return;
   if (!paused) {
     if (e.code === 'Escape' || e.code === 'KeyP') setPaused(true);

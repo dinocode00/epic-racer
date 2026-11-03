@@ -502,6 +502,7 @@ const MAX_DRAW = 140;
 export function buildSongbirds(perches: Perch[], obstacles: Obstacle[]) {
   const group = new THREE.Group();
   group.name = 'songbirds';
+  group.userData.tourIgnore = true; // always on the move
   const material = new THREE.MeshStandardMaterial({
     vertexColors: true,
     roughness: 0.75,
