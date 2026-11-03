@@ -7,6 +7,7 @@ import {
   type Theme,
 } from '../render/themes.ts';
 import { FarmScene } from './farmScene.ts';
+import { setFlowerKeepOut } from './flowers.ts';
 import { grassCuts } from './grass.ts';
 import { meshHeight } from './ground.ts';
 import { FARM, type XY } from './layout.ts';
@@ -91,6 +92,7 @@ function farmEnvironment(track: Track, renderer: THREE.WebGLRenderer): RaceEnvir
     return false;
   };
   FARM.pumpkins = FARM.pumpkins.filter(([x, y]) => !onRoad(x, y, 0.4));
+  setFlowerKeepOut((x, y) => onRoad(x, y, 0.35));
   // Trees cut for the race (the run-up to the big forest jump and its landing).
   const cut = new Set(
     (DRAFT as unknown as { cleared: [number, number][] }).cleared.map(([x, y]) => `${x},${y}`),

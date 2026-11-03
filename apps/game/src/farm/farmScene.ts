@@ -9,8 +9,11 @@ import { type Grass, buildGrass } from './grass.ts';
 import { type GrandpaRounds, buildGrandpaRounds } from './grandpaRounds.ts';
 import { setGrimeFrame } from './grime.ts';
 import { buildGround, meshHeight } from './ground.ts';
-import { CENTRE, FARM, FARM_SCALE, type XY, driveHeight, inside } from './layout.ts';
+import { CENTRE, FARM, FARM_SCALE, type XY, driveHeight, groundHeight, inside } from './layout.ts';
+import { keptClear } from './flowers.ts';
+import { PERCHES, type Perch, addPerch } from './perches.ts';
 import { buildPlants } from './plants.ts';
+import { type Obstacle, buildSongbirds } from './songbirds.ts';
 import { addCloudShadow, farmSky } from './sky.ts';
 
 /**
@@ -29,6 +32,7 @@ export class FarmScene {
   private solids: { c: XY; w: number; h: number; angle: number }[];
   private grass: Grass;
   private critters: ReturnType<typeof buildCritters>;
+  readonly birds: ReturnType<typeof buildSongbirds>;
   /** Grandpa on his rounds: walking three loops and mowing the Christmas tree aisles. */
   readonly grandpa: GrandpaRounds;
   private farm: THREE.Group;
@@ -78,12 +82,16 @@ export class FarmScene {
     this.grass = buildGrass((land.material as THREE.MeshStandardMaterial).map!);
     farm.add(this.grass.group);
     this.farm = farm;
+    PERCHES.length = 0;
     const b = buildBuildings();
     const plants = buildPlants();
+    const spots = birdSpots(b.group);
     farm.add(b.group, plants);
     const bees = plants.userData.update as (t: number) => void;
     this.critters = buildCritters(plants.userData.spots as BeeSpot[]);
     farm.add(this.critters.group);
+    this.birds = buildSongbirds(spots.perches, spots.obstacles);
+    farm.add(this.birds.group);
     this.grandpa = buildGrandpaRounds();
     farm.add(this.grandpa.group);
     this.updateProps = (t) => {
@@ -215,6 +223,114 @@ export class FarmScene {
     this.farm.worldToLocal(this.camLocal.copy(camera.position));
     this.grass.update(this.camLocal);
     this.critters.update(this.t, this.camLocal);
+    this.birds.update(this.t, this.camLocal);
     this.grandpa.update(clock ?? this.t, dt, this.camLocal);
   }
+}
+
+/**
+ * Where songbirds can land beyond the trees and flowers (roof ridges, posts, the lawn and the
+ * fields), found by looking straight down onto the buildings, and what their flights must clear.
+ */
+function birdSpots(buildings: THREE.Object3D): { perches: Perch[]; obstacles: Obstacle[] } {
+  buildings.updateMatrixWorld(true);
+  const solids: THREE.Mesh[] = [];
+  buildings.traverse((o) => {
+    const m = o as THREE.Mesh;
+    if (m.isMesh && !(m as THREE.InstancedMesh).isInstancedMesh && o.visible) solids.push(m);
+  });
+  const ray = new THREE.Raycaster();
+  const down = new THREE.Vector3(0, -1, 0);
+  const topAt = (x: number, y: number): number | null => {
+    ray.set(new THREE.Vector3(x, 60, -y), down);
+    const hit = ray.intersectObjects(solids, false)[0];
+    return hit ? hit.point.y : null;
+  };
+  const obstacles: Obstacle[] = [];
+  const rects = [
+    FARM.barn,
+    FARM.wooden_garage,
+    FARM.red_garage,
+    FARM.shed,
+    FARM.greenhouse,
+    FARM.playhouse,
+    { ...FARM.house.main, angle: FARM.house.angle },
+    { ...FARM.house.wing, angle: FARM.house.angle },
+  ];
+  for (const r of rects) {
+    const th = ((r.angle ?? 0) * Math.PI) / 180;
+    const ax: XY = [Math.cos(th), Math.sin(th)],
+      ay: XY = [-Math.sin(th), Math.cos(th)];
+    const hits: [number, number, number][] = [];
+    const half = Math.max(r.w, r.h) / 2;
+    for (let i = -2; i <= 2; i++)
+      for (let j = -2; j <= 2; j++) {
+        const x = r.c[0] + (ax[0] * i + ay[0] * j) * half * 0.4,
+          y = r.c[1] + (ax[1] * i + ay[1] * j) * half * 0.4;
+        const h = topAt(x, y);
+        if (h !== null && h > 1.5) hits.push([x, y, h]);
+      }
+    if (!hits.length) continue;
+    hits.sort((a, b) => b[2] - a[2]);
+    obstacles.push({ x: r.c[0], z: -r.c[1], r: Math.hypot(r.w, r.h) / 2 + 1, top: hits[0]![2] });
+    // Up to three spots along the ridge, a metre or more apart.
+    const kept: [number, number, number][] = [];
+    for (const h of hits)
+      if (h[2] > hits[0]![2] - 0.3 && kept.every((k) => Math.hypot(k[0] - h[0], k[1] - h[1]) > 1.2))
+        if (kept.push(h) >= 3) break;
+    for (const [x, y, h] of kept) addPerch(x, h + 0.01, -y, 'roof');
+  }
+  // Posts and tops of things: the windmill, the corn crib, the clothes-line posts, the well,
+  // the mailbox.
+  for (const [p, big] of [
+    [FARM.windmill, true],
+    [FARM.corn_crib, true],
+    [FARM.clothes_lines[0], false],
+    [FARM.clothes_lines[1], false],
+    [FARM.well, false],
+    [FARM.mailbox, false],
+  ] as const) {
+    let best: [number, number, number] | null = null;
+    for (const [dx, dy] of [
+      [0, 0],
+      [0.15, 0],
+      [-0.15, 0],
+      [0, 0.15],
+      [0, -0.15],
+    ]) {
+      const h = topAt(p[0] + dx, p[1] + dy);
+      if (h !== null && (!best || h > best[2])) best = [p[0] + dx, p[1] + dy, h];
+    }
+    if (!best) continue;
+    addPerch(best[0], best[2] + 0.01, -best[1], 'post');
+    if (big) obstacles.push({ x: p[0], z: -p[1], r: 2.5, top: best[2] });
+  }
+  // The trees they'd otherwise fly through.
+  const R: Partial<Record<Perch['tag'], number>> = {
+    spruce: 2.8,
+    pine: 5,
+    orchard: 2.2,
+    arbor: 0.9,
+  };
+  for (const q of PERCHES) if (R[q.tag]) obstacles.push({ x: q.x, z: q.z, r: R[q.tag]!, top: q.y });
+  // Lawn round the house and the yard, and the fields beyond the line.
+  for (const c of [FARM.well, FARM.clothes_lines[0], FARM.clothes_lines[1], ...FARM.lilacs]) {
+    const x = c[0] + 3,
+      y = c[1] - 2;
+    addPerch(x, groundHeight(x, y), -y, 'lawn', true);
+  }
+  for (const poly of [FARM.outside_east_field, FARM.outside_hill]) {
+    const xs = poly.map((p) => p[0]),
+      ys = poly.map((p) => p[1]);
+    for (let n = 0, tries = 0; n < 14 && tries < 400; tries++) {
+      const x = Math.min(...xs) + Math.random() * (Math.max(...xs) - Math.min(...xs));
+      const y = Math.min(...ys) + Math.random() * (Math.max(...ys) - Math.min(...ys));
+      if (!inside(x, y, poly)) continue;
+      addPerch(x, groundHeight(x, y), -y, 'field', true);
+      n++;
+    }
+  }
+  // Nothing lands on the racetrack.
+  const perches = PERCHES.filter((q) => !(q.ground && keptClear(q.x, -q.z)));
+  return { perches, obstacles };
 }

@@ -12,6 +12,8 @@ import * as tex from '../render/textures.ts';
 import { windy } from '../render/wind.ts';
 import { bake } from './bake.ts';
 import { type BeeSpot, bees } from './bees.ts';
+import { type FlowerKind, FlowerField, pick } from './flowers.ts';
+import { addPerch } from './perches.ts';
 import {
   BERM,
   FARM,
@@ -228,25 +230,42 @@ export function buildPlants(): THREE.Group {
       ),
     ]),
   ) as Record<Species, TreeBatch>;
-  for (const t of FARM.christmas_trees)
+  let nth = 0;
+  for (const t of FARM.christmas_trees) {
+    const h = t.heightFt * FT * (0.92 + rnd() * 0.16);
+    // Songbirds sing from the leaders of the bigger trees (not the ones trimmed for the road).
+    if (!t.trimmed && h > 1.8 && nth++ % 3 === 0)
+      addPerch(t.x, groundHeight(t.x, t.y) - 0.05 + h * 0.985, -t.y, 'xmas');
     xmas[t.species].add(
       t.x,
       t.y,
-      t.heightFt * FT * (0.92 + rnd() * 0.16),
+      h,
       // Trees standing in the racetrack are trimmed slim so you can see between the trunks.
       (0.94 + rnd() * 0.12) * (t.trimmed ? 0.45 : 1),
       vary(0.08),
     );
+  }
   for (const k of kinds) root.add(xmas[k].done());
   root.add(stumps());
 
   // ---- Big spruces by the road (10-20 ft over the house), the spruce row, the giant Scotch pine.
   const big = new TreeBatch(normalise(spruce), 30, true);
-  for (const p of FARM.big_spruces) big.add(p[0], p[1], 12 + rnd() * 3, 1, vary(0.08));
-  for (const p of FARM.spruce_row) big.add(p[0], p[1], 9 + rnd() * 2.5, 0.95, vary(0.08));
+  for (const [list, h0, dh, w] of [
+    [FARM.big_spruces, 12, 3, 1],
+    [FARM.spruce_row, 9, 2.5, 0.95],
+  ] as const)
+    for (const p of list) {
+      const h = h0 + rnd() * dh;
+      big.add(p[0], p[1], h, w, vary(0.08));
+      addPerch(p[0], groundHeight(p[0], p[1]) - 0.05 + h * 0.985, -p[1], 'spruce');
+    }
   root.add(big.done());
   const giant = new TreeBatch(normalise(scotchGiant), 1);
   giant.add(FARM.big_scotch_pine[0], FARM.big_scotch_pine[1], 19, 1, undefined, 0.3);
+  {
+    const [px, py] = FARM.big_scotch_pine;
+    addPerch(px + 0.3, groundHeight(px, py) + 18.0, -py - 0.3, 'pine');
+  }
   root.add(giant.done());
 
   // ---- Orchard: trained trees about 13 ft tall; apples hang at about 5 ft.
@@ -288,6 +307,12 @@ export function buildPlants(): THREE.Group {
     const yaw = rnd() * Math.PI * 2,
       wd = 0.95 + rnd() * 0.1;
     orch[kind].add(x, y, h, wd, vary(0.08), yaw);
+    addPerch(x, groundHeight(x, y) - 0.05 + h * 0.97, -y, 'orchard');
+    // Robins hunt the mown grass between the rows.
+    const ga = rnd() * 6.28;
+    const gx = x + Math.cos(ga) * 2.4,
+      gy = y + Math.sin(ga) * 2.4;
+    addPerch(gx, groundHeight(gx, gy), -gy, 'lawn', true);
     const [col, r] = FRUIT[kind]!;
     const [d0, d1] = REACH[kind];
     const g0 = groundHeight(x, y);
@@ -366,7 +391,7 @@ export function buildPlants(): THREE.Group {
   root.add(neighbourFarm([FARM.neighbourWoods[0]![0] + 26, FARM.neighbourWoods[0]![1] + 4], 0.3));
   root.add(neighbourFarm([FARM.neighbourWoods[1]![0] - 28, FARM.neighbourWoods[1]![1] - 6], 2.1));
 
-  root.add(arborvitae(), lilacs(), grapes(), garden(), pumpkins());
+  root.add(arborvitae(), lilacs(), grapes(), garden(), yardFlowers(), pumpkins());
   meadowBees();
   const hive = bees(SPOTS);
   root.add(hive.mesh);
@@ -384,8 +409,11 @@ export function buildPlants(): THREE.Group {
 /** Mature arborvitae, about 11 ft: full, dense columns that nearly meet along the row. */
 function arborvitae(): THREE.Group {
   const b = new TreeBatch(normalise(arborvitaeTree), FARM.arborvitae.length, true);
-  for (const p of FARM.arborvitae)
-    b.add(p[0], p[1], 11 * FT * (0.94 + rnd() * 0.12), 1, vary(0.07));
+  for (const p of FARM.arborvitae) {
+    const h = 11 * FT * (0.94 + rnd() * 0.12);
+    b.add(p[0], p[1], h, 1, vary(0.07));
+    addPerch(p[0], groundHeight(p[0], p[1]) - 0.05 + h * 0.97, -p[1], 'arbor');
+  }
   return b.done();
 }
 
@@ -508,6 +536,7 @@ function lilacs(): THREE.Group {
     cardMesh.castShadow = cardMesh.receiveShadow = true;
     bush.add(windy(cardMesh, LILAC_WIND, 'lilac'));
     bush.position.set(p[0], driveHeight(p[0], p[1]) - 0.15, -p[1]);
+    addPerch(p[0] + 0.3, bush.position.y + 3.05, -p[1] + 0.2, 'lilac');
     SPOTS.push({ x: p[0], y: bush.position.y + 2.6, z: -p[1], r: 2.0, n: 7 });
     bush.rotation.y = rnd() * 6;
     g.add(bush);
@@ -596,23 +625,119 @@ function grapes(): THREE.Group {
   return g;
 }
 
-/** The small vegetable and flower garden beside the grapes. */
+/**
+ * The small vegetable and flower garden beside the grapes: a row of sunflowers along the back
+ * (heads to the east), staked tomatoes, rows of leaf lettuce, then zinnias and a marigold edging.
+ */
 function garden(): THREE.Group {
   const G = FARM.garden;
-  const g = new THREE.Group();
-  const cols = [0xe04848, 0xf2c230, 0xffffff, 0xc060d0, 0x4f9a35, 0x4f9a35, 0x3e8a2c];
-  for (let i = 0; i < 46; i++) {
-    const c = cols[i % cols.length]!;
-    const o = new THREE.Mesh(
-      new THREE.IcosahedronGeometry(0.1 + rnd() * 0.12, 0),
-      new THREE.MeshStandardMaterial({ color: c, roughness: 0.8 }),
-    );
-    o.position.set((rnd() - 0.5) * G.h, 0.15 + rnd() * 0.3, (rnd() - 0.5) * G.w);
-    g.add(o);
+  const f = new FlowerField();
+  const th = ((G.angle ?? 0) * Math.PI) / 180;
+  const c = Math.cos(th),
+    sn = Math.sin(th);
+  // Garden-local (along its length, across it) to farm coordinates, as the old group's turn.
+  const put = (kind: FlowerKind, lx: number, lz: number, scale = 1, yaw?: number) => {
+    const x = G.c[0] + lx * c + lz * sn,
+      z = -G.c[1] - lx * sn + lz * c;
+    f.add(kind, x, groundHeight(x, -z) - 0.02, z, scale, yaw);
+  };
+  const W = G.w / 2,
+    L = G.h / 2;
+  const along = (z: number, step: number, kind: () => FlowerKind, scale = 1, yaw?: number) => {
+    for (let x = -L + step / 2; x < L - step / 3; x += step)
+      put(kind(), x + (rnd() - 0.5) * step * 0.2, z + (rnd() - 0.5) * 0.05, scale, yaw);
+  };
+  along(-W + 0.2, 0.5, () => 'sunflower', 1, 0);
+  along(-W + 0.6, 0.6, () => 'tomato');
+  along(-W + 0.95, 0.34, () => 'lettuce');
+  along(-W + 1.25, 0.34, () => 'lettuce', 0.9);
+  const zin: [FlowerKind, number][] = [
+    ['zinniaMagenta', 1],
+    ['zinniaOrange', 1],
+    ['zinniaRed', 1],
+    ['zinniaYellow', 1],
+  ];
+  along(W - 0.5, 0.32, () => pick(zin));
+  along(W - 0.18, 0.24, () => (rnd() < 0.5 ? 'marigold' : 'marigoldYellow'));
+  return f.build();
+}
+
+/**
+ * Flowers round the yard beyond the beds: orange daylilies all along the roadside ditch and
+ * round the mailbox, coneflowers and black-eyed Susans round the well and the windmill, a few
+ * sunflowers by the corn crib, and drifts of prairie flowers out in the fields.
+ */
+function yardFlowers(): THREE.Group {
+  const f = new FlowerField();
+  const at = (kind: FlowerKind, x: number, y: number, scale = 1, yaw?: number) =>
+    f.add(kind, x, groundHeight(x, y) - 0.02, -y, scale, yaw);
+  // Ditch lilies on the farm side of the road ditch, in clumps with gaps.
+  const house = FARM.house.main.c;
+  for (const [a, b] of FARM.ditch) {
+    const dx = b[0] - a[0],
+      dy = b[1] - a[1];
+    const len = Math.hypot(dx, dy);
+    let nx = -dy / len,
+      ny = dx / len;
+    if ((house[0] - a[0]) * nx + (house[1] - a[1]) * ny < 0) [nx, ny] = [-nx, -ny];
+    for (let d = 0.5; d < len - 0.5; d += 0.75) {
+      if (rnd() < 0.2) continue;
+      const off = 1.5 + rnd() * 0.9;
+      const x = a[0] + (dx / len) * d + nx * off,
+        y = a[1] + (dy / len) * d + ny * off;
+      at('daylily', x, y, 0.9 + rnd() * 0.3);
+      if ((d | 0) % 6 === 0) SPOTS.push({ x, y: groundHeight(x, y) + 0.7, z: -y, r: 1.2, n: 1 });
+    }
   }
-  g.position.set(G.c[0], groundHeight(G.c[0], G.c[1]), -G.c[1]);
-  g.rotation.y = ((G.angle ?? 0) * Math.PI) / 180;
-  return g;
+  const ring = (c: XY, r0: number, r1: number, n: number, mix: [FlowerKind, number][]) => {
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2 + rnd() * 0.3,
+        r = r0 + rnd() * (r1 - r0);
+      at(pick(mix), c[0] + Math.cos(a) * r, c[1] + Math.sin(a) * r, 0.9 + rnd() * 0.25);
+    }
+    SPOTS.push({ x: c[0], y: groundHeight(c[0], c[1]) + 0.7, z: -c[1], r: r1 + 0.3, n: 3 });
+  };
+  ring(FARM.mailbox, 0.35, 0.75, 7, [
+    ['daylily', 3],
+    ['susan', 1],
+  ]);
+  ring(FARM.well, 1.1, 1.6, 14, [
+    ['coneflower', 2],
+    ['susan', 2],
+    ['beebalm', 1],
+    ['phloxPink', 1],
+  ]);
+  ring(FARM.windmill, 1.3, 2.0, 12, [
+    ['susan', 3],
+    ['goldenrod', 1],
+    ['bergamot', 1],
+  ]);
+  const crib = FARM.corn_crib;
+  for (let i = 0; i < 6; i++) at('sunflower', crib[0] - 2.2 + i * 0.55, crib[1] - 2.0, 1, 0);
+  // Prairie flowers out in the fields beyond the line, in drifts.
+  const prairie: [FlowerKind, number][] = [
+    ['susan', 4],
+    ['coneflower', 3],
+    ['bergamot', 2],
+    ['queenAnne', 3],
+    ['chicory', 2],
+    ['milkweedOrange', 2],
+    ['goldenrod', 3],
+  ];
+  for (const poly of [FARM.outside_east_field, FARM.outside_hill]) {
+    const xs = poly.map((p) => p[0]),
+      ys = poly.map((p) => p[1]);
+    for (let placed = 0, tries = 0; placed < 70 && tries < 2000; tries++) {
+      const x = Math.min(...xs) + rnd() * (Math.max(...xs) - Math.min(...xs));
+      const y = Math.min(...ys) + rnd() * (Math.max(...ys) - Math.min(...ys));
+      if (!inside(x, y, poly)) continue;
+      const kind = pick(prairie);
+      for (let j = 0; j < 5; j++)
+        at(kind, x + (rnd() - 0.5) * 1.4, y + (rnd() - 0.5) * 1.4, 0.9 + rnd() * 0.3);
+      placed++;
+    }
+  }
+  return f.build();
 }
 
 /** Ribbed pumpkin body of unit radius: `flat` squashes it, `ribs` and `depth` set the lobes. */

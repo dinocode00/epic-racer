@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import * as tex from '../render/textures.ts';
 import { windGust, windUniforms, windy } from '../render/wind.ts';
+import { type FlowerKind, FlowerField, flowerRnd, pick } from './flowers.ts';
 import { addGrime } from './grime.ts';
 import DRAFT from './racetrackDraft.json';
 import {
@@ -696,7 +697,7 @@ function farmhouse(): THREE.Group {
   // A thin planter along the south wall from the porch to the pad, beside the sidewalk.
   const padEdge = local(addXY(FARM.house_pad.c, V, FARM.house_pad.h / 2), H.main.c, H.angle)[1];
   const sLen = padEdge - -W / 2 - 0.1;
-  const sp = flowerPlanter(sLen, 0.8, 57);
+  const sp = flowerPlanter(sLen, 0.8);
   sp.rotation.y = -Math.PI / 2;
   sp.position.set(-L / 2 - 0.13, 0, -W / 2 + sLen / 2);
   g.add(sp);
@@ -716,9 +717,9 @@ function farmhouse(): THREE.Group {
 
 /**
  * A flower bed `len` long (along x) and `d` deep (from z = 0 out to +z), edged in timbers on its
- * three open sides and full of flowers.
+ * three open sides and full of flowers (flowers.ts).
  */
-function flowerPlanter(len: number, d: number, seed0 = 31): THREE.Group {
+function flowerPlanter(len: number, d: number): THREE.Group {
   const m = mats();
   const g = new THREE.Group();
   const z0 = 0,
@@ -729,51 +730,62 @@ function flowerPlanter(len: number, d: number, seed0 = 31): THREE.Group {
     boxM(0.12, 0.22, d + 0.12, m.wood, -len / 2 - 0.06, 0.05, zc),
     boxM(0.12, 0.22, d + 0.12, m.wood, len / 2 + 0.06, 0.05, zc),
   );
-  let seed = seed0;
-  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-  const leafy: THREE.Matrix4[] = [],
-    blooms: THREE.Matrix4[] = [],
-    cols: THREE.Color[] = [];
-  const palette = [0xe8384a, 0xf27aa6, 0xf6d02c, 0xffffff, 0x9b6ad6, 0xf28a2a, 0xd8344f];
-  const mt = (x: number, y: number, z: number, sx: number, sy: number) =>
-    new THREE.Matrix4().makeScale(sx, sy, sx).setPosition(x, y, z);
-  const n = Math.round((70 * len * d) / (9.7 * 1.4));
-  for (let i = 0; i < n; i++) {
-    const x = -len / 2 + 0.2 + rnd() * (len - 0.4),
-      z = z0 + 0.15 + rnd() * (d - 0.3);
-    const s = 0.14 + rnd() * 0.12;
-    leafy.push(mt(x, 0.15 + s * 0.6, z, s, s * 0.8));
-    const c = palette[(rnd() * palette.length) | 0]!;
-    for (let k = 0; k < 4; k++) {
-      blooms.push(
-        mt(
-          x + (rnd() - 0.5) * s * 1.6,
-          0.2 + s * (1.0 + rnd() * 0.5),
-          z + (rnd() - 0.5) * s * 1.6,
-          0.035 + rnd() * 0.025,
-          0.03,
-        ),
+  // A farmhouse bed: tall perennials against the wall, then zinnias and geraniums, then
+  // petunias and marigolds spilling over the front timber. A narrow bed is just the front rows.
+  const f = new FlowerField(false);
+  const back: [FlowerKind, number][] = [
+    ['phloxPink', 2],
+    ['phloxWhite', 1],
+    ['coneflower', 2],
+    ['susan', 2],
+    ['beebalm', 1],
+    ['phloxMagenta', 1],
+  ];
+  const middle: [FlowerKind, number][] = [
+    ['zinniaMagenta', 1],
+    ['zinniaOrange', 1],
+    ['zinniaRed', 1],
+    ['zinniaYellow', 1],
+    ['geraniumRed', 2],
+    ['geraniumPink', 1],
+  ];
+  const front: [FlowerKind, number][] = [
+    ['petuniaPurple', 2],
+    ['petuniaPink', 2],
+    ['petuniaWhite', 1],
+    ['petuniaRed', 1],
+    ['marigold', 2],
+    ['marigoldYellow', 1],
+  ];
+  const rows: [number, [FlowerKind, number][], number][] =
+    d > 1
+      ? [
+          [0.28, back, 0.42],
+          [0.72, middle, 0.3],
+          [1.12, front, 0.22],
+        ]
+      : [
+          [0.25, middle, 0.3],
+          [0.58, front, 0.22],
+        ];
+  for (const [z, mix, step] of rows) {
+    // Plant in drifts of three to five of a kind, as gardeners do.
+    let kind = pick(mix),
+      left = 0;
+    for (let x = -len / 2 + 0.18; x < len / 2 - 0.12; x += step * (0.85 + flowerRnd() * 0.3)) {
+      if (left-- <= 0) {
+        kind = pick(mix);
+        left = 2 + ((flowerRnd() * 3) | 0);
+      }
+      f.add(
+        kind,
+        x,
+        0.1,
+        Math.min(d - 0.1, z * (d > 1 ? d / 1.4 : 1) + (flowerRnd() - 0.5) * 0.08),
       );
-      cols.push(new THREE.Color(c).multiplyScalar(0.85 + rnd() * 0.3));
     }
   }
-  const geo = new THREE.IcosahedronGeometry(1, 1);
-  const lm = new THREE.InstancedMesh(
-    geo,
-    new THREE.MeshStandardMaterial({ color: 0x4d8a3a, roughness: 0.9 }),
-    leafy.length,
-  );
-  leafy.forEach((x, i) => lm.setMatrixAt(i, x));
-  const bm = new THREE.InstancedMesh(
-    geo,
-    new THREE.MeshStandardMaterial({ roughness: 0.7 }),
-    blooms.length,
-  );
-  blooms.forEach((x, i) => {
-    bm.setMatrixAt(i, x);
-    bm.setColorAt(i, cols[i]!);
-  });
-  g.add(lm, bm);
+  g.add(f.build());
   return g;
 }
 
@@ -2169,29 +2181,36 @@ function rampBerms(): THREE.Group {
     mesh.receiveShadow = true;
     g.add(mesh);
   }
-  // Wildflowers on the mounds.
-  const n = 260;
-  const fl = new THREE.InstancedMesh(
-    new THREE.IcosahedronGeometry(1, 0),
-    new THREE.MeshStandardMaterial({ roughness: 0.8 }),
-    n,
-  );
-  const mt = new THREE.Matrix4();
-  const cols = [0xffffff, 0xf4d23a, 0xb28ad8, 0xf0a0c0, 0xffffff];
+  // Wildflowers on the mounds: prairie flowers in loose drifts.
+  const f = new FlowerField();
+  const mix: [FlowerKind, number][] = [
+    ['susan', 4],
+    ['coneflower', 3],
+    ['bergamot', 2],
+    ['queenAnne', 2],
+    ['chicory', 2],
+    ['milkweedOrange', 1],
+    ['goldenrod', 1],
+  ];
   let seed = 9;
   const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-  for (let k = 0; k < n; k++) {
+  for (let k = 0; k < 150; k++) {
     const t = 0.08 + rnd() * 0.9;
     const half = rampFrame(...rampPoint(t, 0)).half;
     const side = rnd() < 0.5 ? -1 : 1;
-    const p = rampPoint(t, side * (half + (0.15 + rnd() * 0.8) * BERM));
-    const h = rampHeight(p[0], p[1]) ?? groundHeight(p[0], p[1]);
-    const r = 0.05 + rnd() * 0.04;
-    mt.makeScale(r, r * 0.7, r).setPosition(p[0], h + r * 0.6, -p[1]);
-    fl.setMatrixAt(k, mt);
-    fl.setColorAt(k, new THREE.Color(cols[k % cols.length]!));
+    const kind = pick(mix);
+    // Each drift is a few plants close together.
+    const e0 = 0.15 + rnd() * 0.75;
+    for (let j = 0; j < 3; j++) {
+      const p = rampPoint(
+        Math.min(0.99, t + (rnd() - 0.5) * 0.02),
+        side * (half + Math.min(0.95, e0 + (rnd() - 0.5) * 0.12) * BERM),
+      );
+      const h = rampHeight(p[0], p[1]) ?? groundHeight(p[0], p[1]);
+      f.add(kind, p[0], h - 0.02, -p[1], 0.85 + rnd() * 0.3);
+    }
   }
-  g.add(fl);
+  g.add(f.build());
   return g;
 }
 

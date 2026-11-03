@@ -267,9 +267,13 @@ function paintGround(): THREE.CanvasTexture {
     x.rotate(-((g.angle ?? 0) * Math.PI) / 180);
     x.fillStyle = '#5e4630';
     x.fillRect((-g.h / 2) * PPM, (-g.w / 2) * PPM, g.h * PPM, g.w * PPM);
-    for (let i = 0; i < 140; i++) {
-      x.fillStyle = ['#e04848', '#f2c230', '#ffffff', '#c060d0', '#4f9a35', '#4f9a35'][i % 6]!;
-      x.fillRect((rnd() - 0.5) * g.h * PPM, (rnd() - 0.5) * g.w * PPM, 4, 4);
+    // Hoed rows of darker soil along its length (the plants themselves are in flowers.ts).
+    x.fillStyle = '#4a3624';
+    for (let r = 0; r < 6; r++)
+      x.fillRect((-g.h / 2) * PPM, (-g.w / 2 + 0.15 + r * 0.33) * PPM, g.h * PPM, 0.12 * PPM);
+    for (let i = 0; i < 60; i++) {
+      x.fillStyle = rnd() < 0.5 ? '#6b5038' : '#3f2e1e';
+      x.fillRect((rnd() - 0.5) * g.h * PPM, (rnd() - 0.5) * g.w * PPM, 2, 2);
     }
     x.restore();
   }

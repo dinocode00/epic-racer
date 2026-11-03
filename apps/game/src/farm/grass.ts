@@ -304,22 +304,64 @@ function tuftGeometry(blades: number, segs: number, spread: number, seedHead = f
   return g;
 }
 
-/** A wildflower: a short stem and a flat, star-shaped head (coloured per instance). */
+/**
+ * A wildflower seen across the meadow: a stem with two leaves and a head of separate rays round
+ * a raised centre (the rays coloured per instance, the centre darker).
+ */
 function flowerGeometry() {
   const pos: number[] = [0, 0, 0, 0.02, 0, 0, 0, 0.8, 0, 0.02, 0.8, 0];
   const tip: number[] = [0, 0, 0.8, 0.8];
   const idx: number[] = [0, 1, 2, 1, 3, 2];
-  const petals = 7;
-  const c = pos.length / 3;
-  pos.push(0, 0.82, 0);
-  tip.push(1.2);
-  for (let i = 0; i <= petals * 2; i++) {
-    const a = (i / (petals * 2)) * Math.PI * 2;
-    const r = i % 2 ? 0.08 : 0.2;
-    pos.push(Math.cos(a) * r, 0.8 + (i % 2 ? 0.01 : -0.02), Math.sin(a) * r);
-    tip.push(1.2);
+  // Two leaves partway up the stem (green: below the head).
+  for (const [y, a] of [
+    [0.3, 0.4],
+    [0.5, 3.6],
+  ] as const) {
+    const c = pos.length / 3;
+    const dx = Math.cos(a),
+      dz = Math.sin(a);
+    pos.push(
+      0.01,
+      y,
+      0,
+      dx * 0.22,
+      y + 0.06,
+      dz * 0.22,
+      dx * 0.1 - dz * 0.05,
+      y + 0.07,
+      dz * 0.1 + dx * 0.05,
+    );
+    tip.push(y, y + 0.1, y + 0.1);
+    idx.push(c, c + 1, c + 2);
   }
-  for (let i = 0; i < petals * 2; i++) idx.push(c, c + 1 + i + 1, c + 1 + i);
+  // Rays: each a narrow blade from the centre's rim out to a rounded tip, drooping a little.
+  const rays = 12;
+  for (let i = 0; i < rays; i++) {
+    const a = (i / rays) * Math.PI * 2 + (i % 2) * 0.08;
+    const ca = Math.cos(a),
+      sa = Math.sin(a);
+    const side = (r: number, w: number) => [ca * r - sa * w, sa * r + ca * w];
+    const c = pos.length / 3;
+    const [x0, z0] = side(0.05, -0.022),
+      [x1, z1] = side(0.05, 0.022),
+      [x2, z2] = side(0.15, -0.032),
+      [x3, z3] = side(0.15, 0.032),
+      [x4, z4] = side(0.21, 0);
+    pos.push(x0, 0.82, z0, x1, 0.82, z1, x2, 0.81, z2, x3, 0.81, z3, x4, 0.79, z4);
+    tip.push(1.2, 1.2, 1.2, 1.2, 1.2);
+    idx.push(c, c + 2, c + 1, c + 1, c + 2, c + 3, c + 2, c + 4, c + 3);
+  }
+  // The raised centre: a little cone of florets.
+  const c0 = pos.length / 3;
+  pos.push(0, 0.87, 0);
+  tip.push(1.3);
+  const seg = 8;
+  for (let i = 0; i < seg; i++) {
+    const a = (i / seg) * Math.PI * 2;
+    pos.push(Math.cos(a) * 0.055, 0.82, Math.sin(a) * 0.055);
+    tip.push(1.3);
+  }
+  for (let i = 0; i < seg; i++) idx.push(c0, c0 + 1 + ((i + 1) % seg), c0 + 1 + i);
   const g = new THREE.InstancedBufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.setAttribute(
@@ -448,6 +490,8 @@ function grassMaterial(L: Layer): THREE.MeshStandardMaterial {
         vec3 base = mix(aColor, ground * 1.08, ${f(L.groundTint)});
         // Flowers: a green stem under the coloured head.
         if (${f(L.groundTint)} < 0.5 && aTip < 0.85) base = vec3(0.22, 0.36, 0.13);
+        // ...and a darker raised centre in the middle of the rays.
+        if (${f(L.groundTint)} < 0.5 && aTip > 1.25) base = aColor * 0.25 + vec3(0.22, 0.14, 0.03);
         float k = mix(0.6, 1.0 + ${f(L.tipLight)}, clamp(aTip, 0.0, 1.0));
         vGrass = base * k * (1.0 + 0.3 * g * tt);
         `,
