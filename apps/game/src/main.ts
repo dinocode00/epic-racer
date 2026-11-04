@@ -283,6 +283,10 @@ const settingsEl = document.createElement('div');
 settingsEl.className = 'pause-overlay settings-overlay';
 settingsEl.hidden = true;
 document.body.appendChild(settingsEl);
+// A click outside the panel closes it too.
+settingsEl.addEventListener('click', (e) => {
+  if (e.target === settingsEl) toggleSettings(false);
+});
 let settingsSel = 0;
 function renderSettings(): void {
   const h = humansNow();
@@ -291,7 +295,8 @@ function renderSettings(): void {
       `<div class="set-row ${i === settingsSel ? 'sel' : ''}" data-i="${i}"><span class="set-label">${r.label}</span><span class="set-val"><b data-d="-1">◀</b><span>${r.value(settings, h)}</span><b data-d="1">▶</b></span><div class="set-note">${r.note(settings, h)}</div></div>`,
   ).join(
     '',
-  )}<div class="pause-hint">↑ ↓ choose · ← → change · Enter / A / Esc / B done · saved for next time</div></div>`;
+  )}<div class="set-done" id="set-done">DONE</div><div class="pause-hint">↑ ↓ choose · ← → change · Enter / A / Esc / B done · saved for next time</div></div>`;
+  document.getElementById('set-done')!.onclick = () => toggleSettings(false);
   settingsEl.querySelectorAll<HTMLElement>('.set-row').forEach((row) => {
     row.onclick = () => {
       settingsSel = Number(row.dataset.i);
@@ -599,7 +604,7 @@ function renderLobby(): void {
   if (allReady && !startAt) startAt = performance.now() + 3000;
   if (!allReady) startAt = 0;
   ui.innerHTML = `<div class="lobby">
-    <h1>EPIC RACER</h1>
+    <div class="top"><h1>EPIC RACER</h1><div class="actions"><span class="lb-btn" id="set-btn">⚙ SETTINGS <i class="hint">O / Menu</i></span><span class="lb-btn cup-btn ${cupMode ? 'on' : ''}" id="cup-btn">🏆 TOURNAMENT ${cupMode ? 'ON' : 'OFF'} <i class="hint">G / View</i></span><span class="lb-btn" id="tour-btn">🎥 MAP TOUR <i class="hint">M / X</i></span><span class="lb-btn" id="howto-btn">? HOW TO PLAY <i class="hint">H / Y</i></span></div></div>
     ${
       net.standalone
         ? `<div class="join couch">
@@ -620,9 +625,9 @@ function renderLobby(): void {
     ${modeInfo()}
     <div class="foot"><span class="track">${
       cupMode
-        ? `Tournament: <b>${new Tournament(trackId, settings.cupRaces).tracks.map((id) => trackById(id).def.name).join(' › ')}</b> <i class="hint">(LB/RB or T: first track)</i>`
-        : `Track: <b>${track().def.name}</b> · ${lapsFor()} laps · ${track().blurb} <i class="hint">(LB/RB or T to change)</i>`
-    }</span><span class="howto-btn" id="set-btn">⚙ SETTINGS <i class="hint">(O / Menu)</i></span><span class="howto-btn cup-btn ${cupMode ? 'on' : ''}" id="cup-btn">🏆 TOURNAMENT ${cupMode ? 'ON' : 'OFF'} <i class="hint">(G / View)</i></span><span class="howto-btn" id="tour-btn">🎥 MAP TOUR <i class="hint">(M / X)</i></span><span class="howto-btn" id="howto-btn">? HOW TO PLAY <i class="hint">(H / Y)</i></span><span class="go" id="go">${allReady ? 'Starting…' : members.length ? 'Waiting for everyone to be ready' : ''}</span></div>
+        ? `First track: <b>${track().def.name}</b> <i class="hint">(LB/RB or T to change)</i>`
+        : `Track: <b>${track().def.name}</b> · ${track().blurb} <i class="hint">(LB/RB or T to change)</i>`
+    }</span><span class="go" id="go">${allReady ? 'Starting…' : members.length ? 'Waiting for everyone to be ready' : ''}</span></div>
   </div>`;
   document.getElementById('howto-btn')!.onclick = () => toggleHowTo(true);
   document.getElementById('tour-btn')!.onclick = () => startTour();
@@ -637,17 +642,22 @@ function modeInfo(): string {
   const skill = SETTING_ROWS.find((r) => r.key === 'level')!.value(settings, h);
   const field = ai ? `${ai} AI racer${ai > 1 ? 's' : ''} (${skill})` : 'no AI racers';
   if (!cupMode)
-    return `<div class="mode-info single"><b>Single race</b> · ${lapsFor()} laps · ${field} · <i>change these in ⚙ Settings (O / Menu)</i></div>`;
+    return `<div class="mode-info single"><b>Single race</b> · ${lapsFor()} laps · ${field} <i>· change in ⚙ Settings (O / Menu) · or turn on 🏆 Tournament (G / View) to race every track for points</i></div>`;
   const C = new Tournament(trackId, settings.cupRaces);
   const pts = POINTS.slice(0, h + ai)
     .map((p, i) => `${i + 1}${['st', 'nd', 'rd'][i] ?? 'th'} ${p}`)
     .join(' · ');
   return `<div class="mode-info cup-card">
-    <div class="cup-head">🏆 <b>TOURNAMENT</b> · ${C.tracks.length} races, one after another, the same racers in every one</div>
+    <div class="cup-head">🏆 <b>TOURNAMENT</b> · ${C.tracks.length} races in a row, the same racers in each · ${lapsText()} · ${field}</div>
     <div class="cup-route">${C.tracks.map((id, i) => `<span>${i + 1}. ${trackById(id).def.name}</span>`).join('<i>›</i>')}</div>
-    <div class="cup-rules">Points each race: ${pts}. After each race the standings show who's ahead; most points after the last race wins the cup (ties go to more wins). Exit from the pause menu ends the tournament.</div>
-    <div class="cup-change">Change: first track LB/RB or T · number of races, laps, AI racers and skill in ⚙ Settings (O / Menu) · G / View turns tournament mode off</div>
+    <div class="cup-rules">Points each race: ${pts}. Standings after every race; most points after the last race wins the cup (ties: most wins). Exit in the pause menu ends it.</div>
+    <div class="cup-change">⚙ Settings: number of races, laps, AI racers and skill · LB/RB or T: first track · G / View: tournament off</div>
   </div>`;
+}
+
+/** Laps for the line under the slots: one number, or "each track's own". */
+function lapsText(): string {
+  return settings.laps ? `${settings.laps} laps a race` : "each track's own laps";
 }
 net.onInfo = () => renderLobby();
 
