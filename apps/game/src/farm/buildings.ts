@@ -1067,27 +1067,10 @@ function barn(): THREE.Group {
   g.add(gableBody(L, W, st, eave, ridge, m.boards));
   g.add(gableRoof(L, W, eave, ridge, m.shingle, 0.55, 0.2));
   g.add(roofTrim(L, W, eave, ridge, 0.55, false).group);
-  // Painted tree on the west (-z) slope: base at the eave, star at the ridge.
-  const slope = Math.atan2(ridge - eave, W / 2);
-  const len = W / 2 / Math.cos(slope);
-  const tri = new THREE.Shape();
-  tri.moveTo(-4.4, 0);
-  tri.lineTo(4.4, 0);
-  tri.lineTo(0, len * 0.93);
-  tri.closePath();
-  const tree = new THREE.Mesh(new THREE.ShapeGeometry(tri), m.tree);
-  const trunk = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.7), mats().wood);
-  trunk.position.set(0, -0.2, 0);
-  const star = new THREE.Mesh(new THREE.CircleGeometry(0.75, 5), m.star);
-  star.position.set(0, len * 0.93, 0.01);
-  const mural = new THREE.Group();
-  mural.add(tree, trunk, star);
-  // Lie the mural on the west slope: its +y runs up-slope toward the ridge.
-  mural.rotation.order = 'YXZ';
-  mural.rotation.y = Math.PI;
-  mural.rotation.x = -(Math.PI / 2 - slope);
-  mural.position.set(0, eave + 0.3, -W / 2 - 0.02);
-  g.add(mural);
+  // Painted Christmas tree on the west (-z) slope, lying just above the shingles: a trunk, four
+  // tiers of branches with drooping, scalloped tips (each lighter on top and shaded under the
+  // tier above), ornaments, and a gold five-pointed star, all of it below the ridge.
+  g.add(roofMural(W, eave, ridge, 0.2));
   // White trim: corner boards, eave lines, rakes.
   for (const [x, z] of [
     [L / 2, W / 2],
@@ -1222,6 +1205,115 @@ function doorway(
   if (x === undefined) d.position.set(along, y, z);
   else d.position.set(x, y, along);
   return d;
+}
+
+/**
+ * The Christmas tree painted on the barn's west roof slope. Built flat in its own frame (x along
+ * the barn, y up the slope from the eave, z out of the roof) and laid on the slope. `t` is the
+ * roof slab's thickness (it sits on top of the slab).
+ */
+function roofMural(W: number, eave: number, ridge: number, t: number): THREE.Group {
+  const slope = Math.atan2(ridge - eave, W / 2);
+  const len = W / 2 / Math.cos(slope); // eave line to ridge, along the slope
+  const flat = (c: number, emissive = 0) =>
+    new THREE.MeshStandardMaterial({
+      color: c,
+      emissive,
+      roughness: 0.85,
+      side: THREE.DoubleSide,
+      polygonOffset: true,
+      polygonOffsetFactor: -2,
+      polygonOffsetUnits: -2,
+    });
+  const mural = new THREE.Group();
+  mural.name = 'roof-mural';
+  let z = 0;
+  const lay = (shape: THREE.Shape, m: THREE.Material) => {
+    const mesh = new THREE.Mesh(new THREE.ShapeGeometry(shape, 10), m);
+    z += 0.002;
+    mesh.position.z = z;
+    mesh.renderOrder = Math.round(z * 1000);
+    mural.add(mesh);
+    return mesh;
+  };
+  // Trunk.
+  const trunk = new THREE.Shape();
+  trunk.moveTo(-0.5, 0.15);
+  trunk.lineTo(0.5, 0.15);
+  trunk.lineTo(0.45, 1.0);
+  trunk.lineTo(-0.45, 1.0);
+  trunk.closePath();
+  lay(trunk, flat(0x6b4a2e));
+  // Tiers, bottom up: a broad cone of branches whose lower edge droops in scallops.
+  const tiers = [
+    { w: 8.2, v: 0.75, h: 2.3 },
+    { w: 6.5, v: 2.0, h: 2.1 },
+    { w: 4.9, v: 3.2, h: 1.9 },
+    { w: 3.3, v: 4.3, h: 1.75 },
+  ];
+  const dark = flat(0x245a31),
+    mid = flat(0x2f7a3d),
+    light = flat(0x4f9a4c),
+    shade = flat(0x173d22);
+  const tier = (w: number, v: number, h: number, k: number) => {
+    const sh = new THREE.Shape();
+    const n = Math.max(4, Math.round(w / 0.75));
+    sh.moveTo(-w / 2, v + 0.1);
+    // Scalloped lower edge: each branch tip hangs a little.
+    for (let i = 0; i < n; i++) {
+      const x0 = -w / 2 + (w * i) / n,
+        x1 = -w / 2 + (w * (i + 1)) / n;
+      sh.quadraticCurveTo((x0 + x1) / 2, v - 0.28 * k, x1, v + (i === n - 1 ? 0.1 : 0));
+    }
+    // Slightly hollow sides up to the point.
+    sh.quadraticCurveTo(w * 0.18, v + h * 0.55, 0, v + h);
+    sh.quadraticCurveTo(-w * 0.18, v + h * 0.55, -w / 2, v + 0.1);
+    return sh;
+  };
+  for (const [i, T] of tiers.entries()) {
+    // Shadow under the branches above, the tier itself, then a lighter upper part.
+    if (i > 0) lay(tier(T.w * 1.02, T.v - 0.08, T.h * 0.55, 1.1), shade);
+    lay(tier(T.w, T.v, T.h, 1), i % 2 ? mid : dark);
+    lay(tier(T.w * 0.62, T.v + T.h * 0.32, T.h * 0.66, 0.6), light);
+  }
+  // Ornaments scattered over the branches.
+  const balls = [0xd8262e, 0xf2c230, 0x3a6fd8, 0xf4f1ea, 0xd8262e, 0xf2c230];
+  let seed = 7;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (const [i, T] of tiers.entries())
+    for (let k = 0; k < 6 - i; k++) {
+      const u = (rnd() - 0.5) * T.w * 0.62;
+      const v = T.v + 0.15 + rnd() * T.h * 0.45 * (1 - Math.abs(u) / (T.w / 2));
+      const c = new THREE.Shape();
+      c.absarc(u, v, 0.13 + rnd() * 0.05, 0, Math.PI * 2, false);
+      lay(c, flat(balls[(i * 3 + k) % balls.length]!, 0x111111));
+    }
+  // A five-pointed star on top, gold with a pale glow round it, well clear of the ridge.
+  const top = tiers[tiers.length - 1]!;
+  const sv = Math.min(top.v + top.h + 0.25, len - 1.0);
+  const star = (R: number, r: number) => {
+    const sh = new THREE.Shape();
+    for (let i = 0; i < 10; i++) {
+      const a = Math.PI / 2 + (i * Math.PI) / 5;
+      const rr = i % 2 ? r : R;
+      const x = Math.cos(a) * rr,
+        y = sv + Math.sin(a) * rr;
+      if (i) sh.lineTo(x, y);
+      else sh.moveTo(x, y);
+    }
+    sh.closePath();
+    return sh;
+  };
+  lay(star(0.78, 0.36), flat(0xfff2b0, 0x554411));
+  lay(star(0.62, 0.26), flat(0xffc83a, 0x664400));
+  // Lay it on the slope: +y up the slope from the eave line, +z out of the roof, sitting just on
+  // top of the slab (whose top surface is t/2 + (t/2)/cos above its middle line).
+  mural.rotation.order = 'YXZ';
+  mural.rotation.y = Math.PI;
+  mural.rotation.x = -(Math.PI / 2 - slope);
+  mural.position.set(0, eave + t / 2 + t / 2 / Math.cos(slope) + 0.015 / Math.cos(slope), -W / 2);
+  mural.traverse((o) => ((o as THREE.Mesh).receiveShadow = true));
+  return mural;
 }
 
 /**

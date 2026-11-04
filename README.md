@@ -58,6 +58,7 @@ Phones need the home setup above.
 | Change track (lobby)       | T               | T                         | LB / RB            | ◀ ▶                   |
 | Map tour (lobby)           | M               | M                         | X                  | —                     |
 | Tournament on/off (lobby)  | G               | G                         | View               | —                     |
+| Race settings (lobby)      | O               | O                         | Menu               | —                     |
 | Steer                      | ← → or A D      | ← → / A D                 | Left stick / D-pad | Drag on the left half |
 | Accelerate                 | ↑ or W          | ↑ / W                     | RT                 | GAS                   |
 | Brake / reverse            | ↓ or S          | ↓ / S                     | LT                 | BRAKE                 |

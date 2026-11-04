@@ -343,11 +343,11 @@ function inView(x: number, y: number): number {
 }
 
 /**
- * His rounds with a couple of extra stops where he's in view of the racers longest (off the
- * road, never on it): there he stops, turns to the track and waves the racers by for about a
- * minute, so you've a good chance of seeing him as you come past.
+ * His rounds with two extra stops where the racers see him longest: one standing right in the
+ * road (so he's in the way, and you have to get round him) and one just beside it. At each he
+ * turns to the track and waves the racers by for about a minute.
  */
-export function watchingStops(r: RouteData, spots = 2): RouteData {
+export function watchingStops(r: RouteData): RouteData {
   if (r.mode !== 'walk') return r;
   const loop = new Loop(r.pts);
   const nearRoad = (x: number, y: number): [number, XY] => {
@@ -362,24 +362,26 @@ export function watchingStops(r: RouteData, spots = 2): RouteData {
     }
     return [best, at];
   };
-  const cands: { s: number; seen: number; face: XY }[] = [];
-  for (let s = 0; s < loop.length; s += 2) {
+  const onRoad: { s: number; seen: number; face: XY }[] = [];
+  const beside: { s: number; seen: number; face: XY }[] = [];
+  for (let s = 0; s < loop.length; s += 1) {
     const [x, y] = loop.at(s);
     const [d, face] = nearRoad(x, y);
-    if (d < 2.5) continue;
-    cands.push({ s, seen: inView(x, y), face });
+    // In the road, he faces down it (toward the oncoming racers' side of the nearest point).
+    if (d <= 0.9) onRoad.push({ s, seen: inView(x, y), face: loop.at(s + 3) });
+    else if (d >= 2.5 && d <= 8) beside.push({ s, seen: inView(x, y), face });
   }
-  cands.sort((a, b) => b.seen - a.seen);
   const gap = (a: number, b: number) => {
     const d = Math.abs(a - b) % loop.length;
     return Math.min(d, loop.length - d);
   };
-  const chosen: typeof cands = [];
-  for (const c of cands) {
-    if (chosen.length >= spots) break;
-    if (chosen.some((o) => gap(o.s, c.s) < 20)) continue;
-    if (r.stops.some(([, s]) => gap(s, c.s) < 6)) continue;
-    chosen.push(c);
+  const chosen: { s: number; face: XY }[] = [];
+  for (const list of [onRoad, beside]) {
+    list.sort((a, b) => b.seen - a.seen);
+    const c = list.find(
+      (c) => !chosen.some((o) => gap(o.s, c.s) < 15) && !r.stops.some(([, s]) => gap(s, c.s) < 6),
+    );
+    if (c) chosen.push(c);
   }
   const stops = [...r.stops];
   for (const c of chosen)

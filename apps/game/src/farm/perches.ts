@@ -14,7 +14,9 @@ export type PerchTag =
   | 'post'
   | 'flower'
   | 'lawn'
-  | 'field';
+  | 'field'
+  /** The rail along the top of the racetrack's glass wall (race worlds only). */
+  | 'rail';
 
 export interface Perch {
   x: number;
@@ -28,6 +30,9 @@ export interface Perch {
 }
 
 export const PERCHES: Perch[] = [];
+
+/** Perches on the racetrack itself (its wall rails), set by the race world before the farm builds. */
+export const TRACK_PERCHES: Perch[] = [];
 
 export function addPerch(x: number, y: number, z: number, tag: PerchTag, ground = false): void {
   PERCHES.push({ x, y, z, tag, ground });

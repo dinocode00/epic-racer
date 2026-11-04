@@ -8,6 +8,7 @@ import {
 } from '../render/themes.ts';
 import { FarmScene } from './farmScene.ts';
 import { setFlowerKeepOut } from './flowers.ts';
+import { TRACK_PERCHES } from './perches.ts';
 import { grassCuts } from './grass.ts';
 import { meshHeight } from './ground.ts';
 import { FARM, type XY } from './layout.ts';
@@ -93,6 +94,26 @@ function farmEnvironment(track: Track, renderer: THREE.WebGLRenderer): RaceEnvir
   };
   FARM.pumpkins = FARM.pumpkins.filter(([x, y]) => !onRoad(x, y, 0.4));
   setFlowerKeepOut((x, y) => onRoad(x, y, 0.35));
+  // Songbirds sit on the rail along the top of the glass wall, right beside the racers.
+  TRACK_PERCHES.length = 0;
+  {
+    let since = 0,
+      side = 1;
+    for (let i = 1; i < F.length; i++) {
+      const f = F[i]!;
+      since += f.p.distanceTo(F[i - 1]!.p);
+      const above = f.p.y - meshHeight(f.p.x, -f.p.z);
+      if (since < 14 || (f.kind !== 'road' && f.kind !== 'wide') || above > 3) continue;
+      since = 0;
+      side = -side;
+      const right = new THREE.Vector3().crossVectors(f.t, f.up).normalize();
+      const at = f.p
+        .clone()
+        .addScaledVector(right, (side * f.w) / 2)
+        .addScaledVector(f.up, 0.29);
+      TRACK_PERCHES.push({ x: at.x, y: at.y, z: at.z, tag: 'rail' });
+    }
+  }
   // Trees cut for the race (the run-up to the big forest jump and its landing).
   const cut = new Set(
     (DRAFT as unknown as { cleared: [number, number][] }).cleared.map(([x, y]) => `${x},${y}`),

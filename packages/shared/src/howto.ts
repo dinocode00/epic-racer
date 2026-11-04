@@ -49,7 +49,8 @@ export function howToHtml(): string {
     <li><b>Xbox pad:</b> press A. <b>Keyboard:</b> Enter (arrow keys) or Space (WASD).</li>
     <li>Pick a ride, then READY. The race starts when everyone is ready. Change track with T or LB/RB.</li>
     <li><b>🎥 Map Tour</b> (M, or X on a pad): a slow drone tour of the chosen track, part by part, looking in across each from the edge of the map, low among things and high over them. It loops until you press B or Esc.</li>
-    <li><b>🏆 Tournament</b> (G, or View on a pad): race every track in turn, starting with the chosen one. Points each race (15, 12, 10, 8, 6, 4, 2, 1); most points wins the cup.</li>
+    <li><b>🏆 Tournament</b> (G, or View on a pad): race every track in turn (or fewer, in Settings), starting with the chosen one, with the same racers each time. Points each race: 15, 12, 10, 8, 6, 4, 2, 1. The standings show after every race; most points after the last race wins the cup (ties: most wins).</li>
+    <li><b>⚙ Settings</b> (O, or Menu on a pad): how many AI racers (none to 7), how good they are (Easy, Normal, Hard, Expert), laps per race, and how many races a tournament has. Remembered for next time.</li>
     <li>First across the line after the last lap wins!</li>
   </ul></section>
 

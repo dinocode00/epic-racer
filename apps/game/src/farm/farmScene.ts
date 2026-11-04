@@ -11,7 +11,7 @@ import { setGrimeFrame } from './grime.ts';
 import { buildGround, meshHeight } from './ground.ts';
 import { CENTRE, FARM, FARM_SCALE, type XY, driveHeight, groundHeight, inside } from './layout.ts';
 import { keptClear } from './flowers.ts';
-import { PERCHES, type Perch, addPerch } from './perches.ts';
+import { PERCHES, TRACK_PERCHES, type Perch, addPerch } from './perches.ts';
 import { buildPlants } from './plants.ts';
 import { type Obstacle, buildSongbirds } from './songbirds.ts';
 import { addCloudShadow, farmSky } from './sky.ts';
@@ -332,6 +332,9 @@ function birdSpots(buildings: THREE.Object3D): { perches: Perch[]; obstacles: Ob
     }
   }
   // Nothing lands on the racetrack.
-  const perches = PERCHES.filter((q) => !(q.ground && keptClear(q.x, -q.z)));
+  const perches = [
+    ...PERCHES.filter((q) => !(q.ground && keptClear(q.x, -q.z))),
+    ...TRACK_PERCHES.map((q) => ({ ...q, busy: false })),
+  ];
   return { perches, obstacles };
 }

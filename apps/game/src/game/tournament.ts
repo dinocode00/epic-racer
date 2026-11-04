@@ -38,10 +38,12 @@ export class Tournament {
   /** Points just won, by name (for the results screen). */
   private gained = new Map<string, number>();
 
-  constructor(startTrack: string) {
+  /** `races`: how many races (0 = every track). */
+  constructor(startTrack: string, races = 0) {
     const ids = TRACKS.map((t) => t.def.id).filter((id) => id !== 'proving' || id === startTrack);
     const i = Math.max(0, ids.indexOf(startTrack));
-    this.tracks = [...ids.slice(i), ...ids.slice(0, i)];
+    const all = [...ids.slice(i), ...ids.slice(0, i)];
+    this.tracks = races > 0 ? all.slice(0, Math.min(races, all.length)) : all;
   }
 
   get trackId(): string {

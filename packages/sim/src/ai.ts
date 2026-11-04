@@ -9,13 +9,28 @@ export interface AiBrain {
   lane: number;
   /** 0..1, scales top-speed discipline and reaction. */
   skill: number;
+  /** Difficulty: 0 easy, 1 normal, 2 hard, 3 expert. */
+  level: number;
   laneTimer: number;
   seed: number;
 }
 
-export function createBrain(seed: number, skill: number): AiBrain {
-  return { lane: 0, skill, laneTimer: 0, seed: seed * 9301 + 49297 };
+export function createBrain(seed: number, skill: number, level = 1): AiBrain {
+  return { lane: 0, skill, level, laneTimer: 0, seed: seed * 9301 + 49297 };
 }
+
+/** AI difficulty levels, easiest first. */
+export const AI_LEVELS = ['Easy', 'Normal', 'Hard', 'Expert'] as const;
+/** How close to its top speed an AI dares to drive at each level (before its own skill). */
+const PACE = [0.8, 0.92, 0.975, 1.0];
+const PACE_SPAN = [0.06, 0.07, 0.04, 0.02];
+/** How sharp a bend ahead (radians) has it lift off, and brake. */
+const LIFT = [0.75, 0.9, 1.05, 1.2];
+const BRAKE = [1.4, 1.6, 1.8, 2.0];
+/** An AI kart's engine against a player's at each level (the classic arcade handicap). */
+export const AI_POWER = [0.97, 1, 1.03, 1.06];
+/** How much harder it pushes when it's behind the leader. */
+const CATCH_UP = [0.04, 0.1, 0.12, 0.15];
 
 function rand(b: AiBrain): number {
   b.seed = (b.seed * 16807) % 2147483647;
@@ -65,14 +80,16 @@ export function aiDrive(
   // Corner severity further ahead decides drifting and lifting.
   const far = track.frameAtS(k.s + look * 2.2).tan;
   const bend = Math.acos(clamp(dot(far, k.fwd), -1, 1));
-  pad.throttle = bend > 0.9 && k.speed > 26 ? 0.5 : 1;
+  // Better drivers lift later and brake later for the bends.
+  const lv = Math.max(0, Math.min(3, Math.round(b.level)));
+  pad.throttle = bend > LIFT[lv]! && k.speed > 26 ? 0.5 : 1;
   // Brake for hairpins at speed, as grip fades.
-  if (bend > 1.6 && k.speed > 22) pad.brake = 0.6;
+  if (bend > BRAKE[lv]! && k.speed > 22) pad.brake = 0.6;
   pad.drift = bend > 0.55 && k.speed > 18 && Math.abs(angle) > 0.12;
 
   // Mild rubber band on AI only: never slows humans.
   const gap = leaderProgress - k.progress;
-  const discipline = 0.92 + 0.07 * b.skill + clamp(gap / 300, -0.05, 0.1);
+  const discipline = PACE[lv]! + PACE_SPAN[lv]! * b.skill + clamp(gap / 300, -0.05, CATCH_UP[lv]!);
   if (k.speed > k.params.topSpeed * discipline && k.boostTime <= 0) pad.throttle = 0.2;
   return pad;
 }

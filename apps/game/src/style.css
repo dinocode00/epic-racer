@@ -947,3 +947,90 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* ---------- race settings & what the next start is ---------- */
+.lobby {
+  grid-template-rows: auto 1fr auto auto;
+}
+.lobby .mode-info {
+  grid-column: 1 / -1;
+  background: #121022d9;
+  border: 0.3vh solid #ffffff1f;
+  border-radius: 1.4vh;
+  padding: 1.2vh 1.8vh;
+  font-size: 2vh;
+  line-height: 1.45;
+}
+.lobby .mode-info.single i {
+  opacity: 0.7;
+}
+.lobby .mode-info.cup-card {
+  border-color: var(--gold);
+}
+.lobby .cup-card .cup-head {
+  font-size: 2.3vh;
+}
+.lobby .cup-card .cup-head b {
+  color: var(--gold);
+}
+.lobby .cup-card .cup-route {
+  margin: 0.6vh 0;
+}
+.lobby .cup-card .cup-route span {
+  background: #ffffff14;
+  border-radius: 99px;
+  padding: 0.2vh 1.2vh;
+}
+.lobby .cup-card .cup-route i {
+  margin: 0 0.8vh;
+  opacity: 0.5;
+  font-style: normal;
+}
+.lobby .cup-card .cup-change {
+  opacity: 0.7;
+  font-size: 1.8vh;
+  margin-top: 0.4vh;
+}
+.settings-menu {
+  min-width: min(80vw, 90vh);
+  text-align: left;
+}
+.settings-menu h2 {
+  text-align: center;
+}
+.set-row {
+  cursor: pointer;
+  background: #ffffff0f;
+  border-radius: 1.4vh;
+  margin: 1.2vh 0;
+  padding: 1.4vh 2.4vh;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  font-size: 2.8vh;
+}
+.set-row.sel {
+  background: var(--gold);
+  color: #1a1426;
+}
+.set-row .set-val {
+  display: flex;
+  align-items: center;
+  gap: 1.6vh;
+  font-weight: 800;
+}
+.set-row .set-val b {
+  cursor: pointer;
+  opacity: 0.75;
+  padding: 0 0.6vh;
+}
+.set-row .set-note {
+  grid-column: 1 / -1;
+  font-size: 1.8vh;
+  opacity: 0.8;
+  margin-top: 0.4vh;
+  font-weight: 400;
+}
+.settings-menu .pause-hint {
+  text-align: center;
+}

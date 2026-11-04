@@ -1,5 +1,5 @@
 import { type PadState, type TrackDef, type VehicleDef, neutralPad } from '@epic/shared';
-import { type AiBrain, aiDrive, createBrain } from './ai.ts';
+import { AI_POWER, type AiBrain, aiDrive, createBrain } from './ai.ts';
 import { type HazardState, collideHazards, createHazards, updateHazards } from './hazards.ts';
 import { ItemSystem } from './items.ts';
 import { type KartState, type TrackRules, createKart, spinOut, stepKart } from './kart.ts';
@@ -31,7 +31,8 @@ export class Race {
   readonly rules: TrackRules;
   readonly items: ItemSystem;
 
-  constructor(def: TrackDef, entrants: Entrant[], laps = def.laps) {
+  /** `aiLevel`: AI difficulty, 0 easy .. 3 expert (see AI_LEVELS). */
+  constructor(def: TrackDef, entrants: Entrant[], laps = def.laps, aiLevel = 1) {
     this.track = new Track(def);
     this.laps = laps;
     // Grid: two columns, staggered, behind the start line.
@@ -39,10 +40,16 @@ export class Race {
       const row = Math.floor(i / 2);
       const col = i % 2 === 0 ? -1 : 1;
       const s = this.track.length - 8 - row * 8 - (col > 0 ? 4 : 0);
-      return createKart(i, e.vehicle, this.track, s, col * 3.6);
+      const k = createKart(i, e.vehicle, this.track, s, col * 3.6);
+      // AI karts' engines follow the difficulty (players' never change).
+      if (!e.human) {
+        const lv = Math.max(0, Math.min(3, Math.round(aiLevel)));
+        k.params = { ...k.params, topSpeed: k.params.topSpeed * AI_POWER[lv]! };
+      }
+      return k;
     });
     this.brains = entrants.map((e, i) =>
-      e.human ? null : createBrain(i + 1, 0.55 + (0.45 * ((i * 37) % 10)) / 10),
+      e.human ? null : createBrain(i + 1, 0.55 + (0.45 * ((i * 37) % 10)) / 10, aiLevel),
     );
     this.firstThrottle = entrants.map(() => NaN);
     this.padCooldown = entrants.map(() => 0);

@@ -22,7 +22,14 @@ import { Net } from './game/net.ts';
 import { type PlayerSetup, RaceSession } from './game/session.ts';
 import { Showroom } from './game/showroom.ts';
 import { MapTour } from './game/tour.ts';
-import { Tournament } from './game/tournament.ts';
+import { POINTS, Tournament } from './game/tournament.ts';
+import {
+  MAX_RACERS,
+  type RaceSettings,
+  SETTING_ROWS,
+  loadSettings,
+  saveSettings,
+} from './game/settings.ts';
 import { TRACKS, trackById } from './game/tracks.ts';
 import { itemSkin } from './game/itemSkins.ts';
 import { AutoQuality, FpsMeter, LEVELS } from './game/quality.ts';
@@ -87,6 +94,12 @@ let state: 'lobby' | 'race' | 'results' | 'tour' = 'lobby';
 let tour: MapTour | null = null;
 /** Tournament mode (toggled in the lobby), and the cup being run. */
 let cupMode = params.has('cup');
+/** Race settings from the lobby (⚙ Settings), remembered between visits. */
+const settings: RaceSettings = loadSettings();
+/** Laps for the current track under the settings. */
+const lapsFor = () => settings.laps || track().def.laps;
+/** Humans in the next race (at least one, for the counts shown before anyone joins). */
+const humansNow = () => Math.max(1, members.length);
 let cup: Tournament | null = null;
 /** The track picked in the lobby, to come back to after a cup. */
 let cupHome = '';
@@ -263,14 +276,67 @@ function movePause(d: number): void {
   renderPause();
 }
 
+// ---------------- settings ----------------
+// ⚙ Settings in the lobby (O, Menu on a pad, or the button): AI racers and their skill, laps,
+// tournament length. ↑ ↓ choose, ← → change, Enter / A / Esc / B close.
+const settingsEl = document.createElement('div');
+settingsEl.className = 'pause-overlay settings-overlay';
+settingsEl.hidden = true;
+document.body.appendChild(settingsEl);
+let settingsSel = 0;
+function renderSettings(): void {
+  const h = humansNow();
+  settingsEl.innerHTML = `<div class="pause-menu settings-menu"><h2>RACE SETTINGS</h2>${SETTING_ROWS.map(
+    (r, i) =>
+      `<div class="set-row ${i === settingsSel ? 'sel' : ''}" data-i="${i}"><span class="set-label">${r.label}</span><span class="set-val"><b data-d="-1">◀</b><span>${r.value(settings, h)}</span><b data-d="1">▶</b></span><div class="set-note">${r.note(settings, h)}</div></div>`,
+  ).join(
+    '',
+  )}<div class="pause-hint">↑ ↓ choose · ← → change · Enter / A / Esc / B done · saved for next time</div></div>`;
+  settingsEl.querySelectorAll<HTMLElement>('.set-row').forEach((row) => {
+    row.onclick = () => {
+      settingsSel = Number(row.dataset.i);
+      renderSettings();
+    };
+    row.querySelectorAll<HTMLElement>('b[data-d]').forEach((b) => {
+      b.onclick = (ev) => {
+        ev.stopPropagation();
+        settingsSel = Number(row.dataset.i);
+        changeSetting(Number(b.dataset.d));
+      };
+    });
+  });
+}
+function changeSetting(dir: number): void {
+  SETTING_ROWS[settingsSel]!.step(settings, dir);
+  saveSettings(settings);
+  renderSettings();
+  renderLobby();
+}
+function toggleSettings(open = settingsEl.hidden): void {
+  if (open && state !== 'lobby') return;
+  settingsEl.hidden = !open;
+  if (open) {
+    members.forEach((m) => (m.ready = false));
+    renderSettings();
+  }
+  renderLobby();
+}
+function moveSettings(d: number): void {
+  settingsSel = (settingsSel + d + SETTING_ROWS.length) % SETTING_ROWS.length;
+  renderSettings();
+}
+
 // Menu buttons on the Xbox pads: the guide and the pause menu take them first.
 const padWas = new Map<number, Record<string, boolean>>();
 function pollMenuButtons(): void {
   for (const gp of connectedGamepads()) {
     const raw = gamepads()[gp.index];
     if (!raw) continue;
-    const y0 = raw.axes[1] ?? 0;
+    const y0 = raw.axes[1] ?? 0,
+      x0 = raw.axes[0] ?? 0;
     const now: Record<string, boolean> = {
+      left: !!raw.buttons[14]?.pressed || x0 < -0.6,
+      right: !!raw.buttons[15]?.pressed || x0 > 0.6,
       a: !!raw.buttons[0]?.pressed,
       b: !!raw.buttons[1]?.pressed,
       x: !!raw.buttons[2]?.pressed,
@@ -287,6 +353,15 @@ function pollMenuButtons(): void {
       if (hit('y') || hit('b') || hit('start')) toggleHowTo(false);
       continue;
     }
+    if (!settingsEl.hidden) {
+      if (hit('up')) moveSettings(-1);
+      if (hit('down')) moveSettings(1);
+      if (hit('left')) changeSetting(-1);
+      if (hit('right')) changeSetting(1);
+      if (hit('a') || hit('b') || hit('start')) toggleSettings(false);
+      continue;
+    }
+    if (state === 'lobby' && hit('start')) toggleSettings(true);
     if (state === 'lobby' && hit('y')) toggleHowTo(true);
     if (state === 'lobby' && hit('x')) startTour();
     if (state === 'lobby' && hit('view')) toggleCup();
@@ -303,11 +378,12 @@ function pollMenuButtons(): void {
 }
 
 function pollLocal(): void {
-  const menuUp = !howTo.hidden || paused;
+  const menuUp = !howTo.hidden || paused || !settingsEl.hidden;
   pollMenuButtons();
-  // While the guide or pause menu is up (and on the press that closes it) lobby buttons don't
-  // join, ready or leave behind it.
-  if (menuUp) return;
+  // While the guide, settings or pause menu is up (and on the press that closes it) lobby buttons
+  // don't join, ready or leave behind it; their states are still tracked, so the key that
+  // closed the menu doesn't count as a fresh press afterwards.
+  const act = !menuUp && !(!howTo.hidden || paused || !settingsEl.hidden);
   // Keyboard player 1: Enter joins / readies, arrows change ride, Backspace leaves.
   const kb = {
     ...kbArrows.poll(),
@@ -317,7 +393,7 @@ function pollLocal(): void {
     lb: false,
     rb: keyboard.has('KeyT'),
   };
-  handleLocal('keyboard', 'keyboard', kb, () => keyboard);
+  handleLocal('keyboard', 'keyboard', kb, () => keyboard, act);
   // Keyboard player 2 on the same keyboard: Space joins / readies, A D change ride, Q leaves.
   const kb2 = {
     ...kbWasd.poll(),
@@ -327,7 +403,7 @@ function pollLocal(): void {
     lb: false,
     rb: false,
   };
-  handleLocal('keyboard2', 'keyboard', kb2, () => kbWasd);
+  handleLocal('keyboard2', 'keyboard', kb2, () => kbWasd, act);
   for (const gp of connectedGamepads()) {
     const raw = gamepads()[gp.index];
     if (!raw) continue;
@@ -340,7 +416,7 @@ function pollLocal(): void {
       lb: !!raw.buttons[4]?.pressed,
       rb: !!raw.buttons[5]?.pressed,
     };
-    handleLocal(`gamepad:${gp.index}`, 'gamepad', p, () => src);
+    handleLocal(`gamepad:${gp.index}`, 'gamepad', p, () => src, act);
   }
 }
 
@@ -349,8 +425,10 @@ function handleLocal(
   kind: 'keyboard' | 'gamepad',
   p: LocalPad,
   make: () => InputSource,
+  act = true,
 ): void {
   const e = edges(key, p);
+  if (!act) return;
   // A short grace period so a drift button held over the line doesn't skip the results.
   if (state === 'results' && (e.a || e.start) && performance.now() - resultsAt > 2500)
     return afterResults();
@@ -539,26 +617,49 @@ function renderLobby(): void {
     </div>`
     }
     <div class="slots">${slots}</div>
+    ${modeInfo()}
     <div class="foot"><span class="track">${
       cupMode
-        ? `Tournament: <b>${new Tournament(trackId).tracks.map((id) => trackById(id).def.name).join(' › ')}</b> · points every race <i class="hint">(LB/RB or T: first track)</i>`
-        : `Track: <b>${track().def.name}</b> · ${track().def.laps} laps · ${track().blurb} <i class="hint">(LB/RB or T to change)</i>`
-    }</span><span class="howto-btn cup-btn ${cupMode ? 'on' : ''}" id="cup-btn">🏆 TOURNAMENT ${cupMode ? 'ON' : 'OFF'} <i class="hint">(G / View)</i></span><span class="howto-btn" id="tour-btn">🎥 MAP TOUR <i class="hint">(M / X)</i></span><span class="howto-btn" id="howto-btn">? HOW TO PLAY <i class="hint">(H / Y)</i></span><span class="go" id="go">${allReady ? 'Starting…' : members.length ? 'Waiting for everyone to be ready' : ''}</span></div>
+        ? `Tournament: <b>${new Tournament(trackId, settings.cupRaces).tracks.map((id) => trackById(id).def.name).join(' › ')}</b> <i class="hint">(LB/RB or T: first track)</i>`
+        : `Track: <b>${track().def.name}</b> · ${lapsFor()} laps · ${track().blurb} <i class="hint">(LB/RB or T to change)</i>`
+    }</span><span class="howto-btn" id="set-btn">⚙ SETTINGS <i class="hint">(O / Menu)</i></span><span class="howto-btn cup-btn ${cupMode ? 'on' : ''}" id="cup-btn">🏆 TOURNAMENT ${cupMode ? 'ON' : 'OFF'} <i class="hint">(G / View)</i></span><span class="howto-btn" id="tour-btn">🎥 MAP TOUR <i class="hint">(M / X)</i></span><span class="howto-btn" id="howto-btn">? HOW TO PLAY <i class="hint">(H / Y)</i></span><span class="go" id="go">${allReady ? 'Starting…' : members.length ? 'Waiting for everyone to be ready' : ''}</span></div>
   </div>`;
   document.getElementById('howto-btn')!.onclick = () => toggleHowTo(true);
   document.getElementById('tour-btn')!.onclick = () => startTour();
   document.getElementById('cup-btn')!.onclick = () => toggleCup();
+  document.getElementById('set-btn')!.onclick = () => toggleSettings(true);
+}
+
+/** The line (or, in a tournament, the card) saying what the next start will be. */
+function modeInfo(): string {
+  const h = humansNow();
+  const ai = Math.min(settings.ai, MAX_RACERS - h);
+  const skill = SETTING_ROWS.find((r) => r.key === 'level')!.value(settings, h);
+  const field = ai ? `${ai} AI racer${ai > 1 ? 's' : ''} (${skill})` : 'no AI racers';
+  if (!cupMode)
+    return `<div class="mode-info single"><b>Single race</b> · ${lapsFor()} laps · ${field} · <i>change these in ⚙ Settings (O / Menu)</i></div>`;
+  const C = new Tournament(trackId, settings.cupRaces);
+  const pts = POINTS.slice(0, h + ai)
+    .map((p, i) => `${i + 1}${['st', 'nd', 'rd'][i] ?? 'th'} ${p}`)
+    .join(' · ');
+  return `<div class="mode-info cup-card">
+    <div class="cup-head">🏆 <b>TOURNAMENT</b> · ${C.tracks.length} races, one after another, the same racers in every one</div>
+    <div class="cup-route">${C.tracks.map((id, i) => `<span>${i + 1}. ${trackById(id).def.name}</span>`).join('<i>›</i>')}</div>
+    <div class="cup-rules">Points each race: ${pts}. After each race the standings show who's ahead; most points after the last race wins the cup (ties go to more wins). Exit from the pause menu ends the tournament.</div>
+    <div class="cup-change">Change: first track LB/RB or T · number of races, laps, AI racers and skill in ⚙ Settings (O / Menu) · G / View turns tournament mode off</div>
+  </div>`;
 }
 net.onInfo = () => renderLobby();
 
 // ---------------- race ----------------
-function startRace(players: PlayerSetup[], laps = track().def.laps): void {
+function startRace(players: PlayerSetup[], laps = lapsFor()): void {
   showroom = null;
   state = 'race';
   howTo.hidden = true;
   lastRace = { players, laps };
   ui.innerHTML = '';
-  session = new RaceSession(view, track().def, players, laps, 8, track().theme);
+  const total = players.length + Math.min(settings.ai, Math.max(0, MAX_RACERS - players.length));
+  session = new RaceSession(view, track().def, players, laps, total, track().theme, settings.level);
   applyQuality();
   session.onFinished = (order) => {
     setPaused(false);
@@ -600,7 +701,7 @@ function startRace(players: PlayerSetup[], laps = track().def.laps): void {
 
 function startFromLobby(): void {
   if (cupMode) {
-    cup = new Tournament(trackId);
+    cup = new Tournament(trackId, settings.cupRaces);
     cupHome = trackId;
     trackId = cup.trackId;
   }
@@ -682,7 +783,7 @@ if (params.get('scene') === 'showroom') {
   const nobody: InputSource = { kind: 'auto', label: 'Autopilot', poll: neutralPad };
   const names = ['REX', 'SAM', 'JO', 'KAI'];
   if (cupMode) {
-    cup = new Tournament(trackId);
+    cup = new Tournament(trackId, settings.cupRaces);
     cupHome = trackId;
     trackId = cup.trackId;
   }
@@ -702,7 +803,7 @@ if (params.get('scene') === 'showroom') {
         autopilot: params.has('demo') || source === nobody,
       };
     }),
-    Number(params.get('laps') ?? track().def.laps),
+    Number(params.get('laps') ?? lapsFor()),
   );
   const t = Number(params.get('t') ?? 0);
   if (t > 0) session!.fastForward(t);
@@ -745,6 +846,19 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'F2') view.setLook(view.look === 'modern' ? 'retro' : 'modern');
   if (!howTo.hidden) {
     if (e.code === 'KeyH' || e.code === 'Escape') toggleHowTo(false);
+    return;
+  }
+  if (!settingsEl.hidden) {
+    if (e.code === 'ArrowUp' || e.code === 'KeyW') moveSettings(-1);
+    else if (e.code === 'ArrowDown' || e.code === 'KeyS') moveSettings(1);
+    else if (e.code === 'ArrowLeft' || e.code === 'KeyA') changeSetting(-1);
+    else if (e.code === 'ArrowRight' || e.code === 'KeyD') changeSetting(1);
+    else if (['Enter', 'NumpadEnter', 'Escape', 'KeyO', 'Backspace', 'Space'].includes(e.code))
+      toggleSettings(false);
+    return;
+  }
+  if (state === 'lobby' && e.code === 'KeyO') {
+    toggleSettings(true);
     return;
   }
   if (state === 'lobby' && e.code === 'KeyH') toggleHowTo(true);

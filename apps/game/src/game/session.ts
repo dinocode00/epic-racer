@@ -84,6 +84,8 @@ export class RaceSession {
     laps = track.laps,
     total = 8,
     theme?: Theme,
+    /** AI difficulty, 0 easy .. 3 expert. */
+    aiLevel = 1,
   ) {
     // AI fills the front of the grid; humans start at the back, like the classics.
     const aiCount = Math.max(0, total - players.length);
@@ -94,7 +96,7 @@ export class RaceSession {
       })),
       ...players.map((p) => ({ vehicle: vehicleById(p.vehicle), human: true })),
     ];
-    this.race = new Race(track, entrants, laps);
+    this.race = new Race(track, entrants, laps, aiLevel);
     this.humans = players.map((_, i) => aiCount + i);
     this.names = [...AI_NAMES.slice(0, aiCount), ...players.map((p) => p.name)];
     this.colors = [...AI_COLORS.slice(0, aiCount), ...players.map((p) => p.color)];

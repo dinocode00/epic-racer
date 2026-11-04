@@ -1161,8 +1161,8 @@ function westBorder(wood: () => TreeBatch): THREE.Group {
 }
 
 /**
- * Wildflower clumps along the edges of the racetrack where it runs on the ground, every dozen
- * metres or so on alternating sides: the bees and butterflies work them and goldfinches perch
+ * Wildflower clumps along the edges of the racetrack where it runs on the ground, every six or
+ * seven metres on alternating sides: the bees and butterflies work them and goldfinches perch
  * on them, so the life of the farm is right beside you as you race. None in the barn, on the
  * gravel or against a building.
  */
@@ -1207,7 +1207,7 @@ function roadsideFlowers(): THREE.Group {
     const [x, y, h, w, kind] = pts[i]!;
     const [px, py] = pts[i - 1]!;
     since += Math.hypot(x - px, y - py);
-    if (since < 11 || h > 0.6 || kind === 'barn' || kind === 'air' || kind === 'tube') continue;
+    if (since < 6.5 || h > 0.6 || kind === 'barn' || kind === 'air' || kind === 'tube') continue;
     since = 0;
     side = -side;
     const dx = x - px,
@@ -1219,10 +1219,10 @@ function roadsideFlowers(): THREE.Group {
     if (inBuilding(cx, cy) || inside(cx, cy, FARM.gravel)) continue;
     const kindF = pick(mix);
     let planted = 0;
-    for (let q = 0; q < 5; q++) {
-      const fx = cx + (rnd() - 0.5) * 1.4,
-        fy = cy + (rnd() - 0.5) * 1.4;
-      if (f.add(kindF, fx, groundHeight(fx, fy) - 0.02, -fy, 0.85 + rnd() * 0.3)) planted++;
+    for (let q = 0; q < 6; q++) {
+      const fx = cx + (rnd() - 0.5) * 1.6,
+        fy = cy + (rnd() - 0.5) * 1.6;
+      if (f.add(kindF, fx, groundHeight(fx, fy) - 0.02, -fy, 1.0 + rnd() * 0.3)) planted++;
     }
     if (planted >= 2) {
       SPOTS.push({ x: cx, y: groundHeight(cx, cy) + 0.45, z: -cy, r: 1.2, n: 2 });
