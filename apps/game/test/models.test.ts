@@ -1,0 +1,50 @@
+import { readFileSync } from 'node:fs';
+import { describe, expect, it } from 'vitest';
+
+/** The JSON part of a binary glTF file. */
+function gltfJson(path: string): {
+  animations: { name: string; channels: unknown[] }[];
+  skins: { joints: number[] }[];
+  materials: { name: string }[];
+  meshes: { name: string }[];
+} {
+  const b = readFileSync(new URL(path, import.meta.url));
+  expect(b.toString('latin1', 0, 4)).toBe('glTF');
+  return JSON.parse(b.toString('utf8', 20, 20 + b.readUInt32LE(12)));
+}
+
+describe('Blender Nazgûl (tools/blender/nazgul.py)', () => {
+  const g = gltfJson('../src/render/models/nazgul.glb');
+
+  it('carries the two clips the game blends by speed', () => {
+    const clips = Object.fromEntries(g.animations.map((a) => [a.name, a.channels.length]));
+    expect(Object.keys(clips).sort()).toEqual(['Gallop', 'Idle']);
+    expect(clips.Idle).toBeGreaterThan(100);
+    expect(clips.Gallop).toBeGreaterThan(100);
+  });
+
+  it('is one skeleton', () => {
+    expect(g.skins).toHaveLength(1);
+    expect(g.skins[0]!.joints.length).toBeGreaterThan(40);
+  });
+
+  it('uses only material names the game knows how to dress (render/rigged.ts)', () => {
+    const known = [
+      'blade',
+      'coat',
+      'dark',
+      'eye',
+      'grip',
+      'hair',
+      'hood',
+      'hoof',
+      'leather',
+      'rag',
+      'robe',
+      'steel',
+      'trim',
+      'void',
+    ];
+    expect(g.materials.map((m) => m.name).sort()).toEqual(known);
+  });
+});

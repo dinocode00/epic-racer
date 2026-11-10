@@ -9,6 +9,40 @@ import { buildHorse, rag, ragMaterial } from './horse.ts';
 
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
 
+/** The wraith's cloak: a tattered sheet hung from the shoulders that streams back with speed. */
+export function wraithCloak(): {
+  mesh: THREE.Mesh;
+  update: (t: number, speed: number, dt: number) => void;
+} {
+  const geo = new THREE.PlaneGeometry(1.0, 1.9, 12, 18).translate(0, -0.95, 0);
+  const base = (geo.attributes.position as THREE.BufferAttribute).array.slice();
+  const mesh = new THREE.Mesh(geo, ragMaterial(0x121216));
+  let stream = 0;
+  const update = (t: number, speed: number, dt: number): void => {
+    stream += (Math.min(1, Math.abs(speed) / 30) - stream) * Math.min(1, dt * 6);
+    const pos = geo.attributes.position as THREE.BufferAttribute;
+    for (let i = 0; i < pos.count; i++) {
+      const bx = base[i * 3]!,
+        by = base[i * 3 + 1]!;
+      const along = -by;
+      const f = along / 1.9;
+      const bend = 0.18 + f * (0.25 + stream * 1.15);
+      let z = along * Math.sin(bend) * (0.6 + stream * 0.5);
+      let y = -along * Math.cos(bend);
+      let x = bx * (0.55 + f * 0.75);
+      // Vertical folds plus wind ripple.
+      z += Math.sin(bx * 15) * 0.035 * (0.4 + f);
+      z += Math.sin(t * 9 + f * 7 + bx * 4) * 0.07 * f * (0.3 + stream);
+      y += Math.sin(t * 11 + bx * 6) * 0.04 * f * stream;
+      x += Math.sin(t * 7 + f * 5) * 0.04 * f;
+      pos.setXYZ(i, x, y, z + 0.1);
+    }
+    pos.needsUpdate = true;
+    geo.computeVertexNormals();
+  };
+  return { mesh, update };
+}
+
 export function nazgul(accent: number): VehicleModel {
   const root = new THREE.Group() as VehicleModel;
   const body = new THREE.Group();
@@ -236,43 +270,19 @@ export function nazgul(accent: number): VehicleModel {
     rig.add(new THREE.Mesh(new THREE.TubeGeometry(c, 12, 0.01, 4), MAT.paint(0x2a2018, 0.8, 0)));
   }
 
-  // Cloak: a tattered sheet from the shoulders that streams back with speed.
-  const cloakGeo = new THREE.PlaneGeometry(1.0, 1.9, 12, 18).translate(0, -0.95, 0);
-  const base = (cloakGeo.attributes.position as THREE.BufferAttribute).array.slice();
-  const cloak = new THREE.Mesh(cloakGeo, ragMaterial(0x121216));
-  cloak.position.set(0, 2.62, 0.05);
-  rig.add(cloak);
+  const cloak = wraithCloak();
+  cloak.mesh.position.set(0, 2.62, 0.05);
+  rig.add(cloak.mesh);
 
   shadowAll(body);
-  cloak.castShadow = false;
+  cloak.mesh.castShadow = false;
   horse.mane.forEach((m) => (m.castShadow = false));
   root.add(body);
 
   // ---------------- Animation ----------------
-  let stream = 0;
   const animate = (t: number, speed: number, dt: number): void => {
-    const v = Math.abs(speed);
     horse.animate(t, speed, dt);
-    stream += (Math.min(1, v / 30) - stream) * Math.min(1, dt * 6);
-    const pos = cloakGeo.attributes.position as THREE.BufferAttribute;
-    for (let i = 0; i < pos.count; i++) {
-      const bx = base[i * 3]!,
-        by = base[i * 3 + 1]!;
-      const along = -by;
-      const f = along / 1.9;
-      const bend = 0.18 + f * (0.25 + stream * 1.15);
-      let z = along * Math.sin(bend) * (0.6 + stream * 0.5);
-      let y = -along * Math.cos(bend);
-      let x = bx * (0.55 + f * 0.75);
-      // Vertical folds plus wind ripple.
-      z += Math.sin(bx * 15) * 0.035 * (0.4 + f);
-      z += Math.sin(t * 9 + f * 7 + bx * 4) * 0.07 * f * (0.3 + stream);
-      y += Math.sin(t * 11 + bx * 6) * 0.04 * f * stream;
-      x += Math.sin(t * 7 + f * 5) * 0.04 * f;
-      pos.setXYZ(i, x, y, z + 0.1);
-    }
-    pos.needsUpdate = true;
-    cloakGeo.computeVertexNormals();
+    cloak.update(t, speed, dt);
   };
   animate(0, 0, 0);
 

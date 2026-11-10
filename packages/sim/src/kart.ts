@@ -24,6 +24,7 @@ export type SpecialKind = 'morgul' | 'flame' | 'missile' | 'jacks';
 /** Each vehicle's special ability. */
 export const SPECIAL_OF: Record<string, SpecialKind> = {
   nazgul: 'morgul',
+  nazgul2: 'morgul',
   pod: 'flame',
   bat: 'missile',
   mach5: 'jacks',

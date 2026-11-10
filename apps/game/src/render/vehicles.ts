@@ -11,6 +11,7 @@ import {
   wheel,
 } from './modelKit.ts';
 import { nazgul } from './nazgul.ts';
+import { hasRigged, nazgulRigged } from './rigged.ts';
 import { corolla } from './corolla.ts';
 import { landCruiser } from './landcruiser.ts';
 import { delorean } from './delorean.ts';
@@ -475,6 +476,8 @@ export function buildVehicle(id: string, accent: string): VehicleModel {
       return mach5(c);
     case 'nazgul':
       return nazgul(c);
+    case 'nazgul2': // the Blender trial; the code-built rider stands in if it failed to load
+      return hasRigged('nazgul') ? nazgulRigged(c) : nazgul(c);
     case 'corolla':
       return corolla(c);
     case 'landcruiser':

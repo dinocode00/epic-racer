@@ -2,6 +2,7 @@ import { resolve } from 'node:path';
 import { defineConfig } from 'vite';
 export default defineConfig({
   base: './', // relative, so the build also runs from any static host
+  assetsInclude: ['**/*.glb'], // Blender models, bundled into the script with ?inline
   build: {
     outDir: 'dist',
     emptyOutDir: true,

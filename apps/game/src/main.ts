@@ -10,6 +10,7 @@ import {
 } from '@epic/shared';
 import { type LookName } from './render/look.ts';
 import { View } from './render/view.ts';
+import { preloadRigged } from './render/rigged.ts';
 import {
   GamepadSource,
   type InputSource,
@@ -764,6 +765,7 @@ function sendPhoneHud(dt: number): void {
 }
 
 // ---------------- boot ----------------
+await preloadRigged();
 if (params.get('scene') === 'showroom') {
   const ids = (params.get('vehicles') ?? 'pod,bat,nazgul').split(',');
   showroom = new Showroom(
