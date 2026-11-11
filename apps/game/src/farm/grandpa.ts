@@ -16,6 +16,7 @@ import {
 } from './grandpa/body.ts';
 import { type Head, buildHead } from './grandpa/head.ts';
 import { lowOf } from './grandpa/kit.ts';
+import { applySkin, rebindSkin } from './grandpa/skin.ts';
 
 /**
  * Grandpa: the farm's NPC, built from the owner's photo and description. 70 years old,
@@ -122,6 +123,25 @@ function buildParts(): Parts {
     hips.add(l.hip);
     return l;
   });
+  // Joint names (the skin's bones in tools/blender/grandpa.py). arms[0] and legs[0] are his
+  // right side.
+  hips.name = 'hips';
+  spine.name = 'spine';
+  chest.name = 'chest';
+  neckJ.name = 'neck';
+  arms.forEach((a, i) => {
+    const s = i ? 'L' : 'R';
+    a.shoulder.name = `shoulder.${s}`;
+    a.elbow.name = `elbow.${s}`;
+    a.wrist.name = `wrist.${s}`;
+  });
+  legs.forEach((l, i) => {
+    const s = i ? 'L' : 'R';
+    l.hip.name = `hip.${s}`;
+    l.knee.name = `knee.${s}`;
+    l.ankle.name = `ankle.${s}`;
+  });
+  applySkin(group);
   return {
     group,
     hips,
@@ -148,6 +168,7 @@ function copyParts(p: Parts): Parts {
   group.traverse((o) => b.push(o));
   const map = new Map(a.map((o, i) => [o, b[i]!]));
   const mp = <T extends THREE.Object3D>(o: T) => map.get(o) as T;
+  rebindSkin(group, mp);
   const cloth = clothUniforms();
   const mats = new Map<THREE.Material, THREE.Material>();
   group.traverse((o) => {

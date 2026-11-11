@@ -7,6 +7,7 @@ is rebuilt from scratch by one command and the script is the source of truth.
 | Script      | Output                                  | Used by                       |
 | ----------- | --------------------------------------- | ----------------------------- |
 | `nazgul.py` | `apps/game/src/render/models/nazgul.glb` | `apps/game/src/render/rigged.ts` |
+| `grandpa.py` | `apps/game/src/farm/grandpa/skin.json` (skin weights) | `apps/game/src/farm/grandpa/skin.ts` |
 
 `kit.py` holds the shared helpers (swept tubes, lofts, cloth cards, skin weights, posing).
 
@@ -22,6 +23,16 @@ python3 -m venv .tools/blender && .tools/blender/bin/pip install bpy   # once (a
 
 Add `--preview some/dir` to also render pictures of the rest pose and of each clip with
 Blender's own renderer, which is the quick way to check a change before opening the game.
+
+Grandpa is still built by the game's code; Blender only works out how his clothes bend.
+After changing his meshes, export him from the game first, then redo the weights:
+
+```sh
+node tools/blender/export.cjs /tmp/grandpa-export.json
+.tools/blender/bin/python tools/blender/grandpa.py -- /tmp/grandpa-export.json apps/game/src/farm/grandpa/skin.json
+```
+
+If the weights get out of date, the changed pieces simply stay rigid until this is rerun.
 
 ## How a model reaches the game
 
