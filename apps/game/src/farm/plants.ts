@@ -38,6 +38,7 @@ import {
   spruce,
   xmasTree,
 } from './trees.ts';
+import { applyTreeAo } from './treesAo.ts';
 
 /** Where the honeybees work: every flower patch and the windfalls in the orchard. */
 const SPOTS: BeeSpot[] = [];
@@ -92,8 +93,13 @@ interface Normalised {
   geo: TreeGeo;
   height: number;
 }
+/** Every tree kind made by the last buildPlants(), in order (for tools/blender/trees.py). */
+export const TREE_KINDS: TreeGeo[] = [];
 function normalise(make: () => TreeGeo): Normalised {
   const geo = make();
+  // Soft shading inside the crowns, baked by Blender (matched by build order).
+  applyTreeAo(geo, TREE_KINDS.length);
+  TREE_KINDS.push(geo);
   const b = new THREE.Box3().setFromBufferAttribute(
     geo.solid.attributes.position as THREE.BufferAttribute,
   );
@@ -217,6 +223,7 @@ const vary = (amount = 0.1) => {
 };
 
 export function buildPlants(): THREE.Group {
+  TREE_KINDS.length = 0;
   const root = new THREE.Group();
 
   // ---- Christmas trees: an orderly grid, four kinds west to east, random sizes.

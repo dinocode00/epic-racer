@@ -3,6 +3,7 @@ import { buildBuildings } from './farm/buildings.ts';
 import { buildGrandpa } from './farm/grandpa.ts';
 import { groundHeight } from './farm/layout.ts';
 import { buildMower } from './farm/mower.ts';
+import { TREE_KINDS, buildPlants } from './farm/plants.ts';
 import { lowOf } from './farm/grandpa/kit.ts';
 
 /**
@@ -132,10 +133,26 @@ function mower() {
   return { meshes: out, total, ground: { x0: -20, z0: -20, nx: 41, nz: 41, heights } };
 }
 
+/** Every tree kind the farm uses, at its reference size: trunk and branches, and leaves. */
+function trees() {
+  buildPlants();
+  const part = (g: THREE.BufferGeometry | null) => {
+    if (!g) return null;
+    const a = g.attributes.position!;
+    const pos: number[] = [];
+    for (let k = 0; k < a.count * 3; k++) pos.push(+a.array[k]!.toFixed(4));
+    const tri = g.index ? Array.from(g.index.array) : [...Array(a.count).keys()];
+    return { pos, tri };
+  };
+  return { kinds: TREE_KINDS.map((t) => ({ solid: part(t.solid), leaves: part(t.leaves) })) };
+}
+
 const what = new URLSearchParams(location.search).get('what') ?? 'grandpa';
 (window as unknown as { __export: unknown }).__export =
   what === 'buildings'
     ? { buildings: buildings() }
     : what === 'mower'
       ? { mower: mower() }
-      : { grandpa: grandpaRest() };
+      : what === 'trees'
+        ? { trees: trees() }
+        : { grandpa: grandpaRest() };

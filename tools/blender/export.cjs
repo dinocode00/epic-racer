@@ -27,7 +27,8 @@ const vite = spawn('pnpm', ['exec', 'vite', '--port', String(port), '--strictPor
     const data = await p.evaluate(() => JSON.stringify(window.__export));
     fs.writeFileSync(out, data);
     const g = JSON.parse(data)[what];
-    console.log(`${what}: ${g.meshes.length} meshes (of ${g.total}), ${g.meshes.reduce((n, m) => n + m.pos.length / 3, 0)} vertices -> ${out}`);
+    if (g.meshes) console.log(`${what}: ${g.meshes.length} meshes (of ${g.total}), ${g.meshes.reduce((n, m) => n + m.pos.length / 3, 0)} vertices -> ${out}`);
+    else console.log(`${what}: ${g.kinds.length} kinds, ${g.kinds.reduce((n, k) => n + (k.solid?.pos.length ?? 0) / 3 + (k.leaves?.pos.length ?? 0) / 3, 0)} vertices -> ${out}`);
     await b.close();
   } finally {
     vite.kill();
