@@ -83,7 +83,7 @@ chain(["neck1", "neck2", "neck3"], NECK, "chest")
 bone("head", (0, 1.40, 2.56), (0, 1.98, 2.02), "neck3")
 SIDES = (("L", -1), ("R", 1))
 FRONT = [(0.70, 1.55), (0.62, 1.20), (0.66, 0.70), (0.66, 0.25), (0.76, 0.03)]
-HIND = [(-0.72, 1.50), (-0.50, 1.12), (-0.78, 0.72), (-0.76, 0.25), (-0.66, 0.03)]
+HIND = [(-0.72, 1.50), (-0.57, 1.12), (-0.76, 0.71), (-0.74, 0.25), (-0.64, 0.03)]
 for side, s in SIDES:
     chain(
         [f"f_arm.{side}", f"f_forearm.{side}", f"f_cannon.{side}", f"f_pastern.{side}"],
@@ -204,7 +204,7 @@ for s in (-1, 1):
     )
     kit.tube(
         bm,
-        [(s * 0.2, -0.72, 1.52)] + [(s * 0.2, y, z) for y, z in HIND[1:4]] + [(s * 0.2, -0.66, 0.05)],
+        [(s * 0.2, -0.72, 1.52)] + [(s * 0.2, y, z) for y, z in HIND[1:4]] + [(s * 0.2, HIND[4][0], 0.05)],
         [
             dict(t=0, w=0.15, h=0.25),
             dict(t=0.277, w=0.12, h=0.17),  # stifle
@@ -253,7 +253,7 @@ def near(*names, power=4.0):
 
 # ---- hooves
 for side, s in SIDES:
-    for pre, x, y in (("f", 0.19, 0.765), ("h", 0.2, -0.655)):
+    for pre, x, y in (("f", 0.19, FRONT[4][0] + 0.005), ("h", 0.2, HIND[4][0] + 0.005)):
         bm = bmesh.new()
         kit.cone(bm, (s * x, y + 0.012, 0.0), (s * x, y - 0.006, 0.105), 0.072, 0.05, segs=14)
         part(f"Hoof.{pre}.{side}", bm, "hoof", rigid(f"{pre}_pastern.{side}"))
@@ -699,7 +699,7 @@ def gallop(p):
         q = (p - at) % 1
         front = kind == "f"
         rest = F_HOOF if front else H_HOOF
-        land, off = (0.56, -0.6) if front else (0.62, -0.62)
+        land, off = (0.56, -0.6) if front else (0.6, -0.56)
         rest_pa = ANG[f"{kind}_pastern.{side}"]
         if q < STANCE:
             u = q / STANCE
