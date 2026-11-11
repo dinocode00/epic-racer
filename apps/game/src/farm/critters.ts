@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { catRigged, hasRigged } from '../render/rigged.ts';
 import { WIND_GLSL, windUniforms } from '../render/wind.ts';
 import type { BeeSpot } from './bees.ts';
 import { TERRAIN_UV_GLSL, heightTexture, terrainUniforms } from './grass.ts';
@@ -652,6 +653,55 @@ function barnCats() {
   return { group, update };
 }
 
+/**
+ * The same two cats, modelled and animated in Blender (tools/blender/cat.py): the orange
+ * tabby sits by the barn's south door watching the yard and now and then grooms a paw; the
+ * black-and-white tom patrols the east side, sitting to look about at each end.
+ */
+function barnCatsRigged() {
+  const group = new THREE.Group();
+  group.name = 'barn-cats';
+  const B = FARM.barn;
+  const at = (along: number, out: number): XY => add(add(B.c, U, along), V, -out);
+  const place = (o: THREE.Object3D, p: XY, yaw: number) => {
+    o.position.set(p[0], groundHeight(p[0], p[1]), -p[1]);
+    o.rotation.y = yaw;
+  };
+  const grid = (FARM.farmGridDeg * Math.PI) / 180;
+  const tabby = catRigged(0xd08038, 0xf0e2c8, 0x8a4a1c);
+  place(tabby.root, at(-B.w / 2 - 1.4, 2.6), grid + Math.PI + 0.5);
+  group.add(tabby.root);
+  const tom = catRigged(0x1c1c1e, 0xf4f2ec, 0x1c1c1e, 0x9fc23a);
+  group.add(tom.root);
+  const A = at(-B.w / 2 + 1, B.h / 2 + 1.3),
+    Bp = at(B.w / 2 - 1, B.h / 2 + 1.3);
+  const len = Math.hypot(Bp[0] - A[0], Bp[1] - A[1]);
+  const speed = 0.35,
+    rest = 6;
+  const leg = len / speed;
+  const cycle = 2 * (leg + rest);
+  let last = 0;
+  const update = (t: number) => {
+    const dt = Math.min(0.1, Math.max(0, t - last));
+    last = t;
+    // Tabby: grooms for about 6 s in every 22.
+    tabby.set(t % 22 > 15 ? 'groom' : 'sit');
+    tabby.update(dt);
+    // Tom: walk, sit and look round, walk back, sit again.
+    const k = ((t % cycle) + cycle) % cycle;
+    const out = k < leg + rest;
+    const kk = out ? k : k - (leg + rest);
+    const walking = kk < leg;
+    const f = out ? Math.min(1, kk / leg) : 1 - Math.min(1, kk / leg);
+    const p: XY = [A[0] + (Bp[0] - A[0]) * f, A[1] + (Bp[1] - A[1]) * f];
+    const heading = Math.atan2(Bp[1] - A[1], Bp[0] - A[0]) + (out ? 0 : Math.PI);
+    place(tom.root, p, heading);
+    tom.set(walking ? 'walk' : 'sit', speed);
+    tom.update(dt);
+  };
+  return { group, update };
+}
+
 // ------------------------------------------------------------------ all together
 
 export function buildCritters(flowerSpots: BeeSpot[]) {
@@ -660,7 +710,7 @@ export function buildCritters(flowerSpots: BeeSpot[]) {
   const sw = swallows();
   const fl = fluff();
   const lv = fallingLeaves();
-  const cats = barnCats();
+  const cats = hasRigged('cat') ? barnCatsRigged() : barnCats();
   group.add(bf.group, sw.group, fl.points, lv.mesh, cats.group);
   return {
     group,

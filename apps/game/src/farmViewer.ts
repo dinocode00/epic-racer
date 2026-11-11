@@ -4,6 +4,7 @@ import { PLAYER_COLORS, VEHICLES } from '@epic/shared';
 import { FarmScene } from './farm/farmScene.ts';
 import { FARM, FARM_SCALE, U, type XY, add, mid } from './farm/layout.ts';
 import { KartView } from './render/kartView.ts';
+import { preloadRigged } from './render/rigged.ts';
 import { View } from './render/view.ts';
 
 /**
@@ -16,6 +17,7 @@ import { View } from './render/view.ts';
  */
 
 const view = new View(document.getElementById('stage')!);
+await preloadRigged(); // the Blender-built models (the Nazgûl, the barn cats)
 const farm = new FarmScene(view.renderer);
 const camera = new THREE.PerspectiveCamera(42, 16 / 9, 0.5, 60000);
 const controls = new OrbitControls(camera, view.renderer.domElement);

@@ -3,6 +3,7 @@ import { type GLTF, GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { ragMaterial } from './horse.ts';
 import { DETAIL, MAT, type VehicleModel } from './modelKit.ts';
+import catGlb from './models/cat.glb?inline';
 import nazgulGlb from './models/nazgul.glb?inline';
 import { wraithCloak } from './nazgul.ts';
 
@@ -25,10 +26,16 @@ function bytes(dataUri: string): ArrayBuffer {
 
 /** Parse the bundled models once, before any vehicle is built. Never throws. */
 export async function preloadRigged(): Promise<void> {
-  try {
-    loaded.set('nazgul', await new GLTFLoader().parseAsync(bytes(nazgulGlb), ''));
-  } catch (e) {
-    console.warn('Blender Nazgûl failed to load; using the code-built one.', e);
+  if (loaded.size) return;
+  for (const [id, glb] of [
+    ['nazgul', nazgulGlb],
+    ['cat', catGlb],
+  ] as const) {
+    try {
+      loaded.set(id, await new GLTFLoader().parseAsync(bytes(glb), ''));
+    } catch (e) {
+      console.warn(`Blender model "${id}" failed to load; using the code-built one.`, e);
+    }
   }
 }
 
@@ -134,4 +141,82 @@ export function nazgulRigged(accent: number): VehicleModel {
     animate,
   };
   return root;
+}
+
+// ---------------------------------------------------------------- barn cats
+
+export type CatState = 'walk' | 'sit' | 'groom';
+export interface RiggedCat {
+  /** Nose along +x, paws on y = 0 (like the code-built cat it replaces). */
+  root: THREE.Group;
+  /** Change what it's doing; it eases from one clip to the next. */
+  set(state: CatState, walkSpeed?: number): void;
+  update(dt: number): void;
+}
+
+/**
+ * A barn cat from Blender (tools/blender/cat.py), coloured from the model's mask: `coat`
+ * overall, `patch` on the chest, muzzle, paws and tail tip, `stripe` for tabby markings (pass
+ * the coat colour for none).
+ */
+export function catRigged(coat: number, patch: number, stripe: number, eyes = 0xb8c23a): RiggedCat {
+  const gltf = loaded.get('cat')!;
+  const model = cloneSkinned(gltf.scene);
+  model.rotation.y = -Math.PI / 2; // the model faces -z; turn its nose to +x
+  const root = new THREE.Group();
+  root.add(model);
+  const C = new THREE.Color(coat),
+    P = new THREE.Color(patch),
+    S = new THREE.Color(stripe),
+    c = new THREE.Color();
+  model.traverse((o) => {
+    const m = o as THREE.Mesh;
+    if (!m.isMesh) return;
+    const name = (m.material as THREE.Material).name;
+    m.castShadow = true;
+    m.frustumCulled = false;
+    if (name === 'fur') {
+      // This cat's own colours, from the mask: red = patches, green = stripes.
+      const g = m.geometry.clone();
+      const mask = g.attributes.color!;
+      const out = new Float32Array(mask.count * 3);
+      for (let i = 0; i < mask.count; i++) {
+        c.copy(C).lerp(S, mask.getY(i)).lerp(P, mask.getX(i));
+        out.set([c.r, c.g, c.b], i * 3);
+      }
+      g.setAttribute('color', new THREE.BufferAttribute(out, 3));
+      m.geometry = g;
+      m.material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.92 });
+    } else if (name === 'eye') m.material = MAT.glow(eyes, 0.6);
+    else if (name === 'pupil') m.material = MAT.paint(0x050505, 0.2, 0);
+    else if (name === 'nose') m.material = MAT.paint(0xd99a9a, 0.6, 0);
+  });
+  const mixer = new THREE.AnimationMixer(model);
+  const actions = Object.fromEntries(
+    (['Walk', 'Sit', 'Groom'] as const).map((n) => [
+      n.toLowerCase(),
+      mixer.clipAction(THREE.AnimationClip.findByName(gltf.animations, n)!),
+    ]),
+  ) as Record<CatState, THREE.AnimationAction>;
+  for (const a of Object.values(actions)) {
+    a.play();
+    a.setEffectiveWeight(0);
+    a.time = Math.random() * a.getClip().duration;
+  }
+  let state: CatState = 'sit';
+  const weights: Record<CatState, number> = { walk: 0, sit: 1, groom: 0 };
+  return {
+    root,
+    set(s, walkSpeed = 0.35) {
+      state = s;
+      actions.walk.timeScale = walkSpeed / 0.26; // the clip is one 26 cm stride a second
+    },
+    update(dt) {
+      for (const k of Object.keys(weights) as CatState[]) {
+        weights[k] += ((k === state ? 1 : 0) - weights[k]) * Math.min(1, dt * 3.5);
+        actions[k].setEffectiveWeight(weights[k]);
+      }
+      mixer.update(dt);
+    },
+  };
 }

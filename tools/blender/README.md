@@ -7,6 +7,7 @@ is rebuilt from scratch by one command and the script is the source of truth.
 | Script      | Output                                  | Used by                       |
 | ----------- | --------------------------------------- | ----------------------------- |
 | `nazgul.py` | `apps/game/src/render/models/nazgul.glb` | `apps/game/src/render/rigged.ts` |
+| `cat.py` | `apps/game/src/render/models/cat.glb` (both barn cats) | `apps/game/src/render/rigged.ts`, `farm/critters.ts` |
 | `grandpa.py` | `apps/game/src/farm/grandpa/skin.json` (skin weights) | `apps/game/src/farm/grandpa/skin.ts` |
 | `buildings.py` | `apps/game/src/farm/buildingsAo.jpg` + `.json` (baked soft shadows) | `apps/game/src/farm/buildingsAo.ts` |
 

@@ -6,6 +6,7 @@ import { grassCuts } from './farm/grass.ts';
 import DRAFT from './farm/racetrackDraft.json';
 import { type Draft, type GlassStyle, buildTrackLook } from './farm/trackLook.ts';
 import { KartView } from './render/kartView.ts';
+import { preloadRigged } from './render/rigged.ts';
 import { View } from './render/view.ts';
 
 /**
@@ -31,6 +32,7 @@ const SECTIONS = ['start', 'clothes', 'spruces', 'sky', 'drop', 'ramp'];
   if (run.length > 1) grassCuts.push({ pts: run, width: 2.4 });
 }
 const view = new View(document.getElementById('stage')!);
+await preloadRigged(); // the Blender-built models (the Nazgûl, the barn cats)
 const farm = new FarmScene(view.renderer);
 const S = 10; // FARM_SCALE
 const look = buildTrackLook(DRAFT as unknown as Draft, [
