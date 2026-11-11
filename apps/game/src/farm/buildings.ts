@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import * as tex from '../render/textures.ts';
 import { windGust, windUniforms, windy } from '../render/wind.ts';
@@ -238,6 +239,22 @@ const box = (w: number, h: number, d: number, m: THREE.Material, x = 0, y = 0, z
   o.position.set(x, y, z);
   return o;
 };
+
+/**
+ * `box`, with its edges rounded over (radius `r`, never more than a third of its thinnest side):
+ * pressed sheet metal and planed timber catch the light along their edges instead of ending in
+ * a hard line.
+ */
+const roundBox =
+  (r: number) =>
+  (w: number, h: number, d: number, m: THREE.Material, x = 0, y = 0, z = 0) => {
+    const o = new THREE.Mesh(
+      new RoundedBoxGeometry(w, h, d, 1, Math.min(r, Math.min(w, h, d) / 3)),
+      m,
+    );
+    o.position.set(x, y, z);
+    return o;
+  };
 
 /** Metre-based UVs on a box so tiled textures keep their real size. */
 function boxM(w: number, h: number, d: number, m: THREE.Material, x = 0, y = 0, z = 0) {
@@ -1560,6 +1577,7 @@ function woodenGarage(gl: number, gw: number, floor: number): THREE.Group {
  * lines, chrome bumpers and grille with stacked rectangular headlights. Nose toward +x.
  */
 function pickup(): THREE.Group {
+  const box = roundBox(0.03);
   const m = mats();
   const g = new THREE.Group();
   const blue = new THREE.MeshStandardMaterial({ color: 0x86c0ea, roughness: 0.35, metalness: 0.2 });
@@ -2180,6 +2198,7 @@ function mailbox(): THREE.Group {
 
 /** Old flat wooden hay wagon: plank deck, four steel wheels, a tongue. */
 export function wagon(): THREE.Group {
+  const box = roundBox(0.02);
   const m = mats();
   const g = new THREE.Group();
   g.add(boxM(4.9, 0.12, 2.3, m.wood, 0, 0.95, 0));
