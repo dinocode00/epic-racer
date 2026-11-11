@@ -8,6 +8,7 @@ is rebuilt from scratch by one command and the script is the source of truth.
 | ----------- | --------------------------------------- | ----------------------------- |
 | `nazgul.py` | `apps/game/src/render/models/nazgul.glb` | `apps/game/src/render/rigged.ts` |
 | `grandpa.py` | `apps/game/src/farm/grandpa/skin.json` (skin weights) | `apps/game/src/farm/grandpa/skin.ts` |
+| `buildings.py` | `apps/game/src/farm/buildingsAo.jpg` + `.json` (baked soft shadows) | `apps/game/src/farm/buildingsAo.ts` |
 
 `kit.py` holds the shared helpers (swept tubes, lofts, cloth cards, skin weights, posing).
 
@@ -32,7 +33,16 @@ node tools/blender/export.cjs /tmp/grandpa-export.json
 .tools/blender/bin/python tools/blender/grandpa.py -- /tmp/grandpa-export.json apps/game/src/farm/grandpa/skin.json
 ```
 
-If the weights get out of date, the changed pieces simply stay rigid until this is rerun.
+The buildings' soft shadows are redone the same way (after changing any building):
+
+```sh
+node tools/blender/export.cjs /tmp/buildings-export.json buildings
+.tools/blender/bin/python tools/blender/buildings.py -- /tmp/buildings-export.json /tmp/buildingsAo
+# then convert /tmp/buildingsAo.png to a grey JPEG at apps/game/src/farm/buildingsAo.jpg
+# (e.g. ffmpeg -i /tmp/buildingsAo.png -pix_fmt gray -q:v 3 ...) and copy the .json beside it
+```
+
+If the weights or the shadows get out of date, the changed pieces simply stay rigid until this is rerun.
 
 ## How a model reaches the game
 

@@ -3,6 +3,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import * as tex from '../render/textures.ts';
 import { windGust, windUniforms, windy } from '../render/wind.ts';
 import { type FlowerKind, FlowerField, flowerRnd, pick } from './flowers.ts';
+import { applyBuildingAo } from './buildingsAo.ts';
 import { addGrime } from './grime.ts';
 import DRAFT from './racetrackDraft.json';
 import {
@@ -2484,6 +2485,7 @@ export function buildBuildings(): Buildings {
     { c: F.well, w: 2.4, h: 2.4, angle: 0 },
     { c: F.windmill, w: 3.2, h: 3.2, angle: F.farmGridDeg },
   ];
+  applyBuildingAo(group);
   return { group, update, solids };
 }
 

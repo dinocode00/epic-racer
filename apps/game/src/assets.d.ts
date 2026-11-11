@@ -3,3 +3,11 @@ declare module '*.glb?inline' {
   const dataUri: string;
   export default dataUri;
 }
+declare module '*.png?inline' {
+  const dataUri: string;
+  export default dataUri;
+}
+declare module '*.jpg?inline' {
+  const dataUri: string;
+  export default dataUri;
+}

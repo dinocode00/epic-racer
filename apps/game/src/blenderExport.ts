@@ -1,5 +1,7 @@
 import * as THREE from 'three';
+import { buildBuildings } from './farm/buildings.ts';
 import { buildGrandpa } from './farm/grandpa.ts';
+import { groundHeight } from './farm/layout.ts';
 import { lowOf } from './farm/grandpa/kit.ts';
 
 /**
@@ -66,4 +68,56 @@ function grandpaRest() {
   return { joints, meshes, total: i };
 }
 
-(window as unknown as { __export: unknown }).__export = { grandpa: grandpaRest() };
+/**
+ * The farm's buildings, one entry per building (each top-level object of the buildings
+ * group): every mesh in build order with its world-space positions, normals and triangles.
+ * Instanced meshes are counted but not exported.
+ */
+function buildings() {
+  const b = buildBuildings();
+  b.group.updateMatrixWorld(true);
+  const tmp = new THREE.Vector3();
+  const nm = new THREE.Matrix3();
+  const out: { b: number; i: number; pos: number[]; nrm: number[]; tri: number[] }[] = [];
+  let i = 0;
+  b.group.children.forEach((top, bi) => {
+    top.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (!m.isMesh) return;
+      const index = i++;
+      if ((m as THREE.InstancedMesh).isInstancedMesh || !m.visible) return;
+      const geo = m.geometry;
+      const a = geo.attributes.position!;
+      const n = geo.attributes.normal;
+      nm.getNormalMatrix(m.matrixWorld);
+      const pos: number[] = [],
+        nrm: number[] = [];
+      for (let k = 0; k < a.count; k++) {
+        tmp.fromBufferAttribute(a, k).applyMatrix4(m.matrixWorld);
+        pos.push(+tmp.x.toFixed(4), +tmp.y.toFixed(4), +tmp.z.toFixed(4));
+        if (n) {
+          tmp.fromBufferAttribute(n, k).applyMatrix3(nm).normalize();
+          nrm.push(+tmp.x.toFixed(3), +tmp.y.toFixed(3), +tmp.z.toFixed(3));
+        }
+      }
+      const tri = geo.index ? Array.from(geo.index.array) : [...Array(a.count).keys()];
+      out.push({ b: bi, i: index, pos, nrm, tri });
+    });
+  });
+  // The ground around them (an occluder for the bake): heights on a 1 m grid over their extent
+  // plus a margin, in world metres (world = map x, height, -map y).
+  const box = new THREE.Box3().setFromObject(b.group);
+  const x0 = Math.floor(box.min.x) - 6,
+    x1 = Math.ceil(box.max.x) + 6,
+    z0 = Math.floor(box.min.z) - 6,
+    z1 = Math.ceil(box.max.z) + 6;
+  const heights: number[] = [];
+  for (let z = z0; z <= z1; z++)
+    for (let x = x0; x <= x1; x++) heights.push(+groundHeight(x, -z).toFixed(3));
+  const ground = { x0, z0, nx: x1 - x0 + 1, nz: z1 - z0 + 1, heights };
+  return { meshes: out, total: i, ground, names: b.group.children.map((c) => c.name || c.type) };
+}
+
+const what = new URLSearchParams(location.search).get('what') ?? 'grandpa';
+(window as unknown as { __export: unknown }).__export =
+  what === 'buildings' ? { buildings: buildings() } : { grandpa: grandpaRest() };
