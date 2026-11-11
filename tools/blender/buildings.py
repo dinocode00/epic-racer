@@ -29,7 +29,8 @@ argv = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
 SRC, OUT = argv[0], argv[1]
 SIZE = int(argv[argv.index("--size") + 1]) if "--size" in argv else 2048
 SAMPLES = int(argv[argv.index("--samples") + 1]) if "--samples" in argv else 96
-data = json.load(open(SRC))["buildings"]
+WHAT = argv[argv.index("--what") + 1] if "--what" in argv else "buildings"
+data = json.load(open(SRC))[WHAT]
 bpy.ops.wm.read_factory_settings(use_empty=True)
 scene = bpy.context.scene
 
@@ -111,7 +112,7 @@ scene.cycles.device = "CPU"
 scene.cycles.samples = SAMPLES
 world = bpy.data.worlds.new("w")
 scene.world = world
-world.light_settings.distance = 2.2  # metres: how far an occluder still darkens a point
+world.light_settings.distance = float(argv[argv.index("--distance") + 1]) if "--distance" in argv else 2.2  # metres: how far an occluder still darkens a point
 bpy.ops.object.select_all(action="DESELECT")
 obj.select_set(True)
 bpy.context.view_layer.objects.active = obj

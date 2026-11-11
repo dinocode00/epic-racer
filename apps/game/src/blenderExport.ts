@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { buildBuildings } from './farm/buildings.ts';
 import { buildGrandpa } from './farm/grandpa.ts';
 import { groundHeight } from './farm/layout.ts';
+import { buildMower } from './farm/mower.ts';
 import { lowOf } from './farm/grandpa/kit.ts';
 
 /**
@@ -73,14 +74,13 @@ function grandpaRest() {
  * group): every mesh in build order with its world-space positions, normals and triangles.
  * Instanced meshes are counted but not exported.
  */
-function buildings() {
-  const b = buildBuildings();
-  b.group.updateMatrixWorld(true);
+function meshesOf(root: THREE.Object3D) {
+  root.updateMatrixWorld(true);
   const tmp = new THREE.Vector3();
   const nm = new THREE.Matrix3();
   const out: { b: number; i: number; pos: number[]; nrm: number[]; tri: number[] }[] = [];
   let i = 0;
-  b.group.children.forEach((top, bi) => {
+  root.children.forEach((top, bi) => {
     top.traverse((o) => {
       const m = o as THREE.Mesh;
       if (!m.isMesh) return;
@@ -104,6 +104,12 @@ function buildings() {
       out.push({ b: bi, i: index, pos, nrm, tri });
     });
   });
+  return { out, total: i };
+}
+
+function buildings() {
+  const b = buildBuildings();
+  const { out, total: i } = meshesOf(b.group);
   // The ground around them (an occluder for the bake): heights on a 1 m grid over their extent
   // plus a margin, in world metres (world = map x, height, -map y).
   const box = new THREE.Box3().setFromObject(b.group);
@@ -118,6 +124,18 @@ function buildings() {
   return { meshes: out, total: i, ground, names: b.group.children.map((c) => c.name || c.type) };
 }
 
+/** Grandpa's lawn tractor on level ground (y = 0), every mesh in build order. */
+function mower() {
+  const m = buildMower();
+  const { out, total } = meshesOf(m.group);
+  const heights = new Array(41 * 41).fill(0);
+  return { meshes: out, total, ground: { x0: -20, z0: -20, nx: 41, nz: 41, heights } };
+}
+
 const what = new URLSearchParams(location.search).get('what') ?? 'grandpa';
 (window as unknown as { __export: unknown }).__export =
-  what === 'buildings' ? { buildings: buildings() } : { grandpa: grandpaRest() };
+  what === 'buildings'
+    ? { buildings: buildings() }
+    : what === 'mower'
+      ? { mower: mower() }
+      : { grandpa: grandpaRest() };

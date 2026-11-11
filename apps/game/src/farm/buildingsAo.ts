@@ -19,17 +19,23 @@ interface Entry {
   uv: string;
   corners?: boolean;
 }
-const DATA = aoData as { size: number; meshes: Entry[] };
+export interface BakedAo {
+  size: number;
+  meshes: Entry[];
+}
+const DATA = aoData as BakedAo;
 
 /** How much of the occlusion also dims direct sunlight (1 would be fully physical: 0). */
 const ON_SUN = 0.55;
 
-let atlas: THREE.Texture | null = null;
-function texture(): THREE.Texture {
+const atlases = new Map<string, THREE.Texture>();
+function texture(image: string): THREE.Texture {
+  let atlas = atlases.get(image);
   if (atlas) return atlas;
-  atlas = new THREE.TextureLoader().load(aoImage);
+  atlas = new THREE.TextureLoader().load(image);
   atlas.channel = 1;
   atlas.anisotropy = 8;
+  atlases.set(image, atlas);
   return atlas;
 }
 
@@ -42,7 +48,11 @@ function coords(b64: string): Float32Array {
 }
 
 /** The same material with the atlas on it, sharing everything else (one copy per original). */
-function withAo(m: THREE.Material, copies: Map<THREE.Material, THREE.Material>): THREE.Material {
+function withAo(
+  m: THREE.Material,
+  copies: Map<THREE.Material, THREE.Material>,
+  image: string,
+): THREE.Material {
   let c = copies.get(m);
   if (c) return c;
   const std = m as THREE.MeshStandardMaterial;
@@ -51,7 +61,7 @@ function withAo(m: THREE.Material, copies: Map<THREE.Material, THREE.Material>):
   // Keep any shader patches the original carries (wind, grime) and its program cache key.
   const prev = std.onBeforeCompile.bind(std);
   const prevKey = std.customProgramCacheKey();
-  copy.aoMap = texture();
+  copy.aoMap = texture(image);
   copy.aoMapIntensity = 1;
   copy.customProgramCacheKey = () => 'ao|' + prevKey;
   copy.onBeforeCompile = (sh, r) => {
@@ -70,9 +80,17 @@ function withAo(m: THREE.Material, copies: Map<THREE.Material, THREE.Material>):
 
 /** Give every baked building mesh its atlas coordinates and an occlusion-mapped material. */
 export function applyBuildingAo(group: THREE.Object3D): number {
-  // ?noao in the address shows the buildings without it, to compare.
+  return applyBakedAo(group, DATA, aoImage);
+}
+
+/**
+ * Apply a Blender occlusion bake (tools/blender/buildings.py) to a group built by code: `data`
+ * lists its meshes by build order, `image` is the atlas.
+ */
+export function applyBakedAo(group: THREE.Object3D, data: BakedAo, image: string): number {
+  // ?noao in the address shows things without it, to compare.
   if (typeof location !== 'undefined' && new URLSearchParams(location.search).has('noao')) return 0;
-  const byIndex = new Map(DATA.meshes.map((e) => [e.i, e]));
+  const byIndex = new Map(data.meshes.map((e) => [e.i, e]));
   const copies = new Map<THREE.Material, THREE.Material>();
   const used = new Set<THREE.BufferGeometry>();
   let i = 0,
@@ -94,7 +112,7 @@ export function applyBuildingAo(group: THREE.Object3D): number {
     g.setAttribute('uv1', new THREE.BufferAttribute(uv, 2));
     used.add(g);
     m.geometry = g;
-    m.material = withAo(m.material, copies);
+    m.material = withAo(m.material, copies, image);
     done++;
   });
   return done;

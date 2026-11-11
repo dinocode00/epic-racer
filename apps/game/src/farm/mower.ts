@@ -1,6 +1,9 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
+import { type BakedAo, applyBakedAo } from './buildingsAo.ts';
 import { canvasTex, leatherBump } from './grandpa/kit.ts';
+import mowerAo from './mowerAo.json';
+import mowerAoImage from './mowerAo.jpg?inline';
 
 /**
  * Grandpa's lawn tractor, in the style of a late-1990s AGCO Allis (the Simplicity-built 1600
@@ -372,6 +375,8 @@ export function buildMower(): Mower {
     if ((o as THREE.Mesh).isMesh) o.castShadow = o.receiveShadow = true;
   });
 
+  // Soft shadows baked by Blender (tools/blender/buildings.py --what mower).
+  applyBakedAo(group, mowerAo as BakedAo, mowerAoImage);
   let lastT = 0,
     roll = 0;
   const base = group.position.y;
