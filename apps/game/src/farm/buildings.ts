@@ -1068,9 +1068,9 @@ function barn(): THREE.Group {
   g.add(gableBody(L, W, st, eave, ridge, m.boards));
   g.add(gableRoof(L, W, eave, ridge, m.shingle, 0.55, 0.2));
   g.add(roofTrim(L, W, eave, ridge, 0.55, false).group);
-  // Painted Christmas tree on the west (-z) slope, lying just above the shingles: a trunk, four
-  // tiers of branches with drooping, scalloped tips (each lighter on top and shaded under the
-  // tier above), ornaments, and a gold five-pointed star, all of it below the ridge.
+  // Painted Christmas tree on the west (-z) slope, lying just above the shingles: a brown trunk,
+  // four tiers of dark green branches with drooping, scalloped tips, and a white five-pointed
+  // star, all of it below the ridge.
   g.add(roofMural(W, eave, ridge, 0.2));
   // White trim: corner boards, eave lines, rakes.
   for (const [x, z] of [
@@ -1252,10 +1252,8 @@ function roofMural(W: number, eave: number, ridge: number, t: number): THREE.Gro
     { w: 4.9, v: 3.2, h: 1.9 },
     { w: 3.3, v: 4.3, h: 1.75 },
   ];
-  const dark = flat(0x245a31),
-    mid = flat(0x2f7a3d),
-    light = flat(0x4f9a4c),
-    shade = flat(0x173d22);
+  // One flat dark green for every tier, as it's painted: no shading, no ornaments.
+  const green = flat(0x1e4a2a);
   const tier = (w: number, v: number, h: number, k: number) => {
     const sh = new THREE.Shape();
     const n = Math.max(4, Math.round(w / 0.75));
@@ -1271,25 +1269,8 @@ function roofMural(W: number, eave: number, ridge: number, t: number): THREE.Gro
     sh.quadraticCurveTo(-w * 0.18, v + h * 0.55, -w / 2, v + 0.1);
     return sh;
   };
-  for (const [i, T] of tiers.entries()) {
-    // Shadow under the branches above, the tier itself, then a lighter upper part.
-    if (i > 0) lay(tier(T.w * 1.02, T.v - 0.08, T.h * 0.55, 1.1), shade);
-    lay(tier(T.w, T.v, T.h, 1), i % 2 ? mid : dark);
-    lay(tier(T.w * 0.62, T.v + T.h * 0.32, T.h * 0.66, 0.6), light);
-  }
-  // Ornaments scattered over the branches.
-  const balls = [0xd8262e, 0xf2c230, 0x3a6fd8, 0xf4f1ea, 0xd8262e, 0xf2c230];
-  let seed = 7;
-  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-  for (const [i, T] of tiers.entries())
-    for (let k = 0; k < 6 - i; k++) {
-      const u = (rnd() - 0.5) * T.w * 0.62;
-      const v = T.v + 0.15 + rnd() * T.h * 0.45 * (1 - Math.abs(u) / (T.w / 2));
-      const c = new THREE.Shape();
-      c.absarc(u, v, 0.13 + rnd() * 0.05, 0, Math.PI * 2, false);
-      lay(c, flat(balls[(i * 3 + k) % balls.length]!, 0x111111));
-    }
-  // A five-pointed star on top, gold with a pale glow round it, well clear of the ridge.
+  for (const T of tiers) lay(tier(T.w, T.v, T.h, 1), green);
+  // A white five-pointed star on top, well clear of the ridge.
   const top = tiers[tiers.length - 1]!;
   const sv = Math.min(top.v + top.h + 0.25, len - 1.0);
   const star = (R: number, r: number) => {
@@ -1305,8 +1286,7 @@ function roofMural(W: number, eave: number, ridge: number, t: number): THREE.Gro
     sh.closePath();
     return sh;
   };
-  lay(star(0.78, 0.36), flat(0xfff2b0, 0x554411));
-  lay(star(0.62, 0.26), flat(0xffc83a, 0x664400));
+  lay(star(0.7, 0.3), flat(0xffffff, 0x333333));
   // Lay it on the slope: +y up the slope from the eave line, +z out of the roof, sitting just on
   // top of the slab (whose top surface is t/2 + (t/2)/cos above its middle line).
   mural.rotation.order = 'YXZ';
