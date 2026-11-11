@@ -327,6 +327,65 @@ function rig(parts: Parts, rest?: Parts): Grandpa {
     fwd = V(0, 0, 1),
     lapT = V(0, 0, 0);
 
+  /**
+   * Standing about, every so often he does one of his habits: hitches up the jeans he wears so
+   * low, shades his eyes with a hand and looks out across the farm, or puts his hands to the small
+   * of his back and stretches.
+   * `k` fades them out as he sets off walking.
+   */
+  const HABIT_EVERY = 13; // seconds between habits
+  const brim = V(0, 0.085, 0.135); // the front of his cap's bill (head frame)
+  const habitT = V(0, 0, 0),
+    habitP = V(0, 0, 0);
+  const standingHabits = (t: number, k: number) => {
+    const n = Math.floor(t / HABIT_EVERY);
+    const u = t - n * HABIT_EVERY; // seconds into this habit's slot
+    const which = n % 4; // 0 hitch, 1 shade his eyes, 2 stretch, 3 nothing (just stands)
+    if (which === 3) return;
+    const len = which === 0 ? 2.6 : which === 1 ? 3.8 : 3.6;
+    const env = ease(0, 0.6, u) * (1 - ease(len - 0.7, len, u)) * k;
+    if (env <= 0) return;
+    if (which === 0) {
+      // Both hands to his belt at the hips, a tug up (the jeans and he rise a touch), let go.
+      const tug = Math.sin(Math.PI * THREE.MathUtils.clamp((u - 0.8) / 0.9, 0, 1));
+      arms.forEach((a, i) => {
+        const s = i ? 1 : -1;
+        habitT.set(s * 0.2, -0.27 + tug * 0.035, 0.07);
+        habitP.set(s, -0.1, -0.7).normalize();
+        reach(a, habitT, habitP, env);
+        palmToward(a, i, V(-s, 0, 0.3).normalize(), env);
+      });
+      hips.position.y += tug * 0.006 * env;
+      neckJ.rotation.x += 0.12 * env; // glances down at his belt
+    } else if (which === 1) {
+      // Right hand up flat over his brows, under the bill, palm down, shading his eyes while
+      // he looks slowly out across the farm and back.
+      headG.updateWorldMatrix(true, false);
+      habitT.copy(brim).applyMatrix4(headG.matrixWorld);
+      chest.worldToLocal(habitT);
+      const right = arms[0]!;
+      const toward = habitT.clone().sub(right.shoulder.position).normalize();
+      habitT.addScaledVector(toward, -0.1);
+      habitT.y += 0.05;
+      reach(right, habitT, V(-1, -0.5, -0.4).normalize(), env);
+      palmToward(right, 0, V(0, -1, 0.2).normalize(), env);
+      neckJ.rotation.x -= 0.06 * env;
+      neckJ.rotation.y += Math.sin(((u - 0.6) / (len - 1.2)) * Math.PI * 2) * 0.3 * env;
+    } else {
+      // Hands to the small of his back, leans back for a stretch, looks up, and eases off.
+      const lean = ease(0.7, 1.6, u) * (1 - ease(2.6, 3.3, u));
+      arms.forEach((a, i) => {
+        const s = i ? 1 : -1;
+        habitT.set(s * 0.13, -0.3, -0.15);
+        habitP.set(s, 0, 0.3).normalize();
+        reach(a, habitT, habitP, env);
+        palmToward(a, i, V(0, 0, 1), env);
+      });
+      spine.rotation.x -= 0.2 * lean * env;
+      neckJ.rotation.x -= 0.18 * lean * env;
+    }
+  };
+
   const animate = (t: number, speed: number, act?: Act) => {
     const dt = Math.min(0.1, Math.max(0, t - lastT));
     lastT = t;
@@ -346,12 +405,18 @@ function rig(parts: Parts, rest?: Parts): Grandpa {
       J.hip - 0.012 * w - bob + 0.006,
       0,
     );
-    hips.rotation.set(0, Math.sin(phase) * 0.06 * w, (1 - w) * Math.sin(t * 0.31) * 0.01);
+    // The hip drops a touch on the side of the swinging leg.
+    hips.rotation.set(
+      0,
+      Math.sin(phase) * 0.06 * w,
+      Math.sin(phase) * 0.03 * w + (1 - w) * Math.sin(t * 0.31) * 0.01,
+    );
     spine.rotation.set(0.07 + 0.03 * w + breathe, -Math.sin(phase) * 0.08 * w, 0);
     chest.rotation.set(0, 0, Math.sin(phase) * 0.015 * w);
     neckJ.rotation.set(
       -0.04 - 0.03 * w,
-      (1 - w) * (Math.sin(t * 0.23) * 0.45 + Math.sin(t * 0.71) * 0.06),
+      (1 - w) * (Math.sin(t * 0.23) * 0.45 + Math.sin(t * 0.71) * 0.06) +
+        Math.sin(phase) * 0.025 * w, // the head stays on where he's going as his body turns
       0,
     );
     headG.rotation.set(0.02 * Math.sin(phase * 2) * w + (1 - w) * Math.sin(t * 0.17) * 0.03, 0, 0);
@@ -390,8 +455,11 @@ function rig(parts: Parts, rest?: Parts): Grandpa {
         if (c < stanceFrac) {
           const s = c / stanceFrac;
           fz = stride * (0.5 - s);
-          lift = 0;
-          pitch = s < 0.15 ? (0.15 - s) * 1.2 : s > 0.8 ? -(s - 0.8) * 1.0 : 0;
+          // Heel strike with the toe up, the foot rolls flat, then the heel peels off the
+          // ground (the ankle rising) as he pushes off the toe.
+          const off = Math.max(0, (s - 0.72) / 0.28);
+          lift = 0.024 * off * off;
+          pitch = s < 0.14 ? 0.22 * (1 - s / 0.14) : -0.42 * off ** 1.3;
         } else {
           const s = (c - stanceFrac) / (1 - stanceFrac);
           fz = stride * (-0.5 + s);
@@ -412,12 +480,14 @@ function rig(parts: Parts, rest?: Parts): Grandpa {
     cloth.uClothPhase.value = riding ? t * 9 : phase;
     shirtUpdate();
 
-    // Arms hang loose, a little out from the baggy shirt, swinging opposite the legs.
+    // Arms hang loose, a little out from the baggy shirt, swinging opposite the legs: the
+    // forearm trails the upper arm and the hand trails the forearm, so they swing, not pump.
     arms.forEach((a, i) => {
-      const sw = Math.cos(phase + (i ? Math.PI : 0));
-      a.shoulder.rotation.set(sw * 0.2 * w + 0.03, 0, (i ? 1 : -1) * 0.15);
-      a.elbow.rotation.x = -(0.18 + 0.12 * Math.max(0, -sw) * w);
-      a.wrist.rotation.set(-0.1, 0, 0);
+      const ph = phase + (i ? Math.PI : 0);
+      const sw = Math.cos(ph);
+      a.shoulder.rotation.set(sw * 0.21 * w + 0.02, 0, (i ? 1 : -1) * (0.15 + 0.02 * w));
+      a.elbow.rotation.x = -(0.18 + 0.04 * w + 0.17 * Math.max(0, -Math.cos(ph - 0.35)) * w);
+      a.wrist.rotation.set(-0.1 + 0.12 * Math.sin(ph - 0.9) * w, 0, 0);
     });
 
     let smile = 0,
@@ -428,6 +498,7 @@ function rig(parts: Parts, rest?: Parts): Grandpa {
       heldBack = null;
     }
     group.updateMatrixWorld(true);
+    if (!act && w < 0.6) standingHabits(t, 1 - w / 0.6);
     if (act?.kind === 'wave') {
       const T = act.t;
       const right = arms[0]!;
