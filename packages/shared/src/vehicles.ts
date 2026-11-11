@@ -17,8 +17,6 @@ export const VEHICLES: VehicleDef[] = [
   { id: 'landcruiser', name: "'89 Land Cruiser", speed: 4.5, handling: 4, weight: 4, hover: false },
   { id: 'delorean', name: 'DeLorean', speed: 4.5, handling: 3.5, weight: 3, hover: false },
   { id: 'mystery', name: 'Mystery Machine', speed: 4, handling: 3.5, weight: 4, hover: false },
-  // Pilot: the same Nazgûl rebuilt and animated in Blender, to compare against the original.
-  { id: 'nazgul2', name: 'Nazgûl (Blender)', speed: 4.5, handling: 4, weight: 2, hover: false },
 ];
 
 export const vehicleById = (id: string): VehicleDef =>

@@ -474,9 +474,7 @@ export function buildVehicle(id: string, accent: string): VehicleModel {
       return podracer(c);
     case 'mach5':
       return mach5(c);
-    case 'nazgul':
-      return nazgul(c);
-    case 'nazgul2': // the Blender trial; the code-built rider stands in if it failed to load
+    case 'nazgul': // built in Blender; the code-built rider stands in if it failed to load
       return hasRigged('nazgul') ? nazgulRigged(c) : nazgul(c);
     case 'corolla':
       return corolla(c);

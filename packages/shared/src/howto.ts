@@ -35,15 +35,12 @@ const ITEMS: [string, string, string][] = [
 const bar = (n: number) => `<i class="howto-bar"><i style="width:${n * 20}%"></i></i>`;
 
 export function howToHtml(): string {
-  // The Blender trial Nazgûl is the same ride as the Nazgûl, so it gets no row of its own.
-  const vehicles = VEHICLES.filter((v) => v.id !== 'nazgul2')
-    .map(
-      (
-        v,
-      ) => `<tr><td class="howto-icon">${VEHICLE_ICONS[v.id] ?? ''}</td><td><b>${v.name}</b><br><small>${SPECIALS[v.id] ?? ''}</small></td>
+  const vehicles = VEHICLES.map(
+    (
+      v,
+    ) => `<tr><td class="howto-icon">${VEHICLE_ICONS[v.id] ?? ''}</td><td><b>${v.name}</b><br><small>${SPECIALS[v.id] ?? ''}</small></td>
       <td>${bar(v.speed)}</td><td>${bar(v.handling)}</td><td>${bar(v.weight)}</td></tr>`,
-    )
-    .join('');
+  ).join('');
   return `<div class="howto">
   <h2>How to play</h2>
 
