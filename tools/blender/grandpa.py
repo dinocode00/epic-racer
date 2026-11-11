@@ -124,11 +124,24 @@ def segment_weights(pos, bones, owner):
     return out
 
 
+ARM = {f"{j}.{s}" for j in ("shoulder", "elbow", "wrist") for s in ("R", "L")}
+TORSO = {"hips", "spine", "chest", "neck"}
+
+
+def allowed(owner):
+    """Bones a piece may follow. The shirt's body never follows the arms: a raised arm would
+    drag the side of the shirt up with it like gum. Only the sleeves stretch from the armhole."""
+    bones = near_bones(owner)
+    if owner in TORSO:
+        bones -= ARM
+    return bones
+
+
 def weigh(piece):
     raw = piece["pos"]
     pos = [Vector(raw[i : i + 3]) for i in range(0, len(raw), 3)]
     owner = piece["joint"]
-    bones = near_bones(owner)
+    bones = allowed(owner)
     # Pieces are often split at UV seams; weigh the welded surface so both sides of a seam
     # get the same weights and never crack apart.
     key = lambda v: (round(v.x, 4), round(v.y, 4), round(v.z, 4))  # noqa: E731
