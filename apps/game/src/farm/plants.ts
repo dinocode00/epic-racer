@@ -38,6 +38,7 @@ import {
   spruce,
   xmasTree,
 } from './trees.ts';
+import { hasRigged, modelGeometry } from '../render/rigged.ts';
 import { applyTreeAo } from './treesAo.ts';
 
 /** Where the honeybees work: every flower patch and the windfalls in the orchard. */
@@ -970,18 +971,21 @@ function pumpkinVines(): THREE.Group {
 function pumpkins(): THREE.Group {
   const g = new THREE.Group();
   type Style = { geo: THREE.BufferGeometry; flat: number; at: THREE.Matrix4[]; col: THREE.Color[] };
-  const style = (flat: number, ribs: number, depth: number, warts = 0): Style => ({
-    geo: pumpkinGeo(flat, ribs, depth, warts),
+  // Modelled and painted in Blender when available (tools/blender/pumpkin.py): lobes and
+  // creases, a sunken stem well, the blush round the stem and the pale spot underneath.
+  const blender = hasRigged('pumpkins');
+  const style = (name: string, flat: number, ribs: number, depth: number, warts = 0): Style => ({
+    geo: (blender && modelGeometry('pumpkins', name)) || pumpkinGeo(flat, ribs, depth, warts),
     flat,
     at: [],
     col: [],
   });
   const S = {
-    field: style(0.8, 10, 0.07),
-    cinderella: style(0.55, 12, 0.11),
-    tall: style(1.05, 9, 0.06),
-    warty: style(0.78, 10, 0.06, 0.09),
-    giant: style(0.72, 14, 0.1),
+    field: style('field', 0.8, 10, 0.07),
+    cinderella: style('cinderella', 0.55, 12, 0.11),
+    tall: style('tall', 1.05, 9, 0.06),
+    warty: style('warty', 0.78, 10, 0.06, 0.09),
+    giant: style('giant', 0.72, 14, 0.1),
     gourd: { geo: hornGeo(3.0, 1.4), flat: 1, at: [], col: [] } as Style,
     gooseneck: { geo: hornGeo(4.2, 2.4), flat: 1, at: [], col: [] } as Style,
   };
@@ -1079,21 +1083,28 @@ function pumpkins(): THREE.Group {
         one(-1.8 + rnd() * 3.6, (rnd() - 0.5) * 1.6, deck, 0.16 + rnd() * 0.08);
   }
   const skin = new THREE.MeshStandardMaterial({ roughness: 0.55 });
+  // The Blender bodies carry their paint as a vertex colour multiplying each pumpkin's own.
+  const painted = new THREE.MeshStandardMaterial({ roughness: 0.5, vertexColors: true });
   for (const s of Object.values(S)) {
     if (!s.at.length) continue;
-    const m = new THREE.InstancedMesh(s.geo, skin, s.at.length);
+    const hasPaint = !!s.geo.attributes.color;
+    const m = new THREE.InstancedMesh(s.geo, hasPaint ? painted : skin, s.at.length);
     s.at.forEach((mt, i) => {
       m.setMatrixAt(i, mt);
-      m.setColorAt(i, s.col[i]!);
+      // (The paint averages a little under 1, so lift the base colour to match.)
+      m.setColorAt(i, hasPaint ? s.col[i]!.clone().multiplyScalar(1.22) : s.col[i]!);
     });
     m.castShadow = m.receiveShadow = true;
     g.add(m);
   }
   g.add(pumpkinVines());
-  const stemGeo = new THREE.CylinderGeometry(0.7, 1, 1, 6);
+  const blenderStem = blender ? modelGeometry('pumpkins', 'stem') : null;
+  const stemGeo = blenderStem ?? new THREE.CylinderGeometry(0.7, 1, 1, 6);
   const sm = new THREE.InstancedMesh(
     stemGeo,
-    new THREE.MeshStandardMaterial({ color: 0x6b6a3a, roughness: 0.9 }),
+    blenderStem
+      ? new THREE.MeshStandardMaterial({ roughness: 0.85, vertexColors: true })
+      : new THREE.MeshStandardMaterial({ color: 0x6b6a3a, roughness: 0.9 }),
     stems.length,
   );
   stems.forEach((mt, i) => sm.setMatrixAt(i, mt));

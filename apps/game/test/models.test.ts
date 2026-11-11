@@ -48,3 +48,15 @@ describe('Blender Nazgûl (tools/blender/nazgul.py)', () => {
     expect(g.materials.map((m) => m.name).sort()).toEqual(known);
   });
 });
+
+describe('Blender barn cat (tools/blender/cat.py)', () => {
+  const g = gltfJson('../src/render/models/cat.glb');
+
+  it('has the walk, sit and groom clips', () => {
+    expect(g.animations.map((a) => a.name).sort()).toEqual(['Groom', 'Sit', 'Walk']);
+  });
+
+  it('is only the cat: no preview floor, camera or light left in', () => {
+    expect(g.meshes.map((m) => m.name).sort()).toEqual(['Cat', 'Eyes', 'Nose', 'Pupils']);
+  });
+});

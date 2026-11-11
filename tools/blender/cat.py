@@ -381,6 +381,7 @@ if PREVIEW:
     scene.world = w
     w.color = (0.6, 0.65, 0.7)
     bpy.ops.mesh.primitive_plane_add(size=4)
+    floor = bpy.context.object
     m = bpy.data.materials.new("vc")
     m.use_nodes = True
     attr = m.node_tree.nodes.new("ShaderNodeVertexColor")
@@ -416,6 +417,9 @@ if PREVIEW:
     shot("groom", groom(0.3), "front")
     shot("groom-wipe", groom(0.7), "front")
     cat.data.materials[0] = MAT["fur"]
+    # The preview's floor, camera and light must not end up in the game's model.
+    for o in (floor, cam, sun):
+        bpy.data.objects.remove(o)
 
 # ======================================================================== export
 
