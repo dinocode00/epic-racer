@@ -352,6 +352,119 @@ function grandpaHazards(): HazardDef[] {
   return out;
 }
 
+// ---------------------------------------------------------------- barn cats
+
+/** What a barn cat is doing (the renderer plays the matching clip). */
+export type FarmCatState = 'walk' | 'sit' | 'groom';
+export interface CatRoute {
+  /** Seconds round the whole timetable. */
+  period: number;
+  /** Where it is at time t: map metres (x east, y north), heading (radians from east). */
+  at(t: number): { x: number; y: number; heading: number; state: FarmCatState };
+}
+
+/**
+ * The barn's two cats cross the ground-level road near the barn: each sits on one verge
+ * watching the racers go by, strolls across, sits (and grooms) on the other side, and strolls
+ * back. Like grandpa, they're timetables of race time, so the race (where a cat is solid) and
+ * the picture agree. Each crossing is straight across the road at one point of the lap.
+ */
+const CAT_SPEED = 0.35 * S; // a cat's stroll (35 cm/s), in game metres
+const BARN: [number, number] = [68.25, 136.89];
+function catCrossings(): { s: number; reach: number }[] {
+  // Ground-level road nearest the barn (and a second spot well along the lap from it).
+  const [bx, , bz] = game(BARN[0], BARN[1], 0);
+  const low = PTS.map((q, i) => ({ i, d: Math.hypot(q.p[0] - bx, q.p[2] - bz), q })).filter(
+    (c) =>
+      c.q.low &&
+      !PTS[(c.i + 3) % PTS.length]!.loop &&
+      !PTS[(c.i + PTS.length - 3) % PTS.length]!.loop,
+  );
+  low.sort((a, b) => a.d - b.d);
+  const first = low[0]!;
+  const second = low.find((c) => Math.abs(sOf[c.i]! - sOf[first.i]!) > 90)!;
+  return [first, second].map((c) => {
+    const w = track.frameAtS(sOf[c.i]!).width;
+    return { s: sOf[c.i]!, reach: w / 2 + 6 };
+  });
+}
+function catRoute(s0: number, reach: number, sitA: number, sitB: number, phase: number): CatRoute {
+  const f = track.frameAtS(s0);
+  const cross = (2 * reach) / CAT_SPEED;
+  const period = sitA + cross + sitB + cross;
+  const map = (lat: number) => {
+    const x = f.pos.x + f.right.x * lat,
+      z = f.pos.z + f.right.z * lat;
+    return [x / S + 50, 100 - z / S] as const;
+  };
+  const [ax, ay] = map(reach),
+    [bx, by] = map(-reach);
+  const toB = Math.atan2(by - ay, bx - ax);
+  return {
+    period,
+    at(t) {
+      let k = (((t + phase) % period) + period) % period;
+      const walkAt = (u: number, from: number, to: number) => {
+        const lat = from + (to - from) * u;
+        const [x, y] = map(lat);
+        return { x, y, lat };
+      };
+      if (k < sitA) return { x: ax, y: ay, heading: toB, state: 'sit' };
+      k -= sitA;
+      if (k < cross) {
+        const p = walkAt(k / cross, reach, -reach);
+        return { x: p.x, y: p.y, heading: toB, state: 'walk' };
+      }
+      k -= cross;
+      if (k < sitB)
+        return {
+          x: bx,
+          y: by,
+          heading: toB + Math.PI,
+          state: k > sitB * 0.4 && k < sitB * 0.8 ? 'groom' : 'sit',
+        };
+      k -= sitB;
+      const p = walkAt(k / cross, -reach, reach);
+      return { x: p.x, y: p.y, heading: toB + Math.PI, state: 'walk' };
+    },
+  };
+}
+const CROSSINGS = catCrossings();
+/** The orange tabby and the black-and-white tom. */
+export const FARM_CATS: CatRoute[] = [
+  catRoute(CROSSINGS[0]!.s, CROSSINGS[0]!.reach, 14, 18, 0),
+  catRoute(CROSSINGS[1]!.s, CROSSINGS[1]!.reach, 11, 15, 9),
+];
+function catHazards(): HazardDef[] {
+  const R = 2;
+  return FARM_CATS.map((c, i) => {
+    const DT = 0.25,
+      n = Math.round(c.period / DT);
+    const { s: s0, reach } = CROSSINGS[i]!;
+    const f = track.frameAtS(s0);
+    const s: number[] = [],
+      lat: number[] = [];
+    for (let k = 0; k < n; k++) {
+      const p = c.at((k * c.period) / n);
+      // Back from map metres to the lateral offset across the road.
+      const gx = (p.x - 50) * S - f.pos.x,
+        gz = -(p.y - 100) * S - f.pos.z;
+      const l = gx * f.right.x + gz * f.right.z;
+      const on = Math.abs(l) < f.width / 2 + R && Math.abs(l) <= reach;
+      s.push(on ? Math.round(s0 * 10) / 10 : 0);
+      lat.push(on ? Math.round(l * 10) / 10 : 999);
+    }
+    return {
+      kind: 'cat',
+      s: 0,
+      lat: 0,
+      r: R,
+      effect: 'bump',
+      schedule: { dt: c.period / n, s, lat },
+    } as HazardDef;
+  });
+}
+
 export const FARM_MARKS: Record<string, number> = Object.fromEntries(
   D.sections.map((x) => [x.id, x.id === 'start' ? 0 : sForDraft(x.s)]),
 );
@@ -380,7 +493,7 @@ export const FARM_TRACK: TrackDef = {
   tunnels: ranges('barn'),
   tubes: ranges('tube'),
   crestAir: true,
-  hazards: [...hazards, ...grandpaHazards()],
+  hazards: [...hazards, ...grandpaHazards(), ...catHazards()],
   itemRows,
   marks: FARM_MARKS,
 };

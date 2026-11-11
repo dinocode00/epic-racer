@@ -13,6 +13,9 @@ export {
   FARM_TRACK,
   FARM_PIECES,
   FARM_MARKS,
+  FARM_CATS,
+  type CatRoute,
+  type FarmCatState,
   type FarmPiece,
   type FarmPieceKind,
 } from './tracks/farm.ts';

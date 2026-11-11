@@ -907,6 +907,7 @@ const REGISTRY: Record<string, (h: HazardState) => HazardView> = {
   // Grandpa and his tractor: the farm draws them (on the same timetable the race uses).
   grandpa: () => ({ root: new THREE.Group(), update() {} }),
   mower: () => ({ root: new THREE.Group(), update() {} }),
+  cat: () => ({ root: new THREE.Group(), update() {} }), // drawn by the farm (critters.ts)
   lavaBurst,
   eyeBeam,
   mud: simple(mud),
