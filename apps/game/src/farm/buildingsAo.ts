@@ -48,10 +48,18 @@ function coords(b64: string): Float32Array {
 }
 
 /** The same material with the atlas on it, sharing everything else (one copy per original). */
+/** How strongly a bake shows: on ambient light, and how much of it also dims the sun. */
+export interface AoStrength {
+  ambient: number;
+  sun: number;
+}
+const FULL: AoStrength = { ambient: 1, sun: ON_SUN };
+
 function withAo(
   m: THREE.Material,
   copies: Map<THREE.Material, THREE.Material>,
   image: string,
+  k: AoStrength,
 ): THREE.Material {
   let c = copies.get(m);
   if (c) return c;
@@ -62,16 +70,16 @@ function withAo(
   const prev = std.onBeforeCompile.bind(std);
   const prevKey = std.customProgramCacheKey();
   copy.aoMap = texture(image);
-  copy.aoMapIntensity = 1;
-  copy.customProgramCacheKey = () => 'ao|' + prevKey;
+  copy.aoMapIntensity = k.ambient;
+  copy.customProgramCacheKey = () => `ao${k.sun}|` + prevKey;
   copy.onBeforeCompile = (sh, r) => {
     prev(sh, r);
     // Three applies the map to ambient light only; dim the direct light by part of it too.
     sh.fragmentShader = sh.fragmentShader.replace(
       '#include <aomap_fragment>',
       `#include <aomap_fragment>
-      reflectedLight.directDiffuse *= mix(1.0, ambientOcclusion, ${ON_SUN.toFixed(2)});
-      reflectedLight.directSpecular *= mix(1.0, ambientOcclusion, ${ON_SUN.toFixed(2)});`,
+      reflectedLight.directDiffuse *= mix(1.0, ambientOcclusion, ${k.sun.toFixed(2)});
+      reflectedLight.directSpecular *= mix(1.0, ambientOcclusion, ${k.sun.toFixed(2)});`,
     );
   };
   copies.set(m, copy);
@@ -87,7 +95,12 @@ export function applyBuildingAo(group: THREE.Object3D): number {
  * Apply a Blender occlusion bake (tools/blender/buildings.py) to a group built by code: `data`
  * lists its meshes by build order, `image` is the atlas.
  */
-export function applyBakedAo(group: THREE.Object3D, data: BakedAo, image: string): number {
+export function applyBakedAo(
+  group: THREE.Object3D,
+  data: BakedAo,
+  image: string,
+  strength: AoStrength = FULL,
+): number {
   // ?noao in the address shows things without it, to compare.
   if (typeof location !== 'undefined' && new URLSearchParams(location.search).has('noao')) return 0;
   const byIndex = new Map(data.meshes.map((e) => [e.i, e]));
@@ -112,7 +125,7 @@ export function applyBakedAo(group: THREE.Object3D, data: BakedAo, image: string
     g.setAttribute('uv1', new THREE.BufferAttribute(uv, 2));
     used.add(g);
     m.geometry = g;
-    m.material = withAo(m.material, copies, image);
+    m.material = withAo(m.material, copies, image, strength);
     done++;
   });
   return done;

@@ -94,9 +94,42 @@ bpy.ops.mesh.select_all(action="SELECT")
 # One island per connected piece, with no extra cuts: the code's meshes already split their
 # vertices along every crease, so each game vertex gets exactly one place in the atlas.
 bpy.ops.uv.unwrap(method="ANGLE_BASED", margin=0.002)
+bpy.ops.object.mode_set(mode="OBJECT")
+# Closed pieces with no seam at all (a car's body shell, a capped loft) can't be flattened in
+# one piece: the unwrap collapses them. Let Blender cut those along their creases instead (the
+# few vertices that end up in two places are handled per corner below).
+cbm = bmesh.new()
+cbm.from_mesh(mesh)
+cbm.faces.ensure_lookup_table()
+seen, closed = set(), set()
+for f in cbm.faces:
+    if f.index in seen:
+        continue
+    comp, stack, boundary = [], [f], False
+    seen.add(f.index)
+    while stack:
+        g = stack.pop()
+        comp.append(g.index)
+        for e in g.edges:
+            if len(e.link_faces) < 2:
+                boundary = True
+            for h in e.link_faces:
+                if h.index not in seen:
+                    seen.add(h.index)
+                    stack.append(h)
+    if not boundary:
+        closed.update(comp)
+cbm.free()
+for poly in mesh.polygons:
+    poly.select = poly.index in closed
+bpy.ops.object.mode_set(mode="EDIT")
+if closed:
+    bpy.ops.uv.smart_project(angle_limit=math.radians(66), island_margin=0.002, area_weight=1.0, scale_to_bounds=False)
+bpy.ops.mesh.select_all(action="SELECT")
 bpy.ops.uv.average_islands_scale()
 bpy.ops.uv.pack_islands(margin=0.002, rotate=True)
 bpy.ops.object.mode_set(mode="OBJECT")
+print(f"closed pieces cut by smart project: {len(closed)} faces")
 
 # ---------------------------------------------------------------- bake
 
@@ -121,6 +154,17 @@ bpy.ops.object.bake(type="AO", margin=4)
 
 # ---------------------------------------------------------------- write
 
+if "--normalize" in argv:
+    # Models of many overlapping parts (vehicles) bake dark overall: scale so the most open
+    # surfaces (the brightest tenth of the baked texels) count as fully lit.
+    import numpy as np
+
+    px = np.array(img.pixels[:], dtype=np.float32).reshape(-1, 4)
+    v = px[:, 0]
+    baked = v[v < 0.999]
+    top = float(np.percentile(baked, 90)) if baked.size else 1.0
+    px[:, :3] = np.clip(px[:, :3] / max(top, 1e-3), 0, 1)
+    img.pixels[:] = px.ravel()
 os.makedirs(os.path.dirname(os.path.abspath(OUT)), exist_ok=True)
 img.filepath_raw = OUT + ".png"
 img.file_format = "PNG"

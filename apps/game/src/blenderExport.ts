@@ -4,6 +4,7 @@ import { buildGrandpa } from './farm/grandpa.ts';
 import { groundHeight } from './farm/layout.ts';
 import { buildMower } from './farm/mower.ts';
 import { TREE_KINDS, buildPlants } from './farm/plants.ts';
+import { buildCodeVehicle } from './render/vehicles.ts';
 import { lowOf } from './farm/grandpa/kit.ts';
 
 /**
@@ -147,9 +148,18 @@ function trees() {
   return { kinds: TREE_KINDS.map((t) => ({ solid: part(t.solid), leaves: part(t.leaves) })) };
 }
 
+/** A code-built vehicle, every mesh in build order, on level ground (y = 0). */
+function vehicle(id: string) {
+  const v = buildCodeVehicle(id, '#e8433a');
+  const { out, total } = meshesOf(v);
+  const heights = new Array(41 * 41).fill(0);
+  return { meshes: out, total, ground: { x0: -20, z0: -20, nx: 41, nz: 41, heights } };
+}
+
 const what = new URLSearchParams(location.search).get('what') ?? 'grandpa';
-(window as unknown as { __export: unknown }).__export =
-  what === 'buildings'
+(window as unknown as { __export: unknown }).__export = what.startsWith('vehicle-')
+  ? { [what]: vehicle(what.slice(8)) }
+  : what === 'buildings'
     ? { buildings: buildings() }
     : what === 'mower'
       ? { mower: mower() }

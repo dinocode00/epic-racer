@@ -12,6 +12,8 @@ import {
 } from './modelKit.ts';
 import { nazgul } from './nazgul.ts';
 import { hasRigged, nazgulRigged } from './rigged.ts';
+import { VEHICLE_AO } from './vehicleAo.ts';
+import { applyBakedAo } from '../farm/buildingsAo.ts';
 import { corolla } from './corolla.ts';
 import { landCruiser } from './landcruiser.ts';
 import { delorean } from './delorean.ts';
@@ -468,6 +470,16 @@ function podracer(accent: number): VehicleModel {
 }
 
 export function buildVehicle(id: string, accent: string): VehicleModel {
+  const model = buildCodeVehicle(id, accent);
+  // Soft shadows baked by Blender (tools/blender/buildings.py --what vehicle).
+  const ao = VEHICLE_AO[id];
+  // (Gentler than on the buildings: a car is many overlapping parts, and it moves.)
+  if (ao) applyBakedAo(model, ao.data, ao.image, { ambient: 1, sun: 0.4 });
+  return model;
+}
+
+/** The vehicle as the code builds it (what tools/blender/export.cjs hands to the bake). */
+export function buildCodeVehicle(id: string, accent: string): VehicleModel {
   const c = new THREE.Color(accent).getHex();
   switch (id) {
     case 'pod':
