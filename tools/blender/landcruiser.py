@@ -202,7 +202,7 @@ for s in (-1, 1):
         lay(f"frame{i}{s}", vh.grow(poly, 0.022), aim, M["trim"], 0.004)
         lay(f"glass{i}{s}", poly, aim, M["glass"], 0.007)
     # Rain gutter along the roof edge.
-    rays = [(V((0, 0.6 - 2.88 * i / 40, 1.775)), V((s, 0, 0))) for i in range(41)]
+    rays = [(V((s * 3, 0.6 - 2.88 * i / 40, 1.775)), V((-s, 0, 0))) for i in range(41)]  # from outside
     vh.part(f"gutter{s}", vh.strip(surf, rays, 0.004, 0.012, 0.01), M["paint"], smooth_angle=50)
     # Black flares over the arches.
     for wy in WHEEL_Y:

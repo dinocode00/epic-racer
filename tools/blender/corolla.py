@@ -234,10 +234,11 @@ lay("intake", vh.outline(P((-0.36, 0.33), (0.36, 0.33), (0.38, 0.4), (-0.38, 0.4
 for end, z, y0 in (("front", 0.465, 1.85), ("rear", 0.42, -1.75)):
     sy = 1 if y0 > 0 else -1
     angles = [math.radians(-80 + 160 * i / 40) for i in range(41)]  # from behind the arches' reach
-    rays = [(V((0, y0, z)), V((math.sin(a), sy * math.cos(a), 0))) for a in angles]
+    # Cast from outside, towards the point inside, so the strip sits on the surface.
+    rays = [(V((0, y0, z)) + V((math.sin(a), sy * math.cos(a), 0)) * 4, V((-math.sin(a), -sy * math.cos(a), 0))) for a in angles]
     vh.part(f"rub_{end}", vh.strip(surf, rays, 0.006, 0.014, 0.03), M["trim"], smooth_angle=50)
 for s in (-1, 1):
-    rays = [(V((0, 0.84 - 1.6 * i / 30, 0.55)), V((s, 0, 0))) for i in range(31)]
+    rays = [(V((s * 3, 0.84 - 1.6 * i / 30, 0.55)), V((-s, 0, 0))) for i in range(31)]  # from outside
     vh.part(f"rub_side{s}", vh.strip(surf, rays, 0.004, 0.014, 0.032), M["trim"], smooth_angle=50)
     vh.part(f"accent{s}", vh.strip(surf, rays, -0.016, 0.006, 0.005, around=6, ex=1.0), M["accent"])
 
