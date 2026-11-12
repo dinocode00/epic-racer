@@ -60,3 +60,26 @@ describe('Blender barn cat (tools/blender/cat.py)', () => {
     expect(g.meshes.map((m) => m.name).sort()).toEqual(['Cat', 'Eyes', 'Nose', 'Pupils']);
   });
 });
+
+/** Racing vehicles modelled in Blender (tools/blender/<script>.py; render/blenderVehicles.ts). */
+const WHEELS = ['wheel_FL', 'wheel_FR', 'wheel_RL', 'wheel_RR'];
+const BLENDER_VEHICLES = [
+  { file: 'podracer', nodes: ['body', 'exhaust_L', 'exhaust_R', 'fan_L', 'fan_R'] },
+  { file: 'corolla', nodes: ['body', 'exhaust', ...WHEELS] },
+  { file: 'landcruiser', nodes: ['body', 'exhaust', ...WHEELS] },
+];
+describe.each(BLENDER_VEHICLES)('Blender vehicle $file', ({ file, nodes }) => {
+  const g = gltfJson(`../src/render/models/${file}.glb`) as ReturnType<typeof gltfJson> & {
+    nodes: { name: string }[];
+    meshes: { name: string; primitives: { attributes: Record<string, number> }[] }[];
+  };
+
+  it('has the nodes the game looks for, and nothing else (no preview floor, camera or light)', () => {
+    expect(g.nodes.map((n) => n.name).sort()).toEqual(nodes);
+  });
+
+  it('carries its baked shading as vertex colour on every part', () => {
+    for (const m of g.meshes)
+      for (const p of m.primitives) expect(p.attributes.COLOR_0, m.name).toBeDefined();
+  });
+});

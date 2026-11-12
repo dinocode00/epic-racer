@@ -12,6 +12,7 @@ import {
 } from './modelKit.ts';
 import { nazgul } from './nazgul.ts';
 import { hasRigged, nazgulRigged } from './rigged.ts';
+import { blenderVehicle } from './blenderVehicles.ts';
 import { VEHICLE_AO } from './vehicleAo.ts';
 import { applyBakedAo } from '../farm/buildingsAo.ts';
 import { corolla } from './corolla.ts';
@@ -470,6 +471,10 @@ function podracer(accent: number): VehicleModel {
 }
 
 export function buildVehicle(id: string, accent: string): VehicleModel {
+  // Modelled in Blender (tools/blender), shading baked in; the code-built one stands in if
+  // its file failed to load.
+  const blender = blenderVehicle(id, new THREE.Color(accent).getHex());
+  if (blender) return blender;
   const model = buildCodeVehicle(id, accent);
   // Soft shadows baked by Blender (tools/blender/buildings.py --what vehicle).
   const ao = VEHICLE_AO[id];
