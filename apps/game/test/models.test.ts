@@ -67,6 +67,7 @@ const BLENDER_VEHICLES = [
   { file: 'podracer', nodes: ['body', 'exhaust_L', 'exhaust_R', 'fan_L', 'fan_R'] },
   { file: 'corolla', nodes: ['body', 'exhaust', ...WHEELS] },
   { file: 'landcruiser', nodes: ['body', 'exhaust', ...WHEELS] },
+  { file: 'mach5', nodes: ['body', 'exhaust_L', 'exhaust_R', ...WHEELS] },
 ];
 describe.each(BLENDER_VEHICLES)('Blender vehicle $file', ({ file, nodes }) => {
   const g = gltfJson(`../src/render/models/${file}.glb`) as ReturnType<typeof gltfJson> & {

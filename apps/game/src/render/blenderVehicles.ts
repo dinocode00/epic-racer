@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { MAT, type VehicleModel } from './modelKit.ts';
+import { MAT, type VehicleModel, pilot } from './modelKit.ts';
 import { blenderModel } from './rigged.ts';
 
 /**
@@ -20,12 +20,15 @@ interface Spec {
   camHeight?: number;
   /** Idle and per-(m/s) spin of the fans, radians a second. */
   fanSpin?: [number, number];
+  /** A driver the game seats (open cockpits): its style and where, in the game's coordinates. */
+  driver?: { style: Parameters<typeof pilot>[0]; at: [number, number, number] };
 }
 
 const SPECS: Record<string, Spec> = {
   pod: { file: 'podracer', hover: true, fanSpin: [9, 2.2] },
   corolla: { file: 'corolla', hover: false },
   landcruiser: { file: 'landcruiser', hover: false, camHeight: 2.1 },
+  mach5: { file: 'mach5', hover: false, driver: { style: 'speed', at: [0, 1.12, 0.4] } },
 };
 
 const WHEELS = ['wheel_FL', 'wheel_FR', 'wheel_RL', 'wheel_RR'];
@@ -121,6 +124,15 @@ export function blenderVehicle(id: string, accent: number): VehicleModel | null 
   }
   exhausts.sort((a, b) => a.x - b.x);
   rear.sort((a, b) => a.x - b.x);
+
+  if (spec.driver) {
+    const d = pilot(spec.driver.style);
+    d.position.set(...spec.driver.at);
+    d.traverse((o) => {
+      o.castShadow = true;
+    });
+    body.add(d);
+  }
 
   let spin = 0;
   const [idle, perSpeed] = spec.fanSpin ?? [0, 0];
