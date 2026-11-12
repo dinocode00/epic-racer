@@ -5,6 +5,7 @@ import { ragMaterial } from './horse.ts';
 import { DETAIL, MAT, type VehicleModel } from './modelKit.ts';
 import catGlb from './models/cat.glb?inline';
 import nazgulGlb from './models/nazgul.glb?inline';
+import podracerGlb from './models/podracer.glb?inline';
 import pumpkinsGlb from './models/pumpkins.glb?inline';
 import { wraithCloak } from './nazgul.ts';
 
@@ -32,6 +33,7 @@ export async function preloadRigged(): Promise<void> {
     ['nazgul', nazgulGlb],
     ['cat', catGlb],
     ['pumpkins', pumpkinsGlb],
+    ['podracer', podracerGlb],
   ] as const) {
     try {
       loaded.set(id, await new GLTFLoader().parseAsync(bytes(glb), ''));
@@ -42,6 +44,9 @@ export async function preloadRigged(): Promise<void> {
 }
 
 export const hasRigged = (id: string): boolean => loaded.has(id);
+
+/** One of the loaded Blender files, if it loaded. */
+export const blenderModel = (id: string): GLTF | undefined => loaded.get(id);
 
 /** A mesh's geometry from one of the loaded Blender files (static models), by mesh name. */
 export function modelGeometry(id: string, mesh: string): THREE.BufferGeometry | null {

@@ -1,0 +1,436 @@
+"""Shared helpers for the racing vehicles built in Blender (podracer.py, corolla.py, ...).
+
+A vehicle is built from many parts (bmesh solids) which are bevelled, shaded by angle, baked
+for ambient occlusion into vertex colour (with the road under them), then joined into a few
+objects for the game:
+
+  * "body"          everything rigid (one node, one draw per material)
+  * "wheel_FL" ...  each wheel on its own node, centred on its axle (the game spins and steers
+                    them; front wheels first by name)
+  * "fan_L" ...     parts the game spins about their own forward axis (pod engines' fans)
+  * empties         "exhaust_*" (boost flame anchors) and "rear_*" (drift sparks / dust)
+
+Materials carry their colour, roughness and metalness in the .glb, so the look is set here;
+the game only swaps a few by name (accent, glass, lamps and other glows; see
+apps/game/src/render/blenderVehicles.ts).
+
+Coordinates: x = the vehicle's right, y = forward, z = up, metres. The exporter turns that
+into the game's convention (y up, facing -z).
+"""
+
+import math
+import os
+
+import bpy  # isort: skip (must come first: it provides bmesh and mathutils)
+import bmesh
+from mathutils import Matrix, Vector
+
+V = Vector
+TAU = math.tau
+
+
+def reset():
+    bpy.ops.wm.read_factory_settings(use_empty=True)
+    return bpy.context.scene
+
+
+# ---------------------------------------------------------------- materials
+
+
+def srgb(h):
+    """0xRRGGBB (as the game writes colours) -> linear RGB, which glTF stores."""
+    out = []
+    for k in (16, 8, 0):
+        c = ((h >> k) & 255) / 255
+        out.append(c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4)
+    return tuple(out)
+
+
+def material(name, colour=0x808080, rough=0.5, metal=0.0, emit=None):
+    """A Principled material; emit = (0xRRGGBB, strength) for lamps and glows."""
+    m = bpy.data.materials.get(name)
+    if m:
+        return m
+    m = bpy.data.materials.new(name)
+    m.use_nodes = True
+    b = m.node_tree.nodes["Principled BSDF"]
+    b.inputs["Base Color"].default_value = (*srgb(colour), 1)
+    b.inputs["Roughness"].default_value = rough
+    b.inputs["Metallic"].default_value = metal
+    if emit:
+        b.inputs["Emission Color"].default_value = (*srgb(emit[0]), 1)
+        b.inputs["Emission Strength"].default_value = emit[1]
+    m.diffuse_color = (*srgb(colour), 1)
+    return m
+
+
+# ---------------------------------------------------------------- solids
+
+
+def lathe(bm, profile, around=32, matrix=None, cap0=False, cap1=False, wobble=None, squash=1.0):
+    """Turn a profile about the local y axis: [(y, r), ...]. Returns the rings.
+
+    wobble(theta, i) -> radius factor, for ribs and petals; squash scales z (height).
+    Angle 0 points along +x, pi/2 along +z (up).
+    """
+    m = matrix or Matrix.Identity(4)
+    rows = []
+    for i, (y, r) in enumerate(profile):
+        row = []
+        for j in range(around):
+            th = j / around * TAU
+            k = wobble(th, i) if wobble else 1.0
+            if r <= 1e-6:
+                row = [bm.verts.new(m @ V((0, y, 0)))]
+                break
+            row.append(bm.verts.new(m @ V((r * k * math.cos(th), y, r * k * math.sin(th) * squash))))
+        rows.append(row)
+    for a, b in zip(rows, rows[1:]):
+        for j in range(around):
+            j2 = (j + 1) % around
+            if len(a) == 1:
+                bm.faces.new((a[0], b[j2], b[j]))
+            elif len(b) == 1:
+                bm.faces.new((a[j], a[j2], b[0]))
+            else:
+                bm.faces.new((a[j], a[j2], b[j2], b[j]))
+    if cap0 and len(rows[0]) > 2:
+        bm.faces.new(rows[0])
+    if cap1 and len(rows[-1]) > 2:
+        bm.faces.new(rows[-1])
+    return rows
+
+
+def loft(bm, sections, around=40):
+    """A body lofted along y through superellipse sections.
+
+    sections: dicts with y, w (half width), top, bottom, optional ex (exponent: 1 = ellipse,
+    smaller = squarer), exb (exponent for the lower half), x (shift sideways).
+    """
+    rows = []
+    for s in sections:
+        mid = (s["top"] + s["bottom"]) / 2
+        ex = s.get("ex", 0.9)
+        exb = s.get("exb", ex)
+        row = []
+        for j in range(around):
+            th = j / around * TAU
+            c, sn = math.cos(th), math.sin(th)
+            e = ex if sn >= 0 else exb
+            x = s.get("x", 0.0) + s["w"] * math.copysign(abs(c) ** e, c)
+            yu = abs(sn) ** e
+            z = mid + (s["top"] - mid) * yu if sn >= 0 else mid - (mid - s["bottom"]) * yu
+            row.append(bm.verts.new((x, s["y"], z)))
+        rows.append(row)
+    for a, b in zip(rows, rows[1:]):
+        for j in range(around):
+            j2 = (j + 1) % around
+            bm.faces.new((a[j], b[j], b[j2], a[j2]))
+    bm.faces.new(rows[0])
+    bm.faces.new(list(reversed(rows[-1])))
+    return rows
+
+
+def plate(bm, outline, thick, matrix=None):
+    """A flat plate: a 2D outline [(u, v), ...] in the local x/z plane, `thick` along y."""
+    m = matrix or Matrix.Identity(4)
+    a = [bm.verts.new(m @ V((u, -thick / 2, v))) for u, v in outline]
+    b = [bm.verts.new(m @ V((u, thick / 2, v))) for u, v in outline]
+    n = len(outline)
+    bm.faces.new(a)
+    bm.faces.new(list(reversed(b)))
+    for i in range(n):
+        i2 = (i + 1) % n
+        bm.faces.new((a[i], b[i], b[i2], a[i2]))
+
+
+def box(bm, centre, size, rot=None):
+    m = Matrix.Translation(V(centre)) @ (rot or Matrix.Identity(4)) @ Matrix.Diagonal((*size, 1))
+    return bmesh.ops.create_cube(bm, size=1, matrix=m)["verts"]
+
+
+def cyl(bm, a, b, r1, r2=None, segs=16):
+    """A capped cylinder (or cone frustum) from point a to point b."""
+    a, b = V(a), V(b)
+    d = b - a
+    rot = V((0, 0, 1)).rotation_difference(d.normalized()).to_matrix().to_4x4()
+    m = Matrix.Translation((a + b) / 2) @ rot
+    return bmesh.ops.create_cone(
+        bm, cap_ends=True, segments=segs, radius1=r1, radius2=r1 if r2 is None else r2, depth=d.length, matrix=m
+    )["verts"]
+
+
+def ball(bm, centre, radii, segs=16, rot=None):
+    m = Matrix.Translation(V(centre)) @ (rot or Matrix.Identity(4)) @ Matrix.Diagonal((*radii, 1))
+    return bmesh.ops.create_uvsphere(bm, u_segments=segs, v_segments=max(6, segs // 2), radius=1, matrix=m)["verts"]
+
+
+def torus(bm, centre, R, r, rx=1.0, ry=1.0, segs=32, around=8, rot=None, arc=TAU):
+    """A ring of radius R (scaled rx, ry in its plane) and tube radius r, lying in x/y."""
+    m = Matrix.Translation(V(centre)) @ (rot or Matrix.Identity(4))
+    closed = arc >= TAU - 1e-6
+    n = segs if closed else segs + 1
+    rows = []
+    for i in range(n):
+        a = i / segs * arc
+        c = V((R * rx * math.cos(a), R * ry * math.sin(a), 0))
+        out = V((math.cos(a), math.sin(a), 0))
+        rows.append([bm.verts.new(m @ (c + out * (r * math.cos(t)) + V((0, 0, r * math.sin(t))))) for t in (k / around * TAU for k in range(around))])
+    for i in range(n if closed else n - 1):
+        a, b = rows[i], rows[(i + 1) % n]
+        for k in range(around):
+            k2 = (k + 1) % around
+            bm.faces.new((a[k], a[k2], b[k2], b[k]))
+    if not closed:
+        bm.faces.new(list(reversed(rows[0])))
+        bm.faces.new(rows[-1])
+    return rows
+
+
+def sweep(bm, points, radius, around=8, segs=None, caps=True):
+    """A round tube of constant radius through points (cables, rails, pipes)."""
+    import kit
+
+    n = segs or max(4, int(sum((V(b) - V(a)).length for a, b in zip(points, points[1:])) / 0.05))
+    return kit.tube(bm, points, [{"t": 0, "w": radius, "h": radius}, {"t": 1, "w": radius, "h": radius}], segs=n, around=around, up=(0, 0, 1), caps=caps)
+
+
+# ---------------------------------------------------------------- objects
+
+
+PARTS = []  # every part made, for the bake and the join
+PIVOTS = {}  # group -> the point its node turns about (a wheel's axle, a fan's hub)
+
+
+def pivot(group, at):
+    PIVOTS[group] = V(at)
+
+
+def part(name, bm, mat, bevel=0.0, segments=2, smooth_angle=35, group="body", subdiv=0, weld=True):
+    """Make an object from a bmesh: bevel its edges, shade it by angle, and remember it.
+
+    group: which game node it joins ("body", "wheel_FL", "fan_L", ...).
+    subdiv: extra cuts on long flat faces so the vertex-colour shading has somewhere to live.
+    """
+    if weld:
+        bmesh.ops.remove_doubles(bm, verts=bm.verts[:], dist=1e-5)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    mesh = bpy.data.meshes.new(name)
+    bm.to_mesh(mesh)
+    bm.free()
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.scene.collection.objects.link(obj)
+    if isinstance(mat, (list, tuple)):
+        for m in mat:
+            mesh.materials.append(m)
+    elif mat:
+        mesh.materials.append(mat)
+    obj["group"] = group
+    _only(obj)
+    if bevel > 0:
+        b = obj.modifiers.new("Bevel", "BEVEL")
+        b.width = bevel
+        b.segments = segments
+        b.limit_method = "ANGLE"
+        b.angle_limit = math.radians(smooth_angle)
+        b.miter_outer = "MITER_ARC"
+        bpy.ops.object.modifier_apply(modifier="Bevel")
+    if subdiv:
+        bm2 = bmesh.new()
+        bm2.from_mesh(mesh)
+        long = [e for e in bm2.edges if e.calc_length() > subdiv]
+        for _ in range(4):
+            if not long:
+                break
+            bmesh.ops.subdivide_edges(bm2, edges=long, cuts=1, use_grid_fill=True)
+            long = [e for e in bm2.edges if e.calc_length() > subdiv]
+        bm2.to_mesh(mesh)
+        bm2.free()
+    for p in mesh.polygons:
+        p.use_smooth = True
+    bpy.ops.object.shade_smooth_by_angle(angle=math.radians(smooth_angle), keep_sharp_edges=True)
+    PARTS.append(obj)
+    return obj
+
+
+def _only(obj):
+    bpy.ops.object.select_all(action="DESELECT")
+    obj.select_set(True)
+    bpy.context.view_layer.objects.active = obj
+
+
+def face_materials(obj, pick, keep=()):
+    """Re-assign faces to the object's material slots: pick(centre, normal) -> slot or None.
+
+    Faces already on a slot in `keep` are left alone."""
+    mesh = obj.data
+    for p in mesh.polygons:
+        if p.material_index in keep:
+            continue
+        k = pick(obj.matrix_world @ p.center, p.normal)
+        if k is not None:
+            p.material_index = k
+
+
+def marker(name, at):
+    e = bpy.data.objects.new(name, None)
+    e.location = V(at)
+    bpy.context.scene.collection.objects.link(e)
+    return e
+
+
+# ---------------------------------------------------------------- occlusion
+
+
+UNLIT = {"glass", "accent", "lamp", "tail", "amber", "glow", "binder", "lens", "reverse", "plate"}
+
+
+def bake_ao(ground=0.0, samples=96, distance=0.6, floor=0.38, tint=None, pct=0.9):
+    """Bake ambient occlusion (with the road under the vehicle) into a "Col" vertex colour.
+
+    Values are scaled so the most open surfaces count as fully lit, then mapped to
+    floor..1. tint(obj, co, normal) -> (r, g, b) multiplies in paint detail (grime, soot).
+    """
+    scene = bpy.context.scene
+    scene.render.engine = "CYCLES"
+    scene.cycles.device = "CPU"
+    scene.cycles.samples = samples
+    if not scene.world:
+        scene.world = bpy.data.worlds.new("w")
+    scene.world.light_settings.distance = distance
+    bpy.ops.mesh.primitive_plane_add(size=40, location=(0, 0, ground))
+    road = bpy.context.object
+    vals = {}
+    for o in PARTS:
+        if not o.data.materials:
+            o.data.materials.append(material("bake"))
+        ao = o.data.color_attributes.new("AO", "FLOAT_COLOR", "POINT")
+        o.data.color_attributes.active_color = ao
+        _only(o)
+        bpy.ops.object.bake(type="AO", target="VERTEX_COLORS")
+        vals[o.name] = [ao.data[i].color[0] for i in range(len(o.data.vertices))]
+        o.data.color_attributes.remove(ao)
+    lit = sorted(v for o in PARTS if not _unlit(o) for v in vals[o.name])
+    top = lit[int(len(lit) * pct)] if lit else 1.0
+    for o in PARTS:
+        col = o.data.color_attributes.new("Col", "FLOAT_COLOR", "POINT")
+        o.data.color_attributes.active_color = col
+        normals = [v.normal for v in o.data.vertices]
+        for i, v in enumerate(o.data.vertices):
+            k = floor + (1 - floor) * min(1.0, vals[o.name][i] / top)
+            r = g = b = k
+            if tint:
+                t = tint(o, o.matrix_world @ v.co, normals[i])
+                r, g, b = r * t[0], g * t[1], b * t[2]
+            col.data[i].color = (r, g, b, 1.0)
+    bpy.data.objects.remove(road)
+    return top
+
+
+def _unlit(o):
+    return all(m.name in UNLIT for m in o.data.materials)
+
+
+def join_groups():
+    """Join the parts into one object per game node; returns {group: object}."""
+    groups = {}
+    for o in PARTS:
+        groups.setdefault(o["group"], []).append(o)
+    out = {}
+    for name, objs in groups.items():
+        # A node spins about its own origin: put it on the axle.
+        pv = PIVOTS.get(name, V((0, 0, 0)))
+        bpy.ops.object.select_all(action="DESELECT")
+        for o in objs:
+            o.select_set(True)
+        bpy.context.view_layer.objects.active = objs[0]
+        if len(objs) > 1:
+            bpy.ops.object.join()
+        obj = bpy.context.view_layer.objects.active
+        obj.name = obj.data.name = name
+        cols = obj.data.color_attributes
+        if "Col" in cols:  # joining forgets which colour layer is the active (exported) one
+            cols.active_color = cols["Col"]
+            cols.render_color_index = cols.find("Col")
+        # Origin on the pivot, so the node's position is the axle.
+        obj.data.transform(Matrix.Translation(obj.location - pv))
+        obj.location = pv
+        out[name] = obj
+    PARTS.clear()
+    return out
+
+
+def stats():
+    tris = sum(sum(len(p.vertices) - 2 for p in o.data.polygons) for o in bpy.context.scene.objects if o.type == "MESH")
+    return tris
+
+
+# ---------------------------------------------------------------- export and preview
+
+
+def export(path):
+    bpy.ops.export_scene.gltf(
+        filepath=path,
+        export_format="GLB",
+        export_yup=True,
+        export_vertex_color="ACTIVE",
+        export_all_vertex_colors=False,
+        use_selection=False,
+        export_cameras=False,
+        export_lights=False,
+        export_apply=True,
+        export_extras=False,
+    )
+    return os.path.getsize(path)
+
+
+def preview(out_dir, name, views, size=(900, 520), target=(0, 0, 0.6), samples=48, ortho=None):
+    """Render the vehicle (with its baked colour) from a few angles.
+
+    views = [(tag, yaw°, pitch°, dist[, target])]; yaw 0 looks at the front, 90 the right side."""
+    os.makedirs(out_dir, exist_ok=True)
+    scene = bpy.context.scene
+    for m in bpy.data.materials:
+        if not m.use_nodes or "Principled BSDF" not in m.node_tree.nodes:
+            continue
+        nt = m.node_tree
+        b = nt.nodes["Principled BSDF"]
+        vc = nt.nodes.new("ShaderNodeVertexColor")
+        vc.layer_name = "Col"
+        mix = nt.nodes.new("ShaderNodeMix")
+        mix.data_type = "RGBA"
+        mix.blend_type = "MULTIPLY"
+        mix.inputs[0].default_value = 1.0
+        mix.inputs[6].default_value = b.inputs["Base Color"].default_value[:]
+        nt.links.new(vc.outputs["Color"], mix.inputs[7])
+        nt.links.new(mix.outputs[2], b.inputs["Base Color"])
+    bpy.ops.mesh.primitive_plane_add(size=60, location=(0, 0, 0))
+    road = bpy.context.object
+    road.data.materials.append(material("preview_road", 0x7d8288, 0.9))
+    cam = bpy.data.objects.new("Cam", bpy.data.cameras.new("Cam"))
+    scene.collection.objects.link(cam)
+    scene.camera = cam
+    sun = bpy.data.objects.new("Sun", bpy.data.lights.new("Sun", "SUN"))
+    sun.data.energy = 3.5
+    sun.data.angle = math.radians(8)
+    sun.rotation_euler = (math.radians(40), 0, math.radians(35))
+    scene.collection.objects.link(sun)
+    scene.world.use_nodes = True
+    bg = scene.world.node_tree.nodes["Background"]
+    bg.inputs["Color"].default_value = (0.55, 0.62, 0.72, 1)
+    bg.inputs["Strength"].default_value = 0.9
+    scene.cycles.samples = samples
+    scene.render.resolution_x, scene.render.resolution_y = size
+    scene.view_settings.view_transform = "Standard"
+    for tag, yaw, pitch, dist, *aim in views:
+        t = V(aim[0] if aim else target)
+        y, p = math.radians(yaw), math.radians(pitch)
+        d = V((math.sin(y) * math.cos(p), math.cos(y) * math.cos(p), math.sin(p)))
+        cam.location = t + d * dist
+        cam.rotation_euler = (-d).to_track_quat("-Z", "Y").to_euler()
+        cam.data.lens = 50
+        if ortho:
+            cam.data.type = "ORTHO"
+            cam.data.ortho_scale = ortho
+        scene.render.filepath = os.path.join(out_dir, f"{name}-{tag}.png")
+        bpy.ops.render.render(write_still=True)
