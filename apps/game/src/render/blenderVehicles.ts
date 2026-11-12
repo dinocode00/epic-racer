@@ -29,6 +29,7 @@ const SPECS: Record<string, Spec> = {
   corolla: { file: 'corolla', hover: false },
   landcruiser: { file: 'landcruiser', hover: false, camHeight: 2.1 },
   mach5: { file: 'mach5', hover: false, driver: { style: 'speed', at: [0, 1.12, 0.4] } },
+  delorean: { file: 'delorean', hover: false },
 };
 
 const WHEELS = ['wheel_FL', 'wheel_FR', 'wheel_RL', 'wheel_RR'];
