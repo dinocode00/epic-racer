@@ -16,6 +16,7 @@ is rebuilt from scratch by one command and the script is the source of truth.
 | `mach5.py` | `apps/game/src/render/models/mach5.glb` (the Mach 5) | `apps/game/src/render/blenderVehicles.ts` |
 | `delorean.py` | `apps/game/src/render/models/delorean.glb` (the DeLorean time machine) | `apps/game/src/render/blenderVehicles.ts` |
 | `mystery.py` | `apps/game/src/render/models/mystery.glb` (the Mystery Machine) | `apps/game/src/render/blenderVehicles.ts` |
+| `batmobile.py` | `apps/game/src/render/models/batmobile.glb` (the 1989 Batmobile) | `apps/game/src/render/blenderVehicles.ts` |
 | `buildings.py --what vehicle-<id> --normalize` | `apps/game/src/render/models/ao/<id>.jpg` + `.json` (each code-built vehicle; for the Blender-built ones, their stand-ins) | `apps/game/src/render/vehicleAo.ts` |
 | `grandpa.py` | `apps/game/src/farm/grandpa/skin.json` (skin weights) | `apps/game/src/farm/grandpa/skin.ts` |
 | `buildings.py` | `apps/game/src/farm/buildingsAo.jpg` + `.json` (baked soft shadows) | `apps/game/src/farm/buildingsAo.ts` |

@@ -31,6 +31,12 @@ const SPECS: Record<string, Spec> = {
   mach5: { file: 'mach5', hover: false, driver: { style: 'speed', at: [0, 1.12, 0.4] } },
   delorean: { file: 'delorean', hover: false },
   mystery: { file: 'mystery', hover: false, camHeight: 2.2 },
+  bat: {
+    file: 'batmobile',
+    hover: false,
+    fanSpin: [6, 2],
+    driver: { style: 'bat', at: [0, 0.96, 0.55] },
+  },
 };
 
 const WHEELS = ['wheel_FL', 'wheel_FR', 'wheel_RL', 'wheel_RR'];

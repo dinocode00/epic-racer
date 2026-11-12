@@ -3,6 +3,7 @@ import { type GLTF, GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { ragMaterial } from './horse.ts';
 import { DETAIL, MAT, type VehicleModel } from './modelKit.ts';
+import batmobileGlb from './models/batmobile.glb?inline';
 import catGlb from './models/cat.glb?inline';
 import corollaGlb from './models/corolla.glb?inline';
 import deloreanGlb from './models/delorean.glb?inline';
@@ -44,6 +45,7 @@ export async function preloadRigged(): Promise<void> {
     ['mach5', mach5Glb],
     ['delorean', deloreanGlb],
     ['mystery', mysteryGlb],
+    ['batmobile', batmobileGlb],
   ] as const) {
     try {
       loaded.set(id, await new GLTFLoader().parseAsync(bytes(glb), ''));
