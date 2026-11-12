@@ -115,16 +115,7 @@ def RR(y):
 
 
 def ring(y):
-    w, zb, zbot, zt, xg, rr = W(y), ZB(y), ZBOT(y), ZTOP(y), XG1(y), RR(y)
-    crown = 0.02 + 0.012 * cabin(y)
-    a = vh.seg((0, zbot), (w - RBOT, zbot), 5)
-    b = vh.arc(w - RBOT, zbot + RBOT, RBOT, -math.pi / 2, 0, 4)
-    c = vh.seg((w, zbot + RBOT), (w, zb - RS), 9, lambda t: (-0.03 * (1 - t) ** 2 + 0.006 * math.sin(math.pi * t), 0))
-    d = vh.arc(w - RS, zb - RS, RS, 0, math.pi / 2, 4)
-    e = vh.seg((w - RS, zb), (xg, zt - rr), 9)
-    f = vh.arc(xg - rr, zt - rr, rr, 0, math.pi / 2, 5)
-    g = [(x, zt + crown * (1 - (x / (xg - rr)) ** 2)) for x, _ in vh.seg((xg - rr, zt), (0, zt), 9)]
-    return vh.chain(a, b, c, d, e, f, g)
+    return vh.car_ring(W(y), ZB(y), ZBOT(y), ZTOP(y), XG1(y), RR(y), RS, RBOT, 0.02 + 0.012 * cabin(y))
 
 
 ys = [2.19, 2.186, 2.178, 2.165, 2.145, 2.118, 2.085, 2.045, 2.0]

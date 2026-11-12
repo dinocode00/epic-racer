@@ -5,6 +5,7 @@ import { ragMaterial } from './horse.ts';
 import { DETAIL, MAT, type VehicleModel } from './modelKit.ts';
 import catGlb from './models/cat.glb?inline';
 import corollaGlb from './models/corolla.glb?inline';
+import landcruiserGlb from './models/landcruiser.glb?inline';
 import nazgulGlb from './models/nazgul.glb?inline';
 import podracerGlb from './models/podracer.glb?inline';
 import pumpkinsGlb from './models/pumpkins.glb?inline';
@@ -36,6 +37,7 @@ export async function preloadRigged(): Promise<void> {
     ['pumpkins', pumpkinsGlb],
     ['podracer', podracerGlb],
     ['corolla', corollaGlb],
+    ['landcruiser', landcruiserGlb],
   ] as const) {
     try {
       loaded.set(id, await new GLTFLoader().parseAsync(bytes(glb), ''));

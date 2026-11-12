@@ -355,6 +355,9 @@ def _unlit(o):
 
 def join_groups():
     """Join the parts into one object per game node; returns {group: object}."""
+    if os.environ.get("VEHICLE_TRIS"):  # where the triangles go, biggest parts first
+        for o in sorted(PARTS, key=lambda o: -len(o.data.polygons))[:15]:
+            print("TRIS", o.name, sum(len(p.vertices) - 2 for p in o.data.polygons))
     groups = {}
     for o in PARTS:
         groups.setdefault(o["group"], []).append(o)
@@ -403,7 +406,76 @@ def export(path):
         export_apply=True,
         export_extras=False,
     )
+    compact(path)
     return os.path.getsize(path)
+
+
+def compact(path):
+    """Store vertex colours and normals in 8 bits instead of 32-bit floats (about half the
+    file). Colours as normalised bytes are core glTF; byte normals need KHR_mesh_quantization,
+    which three.js's loader reads."""
+    import json
+    import struct
+
+    import numpy as np
+
+    data = open(path, "rb").read()
+    jlen = struct.unpack_from("<I", data, 12)[0]
+    js = json.loads(data[20 : 20 + jlen])
+    boff = 20 + jlen
+    blen = struct.unpack_from("<I", data, boff)[0]
+    binary = data[boff + 8 : boff + 8 + blen]
+    views, accs = js["bufferViews"], js["accessors"]
+    kind = {}
+    for m in js["meshes"]:
+        for p in m["primitives"]:
+            for k in ("NORMAL", "COLOR_0"):
+                if k in p["attributes"]:
+                    kind[p["attributes"][k]] = k
+    users = {}
+    for i, a in enumerate(accs):
+        users.setdefault(a.get("bufferView"), []).append(i)
+    out = bytearray()
+    new_views = []
+    for vi, v in enumerate(views):
+        raw = binary[v.get("byteOffset", 0) : v.get("byteOffset", 0) + v["byteLength"]]
+        nv = {k: val for k, val in v.items() if k not in ("byteOffset", "byteLength")}
+        ai = users.get(vi, [])
+        if len(ai) == 1 and ai[0] in kind and accs[ai[0]]["componentType"] == 5126 and "byteStride" not in v:
+            a = accs[ai[0]]
+            n = {"VEC3": 3, "VEC4": 4}[a["type"]]
+            f = np.frombuffer(raw, dtype="<f4", count=a["count"] * n, offset=a.get("byteOffset", 0)).reshape(-1, n)
+            if kind[ai[0]] == "COLOR_0":
+                q = np.full((a["count"], 4), 255, dtype=np.uint8)
+                q[:, :n] = np.round(np.clip(f[:, :n], 0, 1) * 255)
+                a.update(type="VEC4", componentType=5121, normalized=True)
+            else:
+                q = np.zeros((a["count"], 4), dtype=np.int8)
+                q[:, :3] = np.round(np.clip(f, -1, 1) * 127)
+                a.update(componentType=5120, normalized=True)
+                nv["byteStride"] = 4
+            a.pop("byteOffset", None)
+            a.pop("min", None)
+            a.pop("max", None)
+            raw = q.tobytes()
+        while len(out) % 4:
+            out.append(0)
+        nv["byteOffset"] = len(out)
+        nv["byteLength"] = len(raw)
+        out += raw
+        new_views.append(nv)
+    while len(out) % 4:
+        out.append(0)
+    js["bufferViews"] = new_views
+    js["buffers"][0]["byteLength"] = len(out)
+    for key in ("extensionsUsed", "extensionsRequired"):
+        js[key] = sorted(set(js.get(key, [])) | {"KHR_mesh_quantization"})
+    jb = json.dumps(js, separators=(",", ":")).encode()
+    jb += b" " * (-len(jb) % 4)
+    with open(path, "wb") as fh:
+        fh.write(struct.pack("<III", 0x46546C67, 2, 12 + 8 + len(jb) + 8 + len(out)))
+        fh.write(struct.pack("<II", len(jb), 0x4E4F534A) + jb)
+        fh.write(struct.pack("<II", len(out), 0x004E4942) + bytes(out))
 
 
 def preview(out_dir, name, views, size=(900, 520), target=(0, 0, 0.6), samples=48, ortho=None):
@@ -527,6 +599,25 @@ def chain(*parts):
     return out
 
 
+def car_ring(w, zb, zbot, zt, xg, rr, rs, rbot, crown, tuck=0.03, bulge=0.006):
+    """A car body's cross-section (right half, bottom centre to top centre, for shell()).
+
+    Up from the floor (zbot) round the lower corner (rbot) and the flank (half width w, tucked
+    in at the foot, a little fuller in the middle) to the shoulder (radius rs) at the waist
+    zb; then the greenhouse leans in to the roof edge (half width xg, corner radius rr) and
+    across the crowned top at zt. Over the hood and trunk, zt sits just above zb and xg just
+    inside the shoulder, so the same points make a flat deck with a rounded edge.
+    """
+    a = seg((0, zbot), (w - rbot, zbot), 5)
+    b = arc(w - rbot, zbot + rbot, rbot, -math.pi / 2, 0, 4)
+    c = seg((w, zbot + rbot), (w, zb - rs), 9, lambda t: (-tuck * (1 - t) ** 2 + bulge * math.sin(math.pi * t), 0))
+    d = arc(w - rs, zb - rs, rs, 0, math.pi / 2, 4)
+    e = seg((w - rs, zb), (xg, zt - rr), 9)
+    f = arc(xg - rr, zt - rr, rr, 0, math.pi / 2, 5)
+    g = [(x, zt + crown * (1 - (x / (xg - rr)) ** 2)) for x, _ in seg((xg - rr, zt), (0, zt), 9)]
+    return chain(a, b, c, d, e, f, g)
+
+
 def cut(obj, cutter, mat=None):
     """Boolean difference; the faces it makes take `mat` (e.g. a dark wheel well)."""
     if mat is not None:
@@ -603,13 +694,16 @@ def grow(poly, d):
     return out
 
 
-def panel(surf, poly, to_origin, direction, lift, thick=0.0, rings=3, bend_normal=True):
+def panel(surf, poly, to_origin, direction, lift, thick=0.0, rings=None, bend_normal=True):
     """A sheet laid on the body inside a 2D outline: each point (u, v) of the outline is cast
     from to_origin(u, v) along `direction` and lifted off the surface by `lift`.
     thick > 0 gives it sides down towards the surface. Returns a bmesh."""
     bm = bmesh.new()
     n = len(poly)
     c = sum(poly, V((0, 0))) / n
+    if rings is None:  # enough rings to follow the body's curve, no more
+        size = max((p - c).length for p in poly) * 2
+        rings = 1 if size < 0.35 else 2 if size < 0.9 else 3
 
     def place(uv):
         loc, nor = surf.hit(to_origin(uv.x, uv.y), direction)
@@ -672,6 +766,7 @@ def text(name, string, size, matrix, mat, depth=0.002):
     cu.extrude = depth
     cu.align_x = "CENTER"
     cu.align_y = "CENTER"
+    cu.resolution_u = 3
     obj = bpy.data.objects.new(name, cu)
     bpy.context.scene.collection.objects.link(obj)
     obj.matrix_world = matrix @ Matrix.Rotation(math.pi / 2, 4, "X")
@@ -690,13 +785,14 @@ def text(name, string, size, matrix, mat, depth=0.002):
 # ---------------------------------------------------------------- wheels
 
 
-def wheel(group, centre, side, radius, width, rim_r, mats, spokes=None, cap=None):
+def wheel(group, centre, side, radius, width, rim_r, mats, cap=None, blocks=0):
     """A wheel on its own node (group), axle along x, `side` -1 left / +1 right.
 
     Tyre: rounded shoulders, sidewall bulge, tread grooves. Rim: a dished steel wheel; then
     cap(bm, matrix) adds the face (hubcap, spokes...) in the wheel's frame, where +y points
     out of the car and the face sits at y = 0 (the tyre's outer wall at +width/2).
-    mats: {"rubber", "rim"}.
+    mats: {"rubber", "rim"}. blocks > 0: chunky off-road tread, that many blocks round,
+    staggered either side of the centre line (instead of a road tyre's grooves).
     """
     pivot(group, centre)
     m = Matrix.Translation(V(centre)) @ Matrix.Rotation(-side * math.pi / 2, 4, "Z")
@@ -714,15 +810,28 @@ def wheel(group, centre, side, radius, width, rim_r, mats, spokes=None, cap=None
         (-w * 0.98, rim_r + (r - rim_r) * 0.35),
         (-w * 0.82, rim_r * 1.02),
     ]
+    # Rows: the profile's corners, with the tread (between the shoulders) cut finer.
     dense = []
-    for (y0, r0), (y1, r1) in zip(prof, prof[1:]):
-        for k in range(3):
-            dense.append((y0 + (y1 - y0) * k / 3, r0 + (r1 - r0) * k / 3))
+    for i, ((y0, r0), (y1, r1)) in enumerate(zip(prof, prof[1:])):
+        n = 6 if i == 4 else 1
+        for k in range(n):
+            dense.append((y0 + (y1 - y0) * k / n, r0 + (r1 - r0) * k / n))
     dense.append(prof[-1])
     # Tread grooves round the crown.
-    tread = [(y, rr - (0.008 if abs(y) < w * 0.7 and (abs(abs(y) - w * 0.25) < w * 0.07) else 0.0)) for y, rr in dense]
+    tread = [(y, rr - (0.008 if abs(abs(y) - w * 0.24) < w * 0.01 else 0.0)) for y, rr in dense]
     bm = bmesh.new()
-    lathe(bm, tread, 36, m)
+    if blocks:
+        crown = [(1 if y > 0 else -1) if abs(y) < w * 0.73 else 0 for y, _ in dense]
+
+        def knobs(th, i):
+            if not crown[i]:
+                return 1.0
+            k = int(th / TAU * blocks + (0.5 if crown[i] > 0 else 0.0))
+            return 1.0 if k % 2 else 1.0 - 0.045 * radius / 0.4
+
+        lathe(bm, dense, blocks * 4, m, wobble=knobs)
+    else:
+        lathe(bm, tread, 36, m)
     part(f"{group}_tyre", bm, mats["rubber"], smooth_angle=40, group=group)
     # Rim: the barrel and a dished face, set in from the tyre's wall.
     bm = bmesh.new()
