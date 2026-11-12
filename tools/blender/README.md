@@ -11,6 +11,7 @@ is rebuilt from scratch by one command and the script is the source of truth.
 | `trees.py` | `apps/game/src/farm/treesAo.json` (shading in the crowns) | `apps/game/src/farm/treesAo.ts` |
 | `pumpkin.py` | `apps/game/src/render/models/pumpkins.glb` (pumpkin bodies and stem) | `apps/game/src/farm/plants.ts` |
 | `podracer.py` | `apps/game/src/render/models/podracer.glb` (the pod racer and its pilot) | `apps/game/src/render/blenderVehicles.ts` |
+| `corolla.py` | `apps/game/src/render/models/corolla.glb` ('95 Corolla) | `apps/game/src/render/blenderVehicles.ts` |
 | `buildings.py --what vehicle-<id> --normalize` | `apps/game/src/render/models/ao/<id>.jpg` + `.json` (each code-built vehicle) | `apps/game/src/render/vehicleAo.ts` |
 | `grandpa.py` | `apps/game/src/farm/grandpa/skin.json` (skin weights) | `apps/game/src/farm/grandpa/skin.ts` |
 | `buildings.py` | `apps/game/src/farm/buildingsAo.jpg` + `.json` (baked soft shadows) | `apps/game/src/farm/buildingsAo.ts` |

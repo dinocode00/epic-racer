@@ -24,6 +24,7 @@ interface Spec {
 
 const SPECS: Record<string, Spec> = {
   pod: { file: 'podracer', hover: true, fanSpin: [9, 2.2] },
+  corolla: { file: 'corolla', hover: false },
 };
 
 const WHEELS = ['wheel_FL', 'wheel_FR', 'wheel_RL', 'wheel_RR'];

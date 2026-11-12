@@ -302,14 +302,22 @@ def bake_ao(ground=0.0, samples=96, distance=0.6, floor=0.38, tint=None, pct=0.9
     road = bpy.context.object
     vals = {}
     for o in PARTS:
+        _split_materials(o)
+    for o in PARTS:
         if not o.data.materials:
             o.data.materials.append(material("bake"))
+        # Wheels turn, so they are shaded by themselves alone (no dark patch going round).
+        solo = o["group"].startswith("wheel")
+        for other in PARTS + [road]:
+            other.hide_render = solo and other.get("group") != o["group"]
         ao = o.data.color_attributes.new("AO", "FLOAT_COLOR", "POINT")
         o.data.color_attributes.active_color = ao
         _only(o)
         bpy.ops.object.bake(type="AO", target="VERTEX_COLORS")
         vals[o.name] = [ao.data[i].color[0] for i in range(len(o.data.vertices))]
         o.data.color_attributes.remove(ao)
+    for other in PARTS:
+        other.hide_render = False
     lit = sorted(v for o in PARTS if not _unlit(o) for v in vals[o.name])
     top = lit[int(len(lit) * pct)] if lit else 1.0
     for o in PARTS:
@@ -325,6 +333,20 @@ def bake_ao(ground=0.0, samples=96, distance=0.6, floor=0.38, tint=None, pct=0.9
             col.data[i].color = (r, g, b, 1.0)
     bpy.data.objects.remove(road)
     return top
+
+
+def _split_materials(o):
+    """Give each material its own vertices where they meet, so a dark wheel well's shading
+    doesn't bleed onto the paint beside it."""
+    if len(o.data.materials) < 2:
+        return
+    bm = bmesh.new()
+    bm.from_mesh(o.data)
+    edges = [e for e in bm.edges if len(e.link_faces) == 2 and e.link_faces[0].material_index != e.link_faces[1].material_index]
+    if edges:
+        bmesh.ops.split_edges(bm, edges=edges)
+        bm.to_mesh(o.data)
+    bm.free()
 
 
 def _unlit(o):
@@ -434,3 +456,277 @@ def preview(out_dir, name, views, size=(900, 520), target=(0, 0, 0.6), samples=4
             cam.data.ortho_scale = ortho
         scene.render.filepath = os.path.join(out_dir, f"{name}-{tag}.png")
         bpy.ops.render.render(write_still=True)
+
+
+# ---------------------------------------------------------------- body shells and things on them
+
+
+def keys(table, t):
+    """Smooth, overshoot-free interpolation through (t, value) keys, any order (monotone
+    cubic: the curve has no flat steps at the keys and never bulges past them)."""
+    ks = sorted(table)
+    if t <= ks[0][0]:
+        return ks[0][1]
+    if t >= ks[-1][0]:
+        return ks[-1][1]
+    xs = [k[0] for k in ks]
+    ys = [k[1] for k in ks]
+    n = len(ks)
+    d = [(ys[i + 1] - ys[i]) / (xs[i + 1] - xs[i]) for i in range(n - 1)]
+    m = [d[0]] + [0.0 if d[i - 1] * d[i] <= 0 else 2 / (1 / d[i - 1] + 1 / d[i]) for i in range(1, n - 1)] + [d[-1]]
+    i = 0
+    while xs[i + 1] < t:
+        i += 1
+    h = xs[i + 1] - xs[i]
+    u = (t - xs[i]) / h
+    h00, h10, h01, h11 = 2 * u**3 - 3 * u**2 + 1, u**3 - 2 * u**2 + u, -2 * u**3 + 3 * u**2, u**3 - u**2
+    return h00 * ys[i] + h10 * h * m[i] + h01 * ys[i + 1] + h11 * h * m[i + 1]
+
+
+def shell(bm, ys, ring):
+    """A closed body through rings: ring(y) -> [(x, z), ...] for the right half, bottom centre
+    first, top centre last (mirrored to make the left). Returns the rows."""
+    rows = []
+    for y in ys:
+        half = ring(y)
+        full = half + [(-x, z) for x, z in reversed(half[1:-1])]
+        rows.append([bm.verts.new((x, y, z)) for x, z in full])
+    for a, b in zip(rows, rows[1:]):
+        n = len(a)
+        for j in range(n):
+            j2 = (j + 1) % n
+            bm.faces.new((a[j], a[j2], b[j2], b[j]))
+    caps = [bm.faces.new(rows[0]), bm.faces.new(list(reversed(rows[-1])))]
+    # Fan the end caps from their centres (a big n-gon triangulates into long slivers).
+    bmesh.ops.poke(bm, faces=caps)
+    return rows
+
+
+def arc(cx, cz, r, a0, a1, n):
+    return [(cx + r * math.cos(a0 + (a1 - a0) * i / n), cz + r * math.sin(a0 + (a1 - a0) * i / n)) for i in range(n + 1)]
+
+
+def seg(a, b, n, bend=None):
+    """n+1 points from a to b; bend(t) -> (dx, dz) to curve it."""
+    out = []
+    for i in range(n + 1):
+        t = i / n
+        x, z = a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t
+        if bend:
+            dx, dz = bend(t)
+            x, z = x + dx, z + dz
+        out.append((x, z))
+    return out
+
+
+def chain(*parts):
+    """Join point runs, dropping each run's first point (shared with the previous run's last)."""
+    out = list(parts[0])
+    for p in parts[1:]:
+        out += list(p[1:])
+    return out
+
+
+def cut(obj, cutter, mat=None):
+    """Boolean difference; the faces it makes take `mat` (e.g. a dark wheel well)."""
+    if mat is not None:
+        cutter.data.materials.clear()
+        cutter.data.materials.append(mat)
+    m = obj.modifiers.new("Cut", "BOOLEAN")
+    m.operation = "DIFFERENCE"
+    m.object = cutter
+    m.solver = "EXACT"
+    m.material_mode = "TRANSFER"
+    _only(obj)
+    bpy.ops.object.modifier_apply(modifier="Cut")
+
+
+def solid_bm_object(name, bm):
+    """A throwaway object (cutters)."""
+    mesh = bpy.data.meshes.new(name)
+    bm.to_mesh(mesh)
+    bm.free()
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.scene.collection.objects.link(obj)
+    return obj
+
+
+class Surface:
+    """Ray casts against a body, to lay things on it."""
+
+    def __init__(self, obj):
+        from mathutils.bvhtree import BVHTree
+
+        bpy.context.view_layer.update()
+        self.tree = BVHTree.FromObject(obj, bpy.context.evaluated_depsgraph_get())
+
+    def hit(self, origin, direction):
+        loc, nor, _, _ = self.tree.ray_cast(V(origin), V(direction).normalized())
+        if loc is None:
+            return None, None
+        if nor.dot(V(direction)) > 0:
+            nor = -nor
+        return loc, nor
+
+
+def chaikin(poly, n=2):
+    for _ in range(n):
+        out = []
+        for i, a in enumerate(poly):
+            b = poly[(i + 1) % len(poly)]
+            out += [a.lerp(b, 0.25), a.lerp(b, 0.75)]
+        poly = out
+    return poly
+
+
+def outline(corners, per_edge=4, round_=1):
+    """A closed outline through 2D corners (Vector), corners rounded off."""
+    pts = []
+    for i, a in enumerate(corners):
+        b = corners[(i + 1) % len(corners)]
+        pts += [a.lerp(b, k / per_edge) for k in range(per_edge)]
+    return chaikin(pts, round_)
+
+
+def grow(poly, d):
+    """Offset a convex 2D outline outward by d."""
+    n = len(poly)
+    c = sum(poly, V((0, 0))) / n
+    out = []
+    for i, p in enumerate(poly):
+        a, b = poly[i - 1], poly[(i + 1) % n]
+        t = (b - a).normalized()
+        nrm = V((t.y, -t.x))
+        if nrm.dot(p - c) < 0:
+            nrm = -nrm
+        out.append(p + nrm * d)
+    return out
+
+
+def panel(surf, poly, to_origin, direction, lift, thick=0.0, rings=3, bend_normal=True):
+    """A sheet laid on the body inside a 2D outline: each point (u, v) of the outline is cast
+    from to_origin(u, v) along `direction` and lifted off the surface by `lift`.
+    thick > 0 gives it sides down towards the surface. Returns a bmesh."""
+    bm = bmesh.new()
+    n = len(poly)
+    c = sum(poly, V((0, 0))) / n
+
+    def place(uv):
+        loc, nor = surf.hit(to_origin(uv.x, uv.y), direction)
+        if loc is None:
+            return None
+        return loc + (nor if bend_normal else -V(direction).normalized()) * lift
+
+    centre = place(c)
+    rows = []
+    for k in range(1, rings + 1):
+        r = k / rings
+        rows.append([place(c + (p - c) * r) for p in poly])
+    if centre is None or any(p is None for row in rows for p in row):
+        raise RuntimeError("panel: a ray missed the body")
+    cv = bm.verts.new(centre)
+    vrows = [[bm.verts.new(p) for p in row] for row in rows]
+    toward = -V(direction).normalized()
+    for i in range(n):
+        f = bm.faces.new((cv, vrows[0][i], vrows[0][(i + 1) % n]))
+    for a, b in zip(vrows, vrows[1:]):
+        for i in range(n):
+            i2 = (i + 1) % n
+            bm.faces.new((a[i], b[i], b[i2], a[i2]))
+    bm.normal_update()
+    if sum(f.normal.dot(toward) for f in bm.faces) < 0:
+        bmesh.ops.reverse_faces(bm, faces=bm.faces[:])
+    if thick > 0:
+        edge = vrows[-1]
+        low = [bm.verts.new(v.co - toward * thick) for v in edge]
+        for i in range(n):
+            i2 = (i + 1) % n
+            bm.faces.new((edge[i], low[i], low[i2], edge[i2]))
+    bm.normal_update()
+    return bm
+
+
+def strip(surf, rays, lift, half_w, half_h, around=8, ex=0.6):
+    """A rounded bar laid along the body: rays [(origin, direction), ...] find the path; the
+    bar's centre sits half_w off the surface, less `lift` sunk in."""
+    import kit
+
+    pts = []
+    for o, d in rays:
+        loc, nor = surf.hit(o, d)
+        if loc is None:
+            continue
+        pts.append(loc + nor * (half_w - lift))
+    bm = bmesh.new()
+    if len(pts) < 2:
+        return bm
+    kit.tube(bm, pts, [{"t": 0, "w": half_w, "h": half_h, "ex": ex}, {"t": 1, "w": half_w, "h": half_h, "ex": ex}], segs=max(4, len(pts) * 2), around=around, up=(0, 0, 1))
+    return bm
+
+
+def text(name, string, size, matrix, mat, depth=0.002):
+    """Raised lettering (number plates), as a mesh in the x/z plane of `matrix`, facing -y."""
+    cu = bpy.data.curves.new(name, "FONT")
+    cu.body = string
+    cu.size = size
+    cu.extrude = depth
+    cu.align_x = "CENTER"
+    cu.align_y = "CENTER"
+    obj = bpy.data.objects.new(name, cu)
+    bpy.context.scene.collection.objects.link(obj)
+    obj.matrix_world = matrix @ Matrix.Rotation(math.pi / 2, 4, "X")
+    _only(obj)
+    bpy.ops.object.convert(target="MESH")
+    obj = bpy.context.view_layer.objects.active
+    obj.data.transform(obj.matrix_world)
+    obj.matrix_world = Matrix.Identity(4)
+    obj.data.materials.clear()
+    obj.data.materials.append(mat)
+    obj["group"] = "body"
+    PARTS.append(obj)
+    return obj
+
+
+# ---------------------------------------------------------------- wheels
+
+
+def wheel(group, centre, side, radius, width, rim_r, mats, spokes=None, cap=None):
+    """A wheel on its own node (group), axle along x, `side` -1 left / +1 right.
+
+    Tyre: rounded shoulders, sidewall bulge, tread grooves. Rim: a dished steel wheel; then
+    cap(bm, matrix) adds the face (hubcap, spokes...) in the wheel's frame, where +y points
+    out of the car and the face sits at y = 0 (the tyre's outer wall at +width/2).
+    mats: {"rubber", "rim"}.
+    """
+    pivot(group, centre)
+    m = Matrix.Translation(V(centre)) @ Matrix.Rotation(-side * math.pi / 2, 4, "Z")
+    w, r = width / 2, radius
+    # Tyre: outer wall, tread, inner wall, rolled into the rim.
+    prof = [
+        (w * 0.82, rim_r * 1.02),
+        (w * 0.98, rim_r + (r - rim_r) * 0.35),
+        (w, rim_r + (r - rim_r) * 0.62),
+        (w * 0.93, r * 0.975),
+        (w * 0.72, r),
+        (-w * 0.72, r),
+        (-w * 0.93, r * 0.975),
+        (-w, rim_r + (r - rim_r) * 0.62),
+        (-w * 0.98, rim_r + (r - rim_r) * 0.35),
+        (-w * 0.82, rim_r * 1.02),
+    ]
+    dense = []
+    for (y0, r0), (y1, r1) in zip(prof, prof[1:]):
+        for k in range(3):
+            dense.append((y0 + (y1 - y0) * k / 3, r0 + (r1 - r0) * k / 3))
+    dense.append(prof[-1])
+    # Tread grooves round the crown.
+    tread = [(y, rr - (0.008 if abs(y) < w * 0.7 and (abs(abs(y) - w * 0.25) < w * 0.07) else 0.0)) for y, rr in dense]
+    bm = bmesh.new()
+    lathe(bm, tread, 36, m)
+    part(f"{group}_tyre", bm, mats["rubber"], smooth_angle=40, group=group)
+    # Rim: the barrel and a dished face, set in from the tyre's wall.
+    bm = bmesh.new()
+    lathe(bm, [(-w * 0.8, rim_r * 1.0), (w * 0.82, rim_r * 1.0), (w * 0.86, rim_r * 0.94), (w * 0.6, rim_r * 0.9), (w * 0.4, rim_r * 0.82), (w * 0.35, 0.0)], 40, m)
+    part(f"{group}_rim", bm, mats["rim"], smooth_angle=40, group=group)
+    if cap:
+        cap(group, m @ Matrix.Translation((0, w * 0.4, 0)))
