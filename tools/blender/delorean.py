@@ -239,10 +239,11 @@ lettering("dmc", "DMC", 0.07, loc + nor * 0.014, nor, (0, 0, 1), M["chrome"])
 for end, z, y0 in (("front", 0.34, 1.6), ("rear", 0.34, -1.6)):
     sy = 1 if y0 > 0 else -1
     angles = [math.radians(-82 + 164 * i / 40) for i in range(41)]
-    rays = [(V((0, y0, z)), V((math.sin(a), sy * math.cos(a), 0))) for a in angles]
+    # Cast from outside, towards the point inside, so the strip sits on the surface.
+    rays = [(V((0, y0, z)) + V((math.sin(a), sy * math.cos(a), 0)) * 4, V((-math.sin(a), -sy * math.cos(a), 0))) for a in angles]
     vh.part(f"bumper_{end}", vh.strip(surf, rays, 0.01, 0.035, 0.07), M["trim"], smooth_angle=50)
 for s in (-1, 1):
-    rays = [(V((0, 0.82 - 1.6 * i / 30, 0.36)), V((s, 0, 0))) for i in range(31)]
+    rays = [(V((s * 3, 0.82 - 1.6 * i / 30, 0.36)), V((-s, 0, 0))) for i in range(31)]
     vh.part(f"rub{s}", vh.strip(surf, rays, 0.005, 0.016, 0.04), M["trim"], smooth_angle=50)
 
 # Door seams: up each flank and across the roof (the doors hinge at its middle), the hood.

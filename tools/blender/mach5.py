@@ -241,7 +241,7 @@ for s in (-1, 1):
 
 for s in (-1, 1):
     # The player's colour along the foot of each flank, between the arches.
-    rays = [(V((0, 0.85 - 1.7 * i / 30, 0.36)), V((s, 0, 0))) for i in range(31)]
+    rays = [(V((s * 3, 0.85 - 1.7 * i / 30, 0.36)), V((-s, 0, 0))) for i in range(31)]  # cast from outside
     vh.part(f"accent{s}", vh.strip(surf, rays, -0.004, 0.007, 0.012, around=6, ex=1.0), M["accent"])
     # Door: a gap round it, below the cockpit's side.
     aim = side(s)
