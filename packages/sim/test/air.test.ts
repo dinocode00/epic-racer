@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { VEHICLES } from '@epic/shared';
+import { VEHICLES, neutralPad } from '@epic/shared';
 import { Race, TrackBuilder, aiDrive, createBrain } from '../src/index.ts';
 
 /** A rectangle with a jump on the back straight, an open bridge, and a pillar. */
@@ -57,6 +57,45 @@ describe('jumps, gaps and hazards', () => {
     }
     expect(rescued).toBe(true);
   });
+
+  // High in the air into an invisible wall: flying straight on over a bend (the outside wall
+  // curves across your path), or hitting it nearly square on a straight.
+  it.each([
+    { how: 'on a bend', s: 100, into: 0 },
+    { how: 'square on', s: 40, into: 1.3 },
+  ])(
+    'high in the air against an invisible wall $how, you can still steer off it',
+    ({ s, into }) => {
+      const b = new TrackBuilder(6, 9);
+      b.straight(100).turn(90, 40, 0).straight(100).turn(90, 40, 0);
+      b.straight(100).turn(90, 40, 0).straight(100).turn(90, 40, 0);
+      const def = b.closeLoop().build({ id: 'bend', name: 'Bend', defaultWidth: 18, laps: 3 });
+      const race = new Race(def, [{ vehicle: VEHICLES[1]!, human: true }], 1);
+      const pad = (steer: number) => ({ ...neutralPad(), steer, throttle: 1 });
+      for (let i = 0; i < 300; i++) race.step([{ ...pad(0), throttle: 0 }]); // past the countdown
+      const k = race.karts[0]!;
+      const f = race.track.frameAtS(s);
+      const [c, sn] = [Math.cos(into), Math.sin(into)];
+      k.pos = { x: f.pos.x, y: f.pos.y + 25, z: f.pos.z };
+      k.vel = {
+        x: (f.tan.x * c + f.right.x * sn) * 32,
+        y: 4,
+        z: (f.tan.z * c + f.right.z * sn) * 32,
+      };
+      k.air = true;
+      k.airTime = 0;
+      k.launchS = s;
+      const half = 18 / 2 - 1.1; // the invisible wall
+      for (let i = 0; i < 60 && Math.abs(k.lat) < half - 0.01; i++) race.step([pad(0)]);
+      const side = Math.sign(k.lat);
+      expect(Math.abs(k.lat)).toBeGreaterThan(half - 0.01);
+      for (let i = 0; i < 60; i++) race.step([pad(-side)]);
+      // A second of steering away: still flying, well off the wall, and still going places.
+      expect(k.air).toBe(true);
+      expect(half - k.lat * side).toBeGreaterThan(4);
+      expect(Math.hypot(k.vel.x, k.vel.z)).toBeGreaterThan(12);
+    },
+  );
 
   it('driving straight into the pillar stops you', () => {
     const race = new Race(def, [{ vehicle: VEHICLES[1]!, human: true }], 1);

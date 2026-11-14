@@ -67,6 +67,10 @@ export const DRIFT_LEVELS = [0.7, 1.5, 2.5];
 const BOOST_FOR_LEVEL = [0, 0.5, 1.0, 1.6];
 /** Gravity in the air. Heavier than real life so jumps feel snappy. */
 export const GRAVITY = 21;
+/** How fast steering turns a kart in the air (radians a second). */
+const AIR_TURN = 0.9;
+/** Speed (m/s) an invisible wall pushes an airborne kart back off it. */
+const AIR_WALL_KICK = 1.5;
 /** Big air for every kart, whatever it weighs: floatier than GRAVITY, with a harder kick. */
 const AIR_GRAVITY = GRAVITY * 0.8;
 const AIR_POP = 1.24;
@@ -138,6 +142,8 @@ export interface KartState {
   airTime: number;
   /** Arc length where the kart left the ground. */
   launchS: number;
+  /** In the air at (or just off) an invisible wall: which side (-1 left, +1 right), else 0. */
+  airWall: number;
   /** > 0 while the eagle carries the kart back to the road. */
   rescueTime: number;
   /** Last place the kart was safely on the road, for rescues. */
@@ -220,6 +226,7 @@ export function createKart(
     vel: v3(),
     airTime: 0,
     launchS: s,
+    airWall: 0,
     rescueTime: 0,
     safeS: s,
     hitCooldown: 0,
@@ -253,6 +260,7 @@ export function launch(k: KartState, pop: number): void {
   k.air = true;
   k.airTime = 0;
   k.launchS = k.s;
+  k.airWall = 0;
   k.drift = { active: false, dir: 0, charge: 0 };
 }
 
@@ -529,9 +537,13 @@ function stepEagle(k: KartState, track: Track, dt: number, rules: TrackRules): v
 
 function stepAir(k: KartState, pad: PadState, track: Track, dt: number, rules: TrackRules): void {
   k.airTime += dt;
-  // Air control: a little yaw around world up.
+  // Air control: a little yaw around world up. Against an invisible wall, steering away from
+  // it turns as hard as on the road: the wall itself bends you round a curve about as fast as
+  // the gentle air yaw, which would leave you pinned to it.
   const worldUp = v3(0, 1, 0);
-  const yaw = -pad.steer * 0.9 * dt;
+  const away = k.airWall !== 0 && pad.steer * k.airWall < 0;
+  const rate = away ? Math.max(AIR_TURN, k.params.turnRate) : AIR_TURN;
+  const yaw = -pad.steer * rate * dt;
   k.vel = rotateAround(k.vel, worldUp, yaw);
   k.vel.y -= AIR_GRAVITY * dt;
   const pos = add(k.pos, scale(k.vel, dt));
@@ -551,11 +563,34 @@ function stepAir(k: KartState, pad: PadState, track: Track, dt: number, rules: T
   const gap = rules.isGap(p.s);
   let lat = p.lateral;
   // Invisible walls keep jumps on course, except where the edges are open.
+  k.airWall = 0;
   if (!open && Math.abs(lat) > half) {
     lat = Math.sign(lat) * half;
-    const n = scale(p.frame.right, Math.sign(lat));
-    k.vel = addScaled(k.vel, n, -Math.max(0, dot(k.vel, n)));
+    // As on the road, the wall turns you to run along it and keeps most of your pace (just
+    // stopping the part of it going into the wall would leave a kart that hit it square
+    // dropping like a stone, with nothing for the steering to turn), plus a small push off it.
+    const n = norm(reject(scale(p.frame.right, Math.sign(lat)), worldUp));
+    const tan = norm(reject(p.frame.tan, worldUp));
+    const flat = reject(k.vel, worldUp);
+    let spd = Math.hypot(flat.x, flat.z);
+    if (spd > 0.1) {
+      let dir = scale(flat, 1 / spd);
+      const into = dot(dir, n);
+      if (into > 0) {
+        const wasAlong = dot(dir, tan);
+        dir = norm(addScaled(dir, n, -into * 1.07));
+        // However hard you hit it, never turned back the way you came.
+        const along = dot(dir, tan);
+        if (along < 0.3 && wasAlong > 0) dir = norm(addScaled(reject(dir, n), tan, 0.3 - along));
+        spd *= 1 - 0.55 * into;
+      }
+      k.vel = add(scale(dir, spd), v3(0, k.vel.y, 0));
+    }
+    const off = dot(k.vel, n);
+    if (off > -AIR_WALL_KICK) k.vel = addScaled(k.vel, n, -off - AIR_WALL_KICK);
   }
+  // Up against it, or just pushed off: steering away from it still turns hard.
+  if (!open && Math.abs(lat) > half - 0.8) k.airWall = Math.sign(lat);
   const height = p.height;
   const falling = dot(k.vel, p.frame.up) <= 0;
   // Never touch down behind the take-off point: a kart dribbling off a lip would otherwise
