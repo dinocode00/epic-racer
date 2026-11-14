@@ -1580,7 +1580,7 @@ function pickup(): THREE.Group {
   const box = roundBox(0.03);
   const m = mats();
   const g = new THREE.Group();
-  const blue = new THREE.MeshStandardMaterial({ color: 0x86c0ea, roughness: 0.35, metalness: 0.2 });
+  const blue = new THREE.MeshStandardMaterial({ color: 0x5cb5f5, roughness: 0.35, metalness: 0.2 });
   const chrome = new THREE.MeshStandardMaterial({
     color: 0xdfe3e8,
     roughness: 0.2,

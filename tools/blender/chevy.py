@@ -40,7 +40,7 @@ PREVIEW = argv[argv.index("--preview") + 1] if "--preview" in argv else None
 vh.reset()
 
 M = {
-    "paint": vh.material("paint", 0x86c0ea, 0.32, 0.25),
+    "paint": vh.material("paint", 0x5cb5f5, 0.32, 0.25),
     "under": vh.material("under", 0x1a1b1c, 0.85, 0.1),
     "well": vh.material("well", 0x0d0d0e, 0.95, 0.0),
     "trim": vh.material("trim", 0x18191b, 0.6, 0.1),  # black plastic and rubber
