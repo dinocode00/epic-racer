@@ -44,6 +44,7 @@ const FARM: Record<ItemKind, ItemSkin> = { ...GENERIC, eagle: { icon: '🪽', na
 const VEHICLE_SPECIAL_NAMES: Record<string, ItemSkin> = {
   delorean: { icon: '⚡', name: '88 MPH' },
   mystery: { icon: '🐶', name: 'Zoinks! Rush' },
+  chevy: { icon: '🛻', name: "Grandpa's Shortcut" },
 };
 
 export function itemSkin(

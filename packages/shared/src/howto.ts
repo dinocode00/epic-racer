@@ -15,6 +15,7 @@ const SPECIALS: Record<string, string> = {
   landcruiser: '<b>Auto-Jacks + Robot</b>: leaps up, a robot chases the racer ahead.',
   delorean: '<b>88 MPH</b>: hits 88, leaves trails of fire that scorch anyone behind.',
   mystery: '<b>Zoinks! Rush</b>: the gang floors it and rams racers aside.',
+  chevy: "<b>Grandpa's Shortcut</b>: floors it across the field and rams racers aside.",
 };
 
 const ITEMS: [string, string, string][] = [
