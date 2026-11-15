@@ -311,7 +311,9 @@ body {
   border-radius: 2vh;
   padding: 2vh 2.4vh;
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: repeat(5, auto);
+  align-content: space-between;
+  gap: 0.8vh;
   background: rgba(18, 16, 34, 0.85);
   border: 0.4vh dashed rgba(255, 255, 255, 0.22);
   min-height: 0;
@@ -347,13 +349,57 @@ body {
   place-items: center;
 }
 .lobby .slot .veh svg {
-  width: 80%;
-  max-height: 12vh;
+  height: 8vh;
+  width: auto;
+  max-width: 80%;
   filter: drop-shadow(0 0 0.5vh rgba(255, 255, 255, 0.45));
 }
 .lobby .slot .veh .vn {
   font-size: 2.6vh;
   margin-top: 0.6vh;
+  text-align: center;
+}
+.lobby .slot .veh .vn small {
+  display: block;
+  font-size: 1.5vh;
+  opacity: 0.6;
+}
+/* The ride's stats and special, so players can compare as they flip through. */
+.lobby .vstats {
+  display: grid;
+  gap: 0.5vh;
+}
+.lobby .vs-row {
+  display: grid;
+  grid-template-columns: 11vh 1fr;
+  align-items: center;
+  font-size: 1.6vh;
+  letter-spacing: 0.08em;
+  opacity: 0.9;
+}
+.lobby .vs-bar {
+  display: block;
+  height: 1vh;
+  border-radius: 0.5vh;
+  background: rgba(255, 255, 255, 0.15);
+  overflow: hidden;
+}
+.lobby .vs-bar > i {
+  display: block;
+  height: 100%;
+  border-radius: 0.5vh;
+  background: var(--c, #3fbf5f);
+}
+.lobby .vspecial {
+  font-size: 1.7vh;
+  line-height: 1.35;
+  padding: 0.7vh 1vh;
+  border-radius: 1vh;
+  background: rgba(255, 255, 255, 0.07);
+}
+.lobby .vspecial b {
+  display: block;
+  color: var(--gold);
 }
 .lobby .slot .state {
   text-align: center;
@@ -1077,9 +1123,6 @@ body {
 }
 .lobby .slot .who {
   font-size: 3vh;
-}
-.lobby .slot .veh svg {
-  max-height: 9vh;
 }
 .lobby .slot .veh .vn {
   font-size: 2.3vh;

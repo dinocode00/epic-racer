@@ -7,6 +7,7 @@ import {
   VEHICLE_ICONS,
   neutralPad,
   vehicleById,
+  vehicleStatsHtml,
 } from '@epic/shared';
 import { type LookName } from './render/look.ts';
 import { View } from './render/view.ts';
@@ -597,7 +598,8 @@ function renderLobby(): void {
           : '← → ride · Enter ready';
     return `<div class="slot on ${m.connected ? '' : 'off'}" style="--c:${m.color}">
       <div class="who"><span>${m.name}</span><span class="tag">${tag}</span></div>
-      <div class="veh">${VEHICLE_ICONS[v.id] ?? ''}<div class="vn">${v.name}</div></div>
+      <div class="veh">${VEHICLE_ICONS[v.id] ?? ''}<div class="vn">${m.ready ? '' : '◀ '}${v.name}${m.ready ? '' : ' ▶'}<small>${VEHICLES.indexOf(v) + 1} / ${VEHICLES.length}</small></div></div>
+      ${vehicleStatsHtml(v.id)}
       <div class="state ${m.ready ? 'ready' : ''}">${m.ready ? 'READY!' : m.kind === 'phone' ? 'choosing on phone…' : pick}</div>
     </div>`;
   }).join('');

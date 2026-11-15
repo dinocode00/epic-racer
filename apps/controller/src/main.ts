@@ -3,10 +3,12 @@ import {
   type PadState,
   VEHICLES,
   VEHICLE_ICONS as ICONS,
+  VEHICLE_SPECIALS,
   WS_PATH,
   encodeInput,
   howToHtml,
   neutralPad,
+  vehicleStatsHtml,
 } from '@epic/shared';
 
 /**
@@ -327,12 +329,15 @@ function renderLobby(): void {
       ${ICONS[v.id] ?? ''}
       <div class="n">${v.name}</div>
       ${(['speed', 'handling', 'weight'] as const).map((k) => `<div class="stat"><span>${{ speed: 'SPD', handling: 'HDL', weight: 'WGT' }[k]}</span><i style="width:${v[k] * 20}%"></i></div>`).join('')}
+      <div class="sp">${VEHICLE_SPECIALS[v.id]?.icon ?? ''} ${VEHICLE_SPECIALS[v.id]?.name ?? ''}</div>
     </div>`,
   ).join('');
+  const picked = VEHICLES.find((v) => v.id === vehicle);
   app.innerHTML = `<div class="screen">
     <div class="badge">${name}</div>
     <div class="sub">Choose your ride</div>
     <div class="cars">${cars}</div>
+    ${picked ? `<div class="carinfo"><div class="ci-name">${picked.name}</div>${vehicleStatsHtml(picked.id)}</div>` : '<div class="sub">Tap a ride to see its stats and special</div>'}
     ${trackName ? `<div class="trackpick">${canChangeTrack ? '<button id="tprev">◀</button>' : ''}<span>Track: <b>${trackName}</b></span>${canChangeTrack ? '<button id="tnext">▶</button>' : ''}</div>` : ''}
     <div class="steerpick"><span>Steering</span>${(['slide', 'tilt'] as const).map((k) => `<button data-s="${k}" class="${(k === 'tilt') === tilt.on ? 'sel' : ''}">${k.toUpperCase()}</button>`).join('')}</div>
     ${tilt.on && !tilt.note ? '<div class="tiltmeter"><b>◀</b><i></i><b>▶</b></div><div class="sub">Hold the phone sideways like a wheel and turn it</div>' : ''}
@@ -342,6 +347,8 @@ function renderLobby(): void {
     ${howToButton}
   </div>`;
   bindHowTo();
+  // Keep the picked ride in view in the strip (a redraw would scroll it back to the start).
+  app.querySelector('.car.sel')?.scrollIntoView({ inline: 'center', block: 'nearest' });
   app.querySelectorAll<HTMLElement>('.car').forEach((el) => {
     el.onclick = () => {
       vehicle = el.dataset.id!;

@@ -6,17 +6,62 @@ import { VEHICLE_ICONS } from './icons.ts';
  * Returned as HTML; each app styles the `.howto` classes its own way.
  */
 
-const SPECIALS: Record<string, string> = {
-  pod: '<b>Flame Vent</b>: speed burst, fire jet scorches anyone behind.',
-  bat: '<b>Batmissile</b>: turns into a rocket that rams racers aside.',
-  nazgul: '<b>Morgul Charge</b>: surge forward, blade strikes the nearest rival.',
-  mach5: '<b>Auto-Jacks + Robot</b>: leaps up, a robot chases the racer ahead.',
-  corolla: '<b>Flame Vent</b>: speed burst, fire jet scorches anyone behind.',
-  landcruiser: '<b>Auto-Jacks + Robot</b>: leaps up, a robot chases the racer ahead.',
-  delorean: '<b>88 MPH</b>: hits 88, leaves trails of fire that scorch anyone behind.',
-  mystery: '<b>Zoinks! Rush</b>: the gang floors it and rams racers aside.',
-  chevy: "<b>Grandpa's Shortcut</b>: floors it across the field and rams racers aside.",
+/** Each vehicle's special ability (an item box can give you SPECIAL): what it's called and does. */
+export const VEHICLE_SPECIALS: Record<string, { icon: string; name: string; text: string }> = {
+  pod: { icon: '🔥', name: 'Flame Vent', text: 'Speed burst; a fire jet scorches anyone behind.' },
+  bat: { icon: '🚀', name: 'Batmissile', text: 'Turns into a rocket that rams racers aside.' },
+  nazgul: {
+    icon: '🗡️',
+    name: 'Morgul Charge',
+    text: 'Surge forward; the blade strikes the nearest rival.',
+  },
+  mach5: {
+    icon: '🅰️',
+    name: 'Auto-Jacks + Robot',
+    text: 'Leaps up over trouble; a robot chases the racer ahead.',
+  },
+  corolla: {
+    icon: '🔥',
+    name: 'Flame Vent',
+    text: 'Speed burst; a fire jet scorches anyone behind.',
+  },
+  landcruiser: {
+    icon: '🅰️',
+    name: 'Auto-Jacks + Robot',
+    text: 'Leaps up over trouble; a robot chases the racer ahead.',
+  },
+  delorean: {
+    icon: '⚡',
+    name: '88 MPH',
+    text: 'Hits 88 and leaves trails of fire that scorch anyone behind.',
+  },
+  mystery: { icon: '🐶', name: 'Zoinks! Rush', text: 'The gang floors it and rams racers aside.' },
+  chevy: {
+    icon: '🛻',
+    name: "Grandpa's Shortcut",
+    text: 'Floors it across the field and rams racers aside.',
+  },
 };
+const SPECIALS: Record<string, string> = Object.fromEntries(
+  Object.entries(VEHICLE_SPECIALS).map(([id, sp]) => [id, `<b>${sp.name}</b>: ${sp.text}`]),
+);
+
+/**
+ * A ride's card for the lobby: its stats as labelled bars and its special ability, so you can
+ * compare them as you flip through.
+ */
+export function vehicleStatsHtml(id: string): string {
+  const v = VEHICLES.find((x) => x.id === id);
+  if (!v) return '';
+  const sp = VEHICLE_SPECIALS[id];
+  const row = (label: string, n: number) =>
+    `<div class="vs-row"><span>${label}</span><i class="vs-bar"><i style="width:${n * 20}%"></i></i></div>`;
+  return `<div class="vstats">${row('SPEED', v.speed)}${row('HANDLING', v.handling)}${row('WEIGHT', v.weight)}</div>${
+    sp
+      ? `<div class="vspecial"><b>${sp.icon} SPECIAL: ${sp.name}</b><span>${sp.text}</span></div>`
+      : ''
+  }`;
+}
 
 const ITEMS: [string, string, string][] = [
   ['🍞', 'Boost <i>(Lembas)</i>', 'A burst of speed. ×3 gives you three.'],

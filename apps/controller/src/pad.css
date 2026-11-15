@@ -142,6 +142,60 @@ button.big.ready {
   border-radius: 4px;
   background: #3fbf5f;
 }
+.car .sp {
+  margin-top: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--gold);
+}
+/* The picked ride: its stats spelled out and what its special does. */
+.carinfo {
+  width: 100%;
+  max-width: 420px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--panel);
+  border: 2px solid var(--gold);
+  text-align: left;
+}
+.carinfo .ci-name {
+  font-weight: 800;
+  font-size: 18px;
+  margin-bottom: 8px;
+}
+.vstats {
+  display: grid;
+  gap: 6px;
+}
+.vs-row {
+  display: grid;
+  grid-template-columns: 82px 1fr;
+  align-items: center;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+.vs-bar {
+  display: block;
+  height: 9px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+.vs-bar > i {
+  display: block;
+  height: 100%;
+  background: #3fbf5f;
+}
+.vspecial {
+  margin-top: 10px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.vspecial b {
+  display: block;
+  color: var(--gold);
+}
 
 /* ---- racing pad (landscape) ---- */
 .pad {
