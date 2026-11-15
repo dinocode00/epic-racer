@@ -263,6 +263,45 @@ body {
     0 0 4vh rgba(0, 0, 0, 0.6);
   letter-spacing: 0.3vh;
 }
+/* The left column: how to join, and what the ride stats mean. */
+.lobby .side {
+  display: flex;
+  flex-direction: column;
+  gap: 1.8vh;
+  min-height: 0;
+  overflow-y: auto;
+}
+.lobby .statguide {
+  /* As wide as the join panel above it, never wider. */
+  width: 0;
+  min-width: 100%;
+  box-sizing: border-box;
+  background: rgba(18, 16, 34, 0.88);
+  border-radius: 2vh;
+  padding: 1.6vh 2vh;
+  border: 0.4vh solid rgba(255, 255, 255, 0.12);
+  font-size: 1.55vh;
+  line-height: 1.35;
+}
+.lobby .statguide h3 {
+  margin: 0 0 0.8vh;
+  font-size: 2vh;
+  color: var(--gold);
+  text-align: center;
+}
+.lobby .statguide p {
+  margin: 0 0 0.6vh;
+  opacity: 0.9;
+}
+.lobby .statguide b {
+  color: #5bff7a;
+  margin-right: 0.4em;
+  letter-spacing: 0.06em;
+}
+/* The join panel keeps its full height; the stats guide takes what's left. */
+.lobby .side > .join {
+  flex-shrink: 0;
+}
 .lobby .join {
   background: rgba(18, 16, 34, 0.88);
   border-radius: 2vh;

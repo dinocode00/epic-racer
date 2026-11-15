@@ -574,6 +574,14 @@ const joinHint = () =>
     ? 'Press <b>Enter</b> or <b>Space</b><br>or <b>A</b> on a pad'
     : 'Scan the QR code<br>or press <b>A</b> on a pad';
 
+/** What the stat bars on each ride mean, under the join panel. */
+const STAT_GUIDE = `<div class="statguide">
+  <h3>What the stats mean</h3>
+  <p><b>SPEED</b> Top speed: how fast it goes flat out on the straights.</p>
+  <p><b>HANDLING</b> How sharply it turns: tight corners and hairpins get easier, and it picks up speed a little quicker too.</p>
+  <p><b>WEIGHT</b> Heavy rides win bumps (they shove light ones aside) but are slower off the line and after a spin. Light rides get going fastest but get knocked around.</p>
+</div>`;
+
 function renderLobby(): void {
   if (state !== 'lobby') return;
   const info = net.info;
@@ -608,7 +616,7 @@ function renderLobby(): void {
   if (!allReady) startAt = 0;
   ui.innerHTML = `<div class="lobby">
     <div class="top"><h1>EPIC RACER</h1><div class="actions"><span class="lb-btn" id="set-btn">⚙ SETTINGS <i class="hint">O / Menu</i></span><span class="lb-btn cup-btn ${cupMode ? 'on' : ''}" id="cup-btn">🏆 TOURNAMENT ${cupMode ? 'ON' : 'OFF'} <i class="hint">G / View</i></span><span class="lb-btn" id="tour-btn">🎥 MAP TOUR <i class="hint">M / X</i></span><span class="lb-btn" id="howto-btn">? HOW TO PLAY <i class="hint">H / Y</i></span></div></div>
-    ${
+    <div class="side">${
       net.standalone
         ? `<div class="join couch">
       <div class="room">COUCH MODE</div>
@@ -623,7 +631,7 @@ function renderLobby(): void {
       <div class="room">ROOM ${info?.room ?? '----'}</div>
       <div class="alt">Phones: scan to get a controller<br>Xbox pads: press A · Keyboard: Enter (arrows) or Space (WASD)</div>
     </div>`
-    }
+    }${STAT_GUIDE}</div>
     <div class="slots">${slots}</div>
     ${modeInfo()}
     <div class="foot"><span class="track">${
