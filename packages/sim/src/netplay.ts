@@ -49,6 +49,11 @@ export class Netplay {
   private rollbackFrom = Infinity;
   /** Diagnostics. */
   stats = { rollbacks: 0, replayed: 0, deepest: 0, stalls: 0, repairs: 0 };
+  /**
+   * After the race is put right: how far each kart moved (old place minus new, per kart), so
+   * the screen can ease it over rather than jump.
+   */
+  onCorrect?: (moved: [number, number, number][]) => void;
 
   constructor(
     readonly race: Race,
@@ -119,6 +124,11 @@ export class Netplay {
   /** False while the race is as far ahead of what's confirmed as it's allowed to get. */
   canAdvance(): boolean {
     return this.ahead < this.maxPredict;
+  }
+
+  /** The input player `h` was driven with in the latest step (for the steering wheel). */
+  lastUsed(h: number): PadState | undefined {
+    return this.frame > 0 ? this.used[(this.frame - 1) % this.H]![h] : undefined;
   }
 
   /** Last step whose input from player `h` has arrived. */
@@ -208,8 +218,17 @@ export class Netplay {
     this.stats.rollbacks++;
     this.stats.replayed += depth;
     this.stats.deepest = Math.max(this.stats.deepest, depth);
+    const before = this.onCorrect && this.race.karts.map((k) => ({ ...k.pos }));
     this.race.load(this.snaps[from % this.H]!);
     for (let f = from; f < this.frame; f++) this.run(f, true);
+    if (before)
+      this.onCorrect!(
+        this.race.karts.map((k, i) => [
+          before[i]!.x - k.pos.x,
+          before[i]!.y - k.pos.y,
+          before[i]!.z - k.pos.z,
+        ]),
+      );
   }
 }
 

@@ -43,6 +43,35 @@ Prefer a terminal? `pnpm install` then `pnpm start` does the same with Node 22+ 
 If phones can't reach the URL, check they're on the same Wi-Fi and that the computer's
 firewall allows Node on port 4000.
 
+### 8-Player Local (two laptops, 8 players)
+
+Two laptops in the same room race **one race together**: up to 4 players on each, 8 in all.
+Each laptop shows split screens for its own players, and every racer is on both tracks.
+
+1. Start the game on one laptop as usual. That's the **main laptop**: it picks the track,
+   laps, AI racers and tournament.
+2. In its lobby open **⚙ Settings** and turn **8-Player Local** on. The lobby then shows the
+   address for the second laptop.
+3. On the second laptop (same Wi-Fi, or a network cable) open that address in Chrome, Edge or
+   Safari, e.g. `https://192.168.1.20:4001`. Nothing to install. Accept the certificate
+   warning the first time (the secure address lets the browser use Xbox controllers there).
+4. Each laptop has its own QR code: phones join the laptop whose code they scan. Xbox pads
+   and keyboards join the laptop they're plugged into. Ready up on both and the race starts on
+   both.
+
+There's no input delay on either laptop: each one runs the whole race itself, and only button
+presses travel between them. The other laptop's karts are predicted and put right the moment
+their real presses arrive (a few milliseconds over a cable, a few hundredths of a second over
+Wi-Fi). Twice a second the laptops compare a fingerprint of the race, and the main laptop
+repairs the other if they ever disagree. Pausing, results and tournaments are shared.
+
+**Cable (optional, smoothest):** a regular Ethernet patch cable (Cat 5e or Cat 6, RJ45
+plugs), plus a USB-C to Ethernet adapter for a laptop without a network port. Either plug
+both laptops into the router, or run one cable straight between them (no crossover cable
+needed) and open the main laptop's `169.254…` address on the second one, keeping the main
+laptop on Wi-Fi for the phones. **Settings → How 8-Player Local works** (I, or Y on a pad)
+has the full guide with this laptop's own addresses.
+
 ### Couch mode (no server)
 
 Any static copy of `apps/game/dist` (e.g. the hosted build) runs without the server: the
@@ -90,7 +119,12 @@ Racing tips:
 ## Developer URL options
 
 `?players=1..4` · `?demo=1` (autopilot) · `?t=20` (skip ahead) · `?look=retro` ·
-`?vehicles=pod,bat,nazgul,mach5` · `?scene=showroom` · `?fixed=1` (deterministic frames)
+`?vehicles=pod,bat,nazgul,mach5` · `?scene=showroom` · `?fixed=1` (deterministic frames) ·
+`?screen=1` (open as the second 8-Player Local screen, e.g. a second window on one computer) ·
+`?draw=0` (draw nothing, for tests without a GPU)
+
+End-to-end tests (with `pnpm start` running): `pnpm e2e` (phones drive karts) and
+`pnpm e2e:link` (two screens race one 8-Player Local race and must agree step for step).
 
 ## Layout
 

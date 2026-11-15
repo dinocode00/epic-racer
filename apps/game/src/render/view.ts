@@ -207,7 +207,11 @@ export class View {
     this.composer?.setSize(this.width, this.height);
   }
 
+  /** `?draw=0` (tests on machines without a GPU): run everything but draw nothing. */
+  readonly skipDraw = new URLSearchParams(location.search).get('draw') === '0';
+
   render(scene: THREE.Scene, viewports: Viewport[]): void {
+    if (this.skipDraw) return;
     const r = this.renderer;
     const retro = this.look === 'retro';
     if (!retro && this.composer) {

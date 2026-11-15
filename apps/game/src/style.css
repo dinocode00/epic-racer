@@ -1182,3 +1182,154 @@ body {
   font-weight: 800;
   font-size: 2.4vh;
 }
+
+/* ---------- 8-Player Local ---------- */
+/* Eight slots: a row of four per laptop, each row labelled down its left edge. */
+.lobby .slots.eight {
+  grid-template-columns: 3.4vh repeat(4, minmax(0, 1fr));
+  gap: 1.4vh;
+}
+.lobby .laptop-label {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  text-align: center;
+  font-size: 1.8vh;
+  letter-spacing: 0.2em;
+  opacity: 0.6;
+  align-self: center;
+}
+.lobby .laptop-label.me {
+  opacity: 1;
+  color: var(--gold);
+}
+.lobby .laptop-label i {
+  font-style: normal;
+  font-size: 0.85em;
+  margin-top: 0.8vh;
+  opacity: 0.8;
+}
+.lobby .laptop-label i::before {
+  content: ' · ';
+}
+.lobby .slots.eight .slot {
+  padding: 1.2vh 1.4vh;
+  border-radius: 1.4vh;
+}
+.lobby .slots.eight .slot .who {
+  font-size: 2.4vh;
+  gap: 0.8vh;
+  min-width: 0;
+}
+.lobby .slots.eight .slot .who > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lobby .slots.eight .slot .who .tag {
+  font-size: 1.3vh;
+}
+.lobby .slots.eight .slot .veh svg {
+  max-height: 6.5vh;
+}
+.lobby .slots.eight .slot .veh .vn {
+  font-size: 1.8vh;
+}
+.lobby .slots.eight .slot .state {
+  font-size: 1.7vh;
+  padding: 0.5vh;
+}
+.lobby .slots.eight .slot.empty {
+  font-size: 1.8vh;
+}
+.lobby .link-box {
+  margin-top: 1.6vh;
+  padding: 1.2vh 1.4vh;
+  border-radius: 1.2vh;
+  font-size: 1.7vh;
+  line-height: 1.45;
+  max-width: 32vh;
+  background: rgba(255, 255, 255, 0.06);
+  border: 0.25vh dashed rgba(255, 255, 255, 0.25);
+}
+.lobby .link-box.on {
+  border: 0.25vh solid #3fbf5f;
+  background: rgba(63, 191, 95, 0.12);
+}
+.lobby .link-box b {
+  color: var(--gold);
+}
+.lobby .link-box .hint {
+  opacity: 0.7;
+  font-style: normal;
+}
+.mono {
+  font-family: ui-monospace, monospace;
+  word-break: break-all;
+}
+.countdown.waiting {
+  font-size: 4vh;
+  letter-spacing: 0.1em;
+}
+.set-row.set-link {
+  border-left: 0.5vh solid var(--gold);
+}
+.set-readonly {
+  text-align: center;
+  font-size: 2vh;
+  color: var(--gold);
+  margin-bottom: 1vh;
+}
+.set-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 2vh;
+}
+.set-buttons .set-done {
+  margin: 1.8vh 0 0;
+}
+.set-buttons .set-info {
+  width: auto;
+  padding: 1.1vh 2vh;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+.set-buttons .set-info i {
+  font-style: normal;
+  opacity: 0.6;
+  font-size: 0.8em;
+  margin-left: 0.6em;
+}
+/* The guide: two columns, a little larger than "How to play". */
+.link-help-overlay {
+  padding-bottom: 9vh;
+}
+.link-help-overlay .howto.link-help {
+  column-count: 2;
+  font-size: 1.8vh;
+  line-height: 1.4;
+  max-width: 150vh;
+  margin: 0 auto;
+}
+.link-help h2 small.link-state {
+  display: block;
+  font-size: 0.45em;
+  font-style: normal;
+  color: #fff;
+  opacity: 0.85;
+  margin-top: 0.6vh;
+}
+.link-help ol {
+  margin: 0;
+  padding-left: 1.4em;
+}
+.link-help ol li {
+  margin-bottom: 0.5em;
+}
+.link-help td b.mono {
+  color: var(--gold);
+}
+@media (max-aspect-ratio: 1/1) {
+  .link-help-overlay .howto.link-help {
+    column-count: 1;
+  }
+}

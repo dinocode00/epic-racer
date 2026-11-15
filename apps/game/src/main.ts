@@ -20,7 +20,9 @@ import {
   gamepads,
 } from './game/input.ts';
 import { Net } from './game/net.ts';
-import { type PlayerSetup, RaceSession } from './game/session.ts';
+import { type Finisher, type PlayerSetup, RaceSession } from './game/session.ts';
+import { LinkRace, type LinkMsg, type RaceSpec, type RosterMember } from './game/link.ts';
+import { linkHelpHtml, linkQuality } from './game/linkHelp.ts';
 import { Showroom } from './game/showroom.ts';
 import { MapTour } from './game/tour.ts';
 import { POINTS, Tournament } from './game/tournament.ts';
@@ -45,6 +47,7 @@ import { type KartState, SPECIAL_OF } from '@epic/sim';
  *   ?look=retro  ?vehicles=pod,bat,nazgul,mach5  ?laps=3  ?scene=showroom  ?fixed=1
  *   ?fps=1 (frame-rate display)  ?quality=high|low (fixed quality instead of automatic)
  *   ?tour=1 (start the map tour of ?track=...)  ?cup=1 (tournament mode on)
+ *   ?screen=N (open as 8-Player Local screen N by hand)  ?draw=0 (draw nothing: tests)
  */
 const params = new URLSearchParams(location.search);
 const view = new View(document.getElementById('stage')!);
@@ -85,6 +88,7 @@ const members: Member[] = [];
 let trackId = trackById(params.get('track') ?? TRACKS[0]!.def.id).def.id;
 const track = () => trackById(trackId);
 function cycleTrack(dir: number): void {
+  if (following()) return net.sendLink({ t: 'cmd', c: 'track', dir } satisfies LinkMsg, 0);
   const i = TRACKS.findIndex((t) => t.def.id === trackId);
   trackId = TRACKS[(i + dir + TRACKS.length) % TRACKS.length]!.def.id;
   members.forEach((m) => (m.ready = false));
@@ -98,9 +102,9 @@ let cupMode = params.has('cup');
 /** Race settings from the lobby (⚙ Settings), remembered between visits. */
 const settings: RaceSettings = loadSettings();
 /** Laps for the current track under the settings. */
-const lapsFor = () => settings.laps || track().def.laps;
+const lapsFor = () => live().laps || track().def.laps;
 /** Humans in the next race (at least one, for the counts shown before anyone joins). */
-const humansNow = () => Math.max(1, members.length);
+const humansNow = () => Math.max(1, members.length + otherCount());
 let cup: Tournament | null = null;
 /** The track picked in the lobby, to come back to after a cup. */
 let cupHome = '';
@@ -109,10 +113,321 @@ let showroom: Showroom | null = null;
 let startAt = 0; // lobby countdown deadline (ms), 0 = not counting
 let resultsAt = 0;
 const phones = new Map<number, PhoneSource>();
+/** The lobby members racing, by player index (undefined: AI or the other laptop's player). */
+let raceMembers: (Member | undefined)[] = [];
 
-const freeColor = () =>
-  PLAYER_COLORS.find((c) => !members.some((m) => m.color === c)) ?? PLAYER_COLORS[0]!;
+/** Each laptop's players take colours from their own half, so 8-Player Local never repeats one. */
+const freeColor = () => {
+  const mine = net.screen === 0 ? PLAYER_COLORS.slice(0, 4) : PLAYER_COLORS.slice(4);
+  return mine.find((c) => !members.some((m) => m.color === c)) ?? mine[0]!;
+};
+/** Keyboard and pad players are P1-P4 on the main laptop, P5-P8 on the second. */
+const nameBase = () => (net.screen === 0 ? 1 : 5);
 const memberBySlot = (slot: number) => members.find((m) => m.kind === 'phone' && m.slot === slot);
+
+// ---------------- 8-Player Local ----------------
+// Two laptops, one race (see game/link.ts). The main laptop (screen 0, running the server) owns
+// the lobby: track, settings, tournament and the start. The second laptop sends it its players
+// and its players' requests, and follows its lead.
+const link = {
+  /** Game screens connected to the server. */
+  screens: [] as number[],
+  /** Main: the second laptop's players. Second laptop: every laptop's, as main last sent. */
+  rosters: new Map<number, RosterMember[]>(),
+  /** Second laptop: main has 8-Player Local on and races with this laptop. */
+  mainOn: false,
+  /** Second laptop: main is already linked with another laptop. */
+  full: false,
+  /** Second laptop: the main laptop's lobby. */
+  lobby: null as Extract<LinkMsg, { t: 'lobby' }> | null,
+  race: null as LinkRace | null,
+  spec: null as RaceSpec | null,
+  /** Main: the screens a new race waits for before the clocks start, and who's ready. */
+  waitFor: [] as number[],
+  loaded: new Set<number>(),
+  goAt: 0,
+  nextId: 1 + Math.floor(Math.random() * 200),
+  sentRoster: '',
+  sentLobby: '',
+  rtt: NaN,
+  ping: 0,
+  pingAt: 0,
+  /** A line for the lobby (e.g. "the main laptop left"). */
+  notice: '',
+};
+const isMain = () => net.screen === 0;
+/** The laptop this one races with right now (main: the first other one; else main), if any. */
+function partner(): number | undefined {
+  if (isMain()) return settings.link ? link.screens.find((s) => s !== 0) : undefined;
+  return link.mainOn && link.screens.includes(0) ? 0 : undefined;
+}
+const linked = () => partner() !== undefined;
+/** The second laptop, linked: the main laptop decides, this one asks. */
+const following = () => linked() && !isMain();
+/** The other laptop's players (in the lobby), as [screen, players]. */
+const otherRosters = (): [number, RosterMember[]][] =>
+  linked() ? [...link.rosters].filter(([s]) => s !== net.screen) : [];
+const otherCount = () => otherRosters().reduce((n, [, r]) => n + r.length, 0);
+const myRoster = (): RosterMember[] =>
+  members.map((m) => ({
+    key: m.key,
+    name: m.name,
+    color: m.color,
+    vehicle: m.vehicle,
+    ready: m.ready,
+    kind: m.kind,
+    connected: m.connected,
+  }));
+/** The settings in force: the main laptop's, on a linked second laptop. */
+const live = (): RaceSettings => (following() && link.lobby ? link.lobby.settings : settings);
+
+/** Main: tell each other laptop whether it's the one we race with. */
+function sendHello(): void {
+  if (!isMain()) return;
+  const p = partner();
+  for (const s of link.screens) {
+    if (s === 0) continue;
+    const msg: LinkMsg = { t: 'hello', on: s === p, full: settings.link && s !== p };
+    net.sendLink(msg, s);
+  }
+  link.sentLobby = '';
+  sendLobby();
+}
+/** Main: the lobby as the second laptop should show it (sent when anything changes). */
+function sendLobby(): void {
+  const p = partner();
+  if (!isMain() || p === undefined) return;
+  const msg: LinkMsg = {
+    t: 'lobby',
+    track: trackId,
+    cupMode,
+    settings,
+    rosters: [
+      [0, myRoster()],
+      [p, link.rosters.get(p) ?? []],
+    ],
+    starting: startAt ? Math.max(1, Math.ceil((startAt - performance.now()) / 1000)) : 0,
+    racing: state !== 'lobby',
+  };
+  const json = JSON.stringify(msg);
+  if (json === link.sentLobby) return;
+  link.sentLobby = json;
+  net.sendLink(msg, p);
+}
+/** Second laptop: our players to the main laptop (when they change). */
+function sendRoster(): void {
+  if (!following()) return;
+  const msg: LinkMsg = { t: 'roster', members: myRoster() };
+  const json = JSON.stringify(msg);
+  if (json === link.sentRoster) return;
+  link.sentRoster = json;
+  net.sendLink(msg, 0);
+}
+
+net.onScreens = (_you, screens) => {
+  const before = link.screens;
+  const wasLinked = linked();
+  link.screens = screens;
+  for (const s of before) {
+    if (screens.includes(s)) continue;
+    // A laptop left: its players finish this race on autopilot, and leave the lobby.
+    link.rosters.delete(s);
+    link.race?.screenLeft(s);
+    link.waitFor = link.waitFor.filter((w) => w !== s);
+    if (s === 0 && !isMain()) {
+      link.mainOn = false;
+      if (state !== 'lobby' && link.spec) {
+        link.notice = 'The main laptop left the race.';
+        endCup();
+        toLobby();
+      }
+    }
+  }
+  if (!isMain() && !screens.includes(0)) link.mainOn = false;
+  if (isMain()) {
+    sendHello();
+    maybeGo();
+  }
+  if (linked() !== wasLinked) link.sentRoster = '';
+  sendRoster();
+  renderLobby();
+};
+net.onLinkFrame = (bytes) => link.race?.onFrame(bytes);
+net.onLink = (from, raw) => {
+  const msg = raw as LinkMsg;
+  switch (msg.t) {
+    case 'ping':
+      return net.sendLink({ t: 'pong', n: msg.n } satisfies LinkMsg, from);
+    case 'pong':
+      if (msg.n === link.ping) link.rtt = performance.now() - link.pingAt;
+      return;
+    // ----- on the second laptop, from the main one -----
+    case 'hello':
+      if (from !== 0 || isMain()) return;
+      link.mainOn = msg.on;
+      link.full = !!msg.full;
+      if (!msg.on) link.lobby = null;
+      link.sentRoster = '';
+      if (!msg.on && state === 'lobby') members.forEach((m) => (m.ready = false));
+      sendRoster();
+      return renderLobby();
+    case 'lobby':
+      if (from !== 0 || isMain()) return;
+      link.lobby = msg;
+      link.rosters = new Map(msg.rosters);
+      cupMode = msg.cupMode;
+      if (state === 'lobby' && msg.track !== trackId) {
+        trackId = msg.track;
+        showroom = null;
+        toLobby();
+      }
+      return renderLobby();
+    case 'start':
+      if (from === 0 && following()) startLinkedRace(msg.spec);
+      return;
+    case 'go':
+      if (from === 0 && session && link.spec?.id === msg.id) session.waiting = false;
+      return;
+    case 'paused':
+      if (from === 0 && link.spec?.id === msg.id) setPaused(msg.on, true);
+      return;
+    case 'toLobby':
+      if (from === 0 && following()) {
+        endCup();
+        toLobby();
+      }
+      return;
+    // ----- on the main laptop, from the second one -----
+    case 'roster':
+      if (!isMain() || from !== partner()) return;
+      link.rosters.set(from, msg.members);
+      return renderLobby();
+    case 'cmd':
+      if (!isMain() || from !== partner()) return;
+      if (msg.c === 'track' && state === 'lobby') cycleTrack(msg.dir);
+      else if (msg.c === 'cup') toggleCup();
+      else if (msg.c === 'pause') pauseAction(msg.action);
+      else if (msg.c === 'continue') afterResults();
+      return;
+    case 'loaded':
+      if (isMain() && link.spec?.id === msg.id) {
+        link.loaded.add(from);
+        maybeGo();
+      }
+      return;
+    default:
+      link.race?.onMsg(from, msg);
+  }
+};
+
+/** Main: start both race clocks once every laptop in the race has built it. */
+function maybeGo(): void {
+  if (!isMain() || !session?.waiting || !link.spec) return;
+  const all = link.waitFor.every((s) => link.loaded.has(s) || !link.screens.includes(s));
+  // (A laptop that never answers holds the start for 30 seconds at most.)
+  if (!all && performance.now() < link.goAt) return;
+  net.sendLink({ t: 'go', id: link.spec.id } satisfies LinkMsg);
+  session.waiting = false;
+}
+
+/** Stands in for a player on the other laptop (their inputs come over the network). */
+const OTHER_LAPTOP: InputSource = { kind: 'auto', label: 'Other laptop', poll: neutralPad };
+
+/** Main: a new race spec from the lobby (or the last race's players, for a restart). */
+function makeSpec(humans: RaceSpec['humans']): RaceSpec {
+  const total = humans.length + Math.min(settings.ai, Math.max(0, MAX_RACERS - humans.length));
+  link.nextId = (link.nextId + 1) % 250;
+  return {
+    id: link.nextId,
+    track: trackId,
+    laps: lapsFor(),
+    total,
+    level: settings.level,
+    humans,
+    cup: cup ? { start: cupHome, races: settings.cupRaces, race: cup.race } : null,
+  };
+}
+
+/** Main: everyone in the lobby on both laptops, names made unique (results go by name). */
+function lobbyHumans(): RaceSpec['humans'] {
+  const p = partner()!;
+  const all = [
+    ...members.map((m) => ({ m: m as RosterMember, screen: 0 })),
+    ...(link.rosters.get(p) ?? []).map((m) => ({ m, screen: p })),
+  ];
+  const used = new Set<string>();
+  return all.map(({ m, screen }) => {
+    let name = m.name;
+    for (let n = 2; used.has(name); n++) name = `${m.name.slice(0, 10)}${n}`;
+    used.add(name);
+    return { name, color: m.color, vehicle: m.vehicle, screen, key: m.key };
+  });
+}
+
+/** Main: send a race to the other laptop and start it here. */
+function startLinked(spec: RaceSpec): void {
+  net.sendLink({ t: 'start', spec } satisfies LinkMsg, partner());
+  startLinkedRace(spec);
+}
+
+/** Build a linked race on this laptop; its clock starts when the main laptop says go. */
+function startLinkedRace(spec: RaceSpec): void {
+  link.spec = spec;
+  link.notice = '';
+  if (!isMain()) {
+    trackId = spec.track;
+    if (spec.cup) {
+      if (!cup || cup.tracks[0] !== spec.cup.start) {
+        cup = new Tournament(spec.cup.start, spec.cup.races);
+        cupHome = spec.cup.start;
+      }
+      cup.race = spec.cup.race;
+    } else cup = null;
+  }
+  if (tour) {
+    tour.dispose();
+    tour = null;
+  }
+  setPaused(false, true);
+  session?.dispose();
+  session = null;
+  const kbPlayers = members.filter((m) => m.kind === 'keyboard').length;
+  const players: PlayerSetup[] = spec.humans.map((h) => {
+    const base = { name: h.name, color: h.color, vehicle: h.vehicle };
+    if (h.screen !== net.screen) return { ...base, source: OTHER_LAPTOP, local: false };
+    const m = members.find((x) => x.key === h.key);
+    // Gone since the lobby: the autopilot drives their kart.
+    if (!m) return { ...base, source: OTHER_LAPTOP, away: () => true };
+    return { ...base, source: sourceFor(m, kbPlayers), away: awayFor(m) };
+  });
+  const lr = new LinkRace(spec, net, net.screen);
+  link.race = lr;
+  raceMembers = spec.humans.map((h) =>
+    h.screen === net.screen ? members.find((x) => x.key === h.key) : undefined,
+  );
+  startRace(players, spec.laps, { total: spec.total, level: spec.level, link: lr });
+  lr.attach(session!.net!);
+  session!.waiting = true;
+  if (isMain()) {
+    const p = partner();
+    link.waitFor = p === undefined ? [] : [p];
+    link.loaded.clear();
+    link.goAt = performance.now() + 30000;
+    maybeGo();
+  } else net.sendLink({ t: 'loaded', id: spec.id } satisfies LinkMsg, 0);
+}
+
+/** A keyboard player's keys: all of them alone, or half each when two share it. */
+function sourceFor(m: Member, kbPlayers: number): InputSource {
+  if (m.kind !== 'keyboard') return m.source;
+  return new KeyboardSource(kbPlayers > 1 ? (m.key === 'keyboard' ? 'arrows' : 'wasd') : 'all');
+}
+/** A phone counts as away (autopilot) after 10 s without a word. */
+function awayFor(m: Member): (() => boolean) | undefined {
+  return m.kind === 'phone'
+    ? () => !m.connected || performance.now() - (m.source as PhoneSource).lastSeen > 10000
+    : undefined;
+}
 
 // ---------------- phones ----------------
 net.onJoin = (slot, playerId, name) => {
@@ -224,10 +539,10 @@ function toggleHowTo(open = howTo.hidden): void {
 let paused = false;
 let lastRace: { players: PlayerSetup[]; laps: number } | null = null;
 const PAUSE_ITEMS: [string, () => void][] = [
-  ['RESUME', () => setPaused(false)],
-  ['RESTART RACE', () => restartRace()],
+  ['RESUME', () => pauseAction('resume')],
+  ['RESTART RACE', () => pauseAction('restart')],
   ['HOW TO PLAY', () => toggleHowTo(true)],
-  ['EXIT TO LOBBY', () => exitRace()],
+  ['EXIT TO LOBBY', () => pauseAction('exit')],
 ];
 let pauseSel = 0;
 const pauseEl = document.createElement('div');
@@ -243,8 +558,12 @@ function renderPause(): void {
     el.onclick = () => PAUSE_ITEMS[Number(el.dataset.i)]![1]();
   });
 }
-function setPaused(on: boolean): void {
+/** `fromMain`: the main laptop said so (8-Player Local: pausing is shared). */
+function setPaused(on: boolean, fromMain = false): void {
   if (on && (state !== 'race' || !session)) return;
+  if (following() && !fromMain && link.spec) return;
+  if (isMain() && link.spec && paused !== on)
+    net.sendLink({ t: 'paused', id: link.spec.id, on } satisfies LinkMsg, partner());
   paused = on;
   if (session) session.paused = on;
   pauseSel = 0;
@@ -255,6 +574,11 @@ function setPaused(on: boolean): void {
     if (m.kind === 'phone' && m.slot !== undefined) net.send(m.slot, { t: 'paused', on });
 }
 function restartRace(): void {
+  if (link.spec && isMain()) {
+    if (partner() === undefined) return exitRace();
+    setPaused(false);
+    return startLinked(makeSpec(link.spec.humans));
+  }
   if (!lastRace) return;
   setPaused(false);
   session?.dispose();
@@ -263,10 +587,14 @@ function restartRace(): void {
 }
 function exitRace(): void {
   setPaused(false);
+  if (link.spec && isMain()) net.sendLink({ t: 'toLobby' } satisfies LinkMsg, partner());
   endCup();
   toLobby();
 }
 function pauseAction(a: PauseAction): void {
+  // On the second laptop in a linked race, the main laptop does it (for both).
+  if (following() && link.spec)
+    return net.sendLink({ t: 'cmd', c: 'pause', action: a } satisfies LinkMsg, 0);
   if (a === 'toggle') setPaused(!paused);
   else if (a === 'resume') setPaused(false);
   else if (paused && a === 'restart') restartRace();
@@ -289,15 +617,34 @@ settingsEl.addEventListener('click', (e) => {
   if (e.target === settingsEl) toggleSettings(false);
 });
 let settingsSel = 0;
+/** The 8-Player Local row reads differently on the second laptop (main switches it). */
+function rowText(r: (typeof SETTING_ROWS)[number], h: number): [string, string] {
+  if (r.key === 'link' && !isMain())
+    return [
+      linked() ? 'On' : 'Off',
+      link.full
+        ? 'The main laptop is already racing with another laptop.'
+        : 'This is the second laptop: 8-Player Local is switched on at the main laptop. Press I or Y for how it works.',
+    ];
+  return [r.value(live(), h), r.note(live(), h)];
+}
 function renderSettings(): void {
   const h = humansNow();
-  settingsEl.innerHTML = `<div class="pause-menu settings-menu"><h2>RACE SETTINGS</h2>${SETTING_ROWS.map(
-    (r, i) =>
-      `<div class="set-row ${i === settingsSel ? 'sel' : ''}" data-i="${i}"><span class="set-label">${r.label}</span><span class="set-val"><b data-d="-1">◀</b><span>${r.value(settings, h)}</span><b data-d="1">▶</b></span><div class="set-note">${r.note(settings, h)}</div></div>`,
-  ).join(
+  const ro = following();
+  settingsEl.innerHTML = `<div class="pause-menu settings-menu"><h2>RACE SETTINGS</h2>${
+    ro ? '<div class="set-readonly">Set on the main laptop (8-Player Local)</div>' : ''
+  }${SETTING_ROWS.map((r, i) => {
+    const [value, note] = rowText(r, h);
+    return `<div class="set-row ${i === settingsSel ? 'sel' : ''} ${r.key === 'link' ? 'set-link' : ''}" data-i="${i}"><span class="set-label">${r.label}</span><span class="set-val"><b data-d="-1">◀</b><span>${value}</span><b data-d="1">▶</b></span><div class="set-note">${note}</div></div>`;
+  }).join(
     '',
-  )}<div class="set-done" id="set-done">DONE</div><div class="pause-hint">↑ ↓ choose · ← → change · Enter / A / Esc / B done · saved for next time</div></div>`;
+  )}<div class="set-buttons"><div class="set-done set-info" id="set-info">ⓘ HOW 8-PLAYER LOCAL WORKS <i>I / Y</i></div><div class="set-done" id="set-done">DONE</div></div><div class="pause-hint">${
+    ro
+      ? 'Enter / A / Esc / B close'
+      : '↑ ↓ choose · ← → change · Enter / A / Esc / B done · saved for next time'
+  }</div></div>`;
   document.getElementById('set-done')!.onclick = () => toggleSettings(false);
+  document.getElementById('set-info')!.onclick = () => toggleLinkHelp(true);
   settingsEl.querySelectorAll<HTMLElement>('.set-row').forEach((row) => {
     row.onclick = () => {
       settingsSel = Number(row.dataset.i);
@@ -313,8 +660,15 @@ function renderSettings(): void {
   });
 }
 function changeSetting(dir: number): void {
-  SETTING_ROWS[settingsSel]!.step(settings, dir);
+  const row = SETTING_ROWS[settingsSel]!;
+  // The second laptop follows the main one's settings (and never switches the link itself).
+  if (following() || (row.key === 'link' && !isMain())) return;
+  row.step(settings, dir);
   saveSettings(settings);
+  if (row.key === 'link') {
+    link.rosters.clear();
+    sendHello();
+  }
   renderSettings();
   renderLobby();
 }
@@ -330,6 +684,26 @@ function toggleSettings(open = settingsEl.hidden): void {
 function moveSettings(d: number): void {
   settingsSel = (settingsSel + d + SETTING_ROWS.length) % SETTING_ROWS.length;
   renderSettings();
+}
+
+// ---------------- how 8-Player Local works ----------------
+// From ⚙ Settings (I, or Y on a pad, or the button) and the lobby's 8-Player Local panel.
+const linkHelp = document.createElement('div');
+linkHelp.className = 'howto-overlay link-help-overlay';
+linkHelp.hidden = true;
+linkHelp.addEventListener('click', () => toggleLinkHelp(false));
+document.body.appendChild(linkHelp);
+function toggleLinkHelp(open = linkHelp.hidden): void {
+  linkHelp.hidden = !open || !(state === 'lobby' || paused);
+  if (!linkHelp.hidden) renderLinkHelp();
+}
+function renderLinkHelp(): void {
+  linkHelp.innerHTML = `${linkHelpHtml(net.info, {
+    screen: net.screen,
+    on: isMain() ? settings.link : link.mainOn,
+    linked: linked(),
+    rtt: link.rtt,
+  })}<div class="howto-close">Press I, Y or B to close · or click</div>`;
 }
 
 // Menu buttons on the Xbox pads: the guide and the pause menu take them first.
@@ -355,6 +729,10 @@ function pollMenuButtons(): void {
     const was = padWas.get(gp.index) ?? now;
     padWas.set(gp.index, now);
     const hit = (k: string) => now[k] && !was[k];
+    if (!linkHelp.hidden) {
+      if (hit('y') || hit('b') || hit('start')) toggleLinkHelp(false);
+      continue;
+    }
     if (!howTo.hidden) {
       if (hit('y') || hit('b') || hit('start')) toggleHowTo(false);
       continue;
@@ -364,7 +742,8 @@ function pollMenuButtons(): void {
       if (hit('down')) moveSettings(1);
       if (hit('left')) changeSetting(-1);
       if (hit('right')) changeSetting(1);
-      if (hit('a') || hit('b') || hit('start')) toggleSettings(false);
+      if (hit('y')) toggleLinkHelp(true);
+      else if (hit('a') || hit('b') || hit('start')) toggleSettings(false);
       continue;
     }
     if (state === 'lobby' && hit('start')) toggleSettings(true);
@@ -373,23 +752,24 @@ function pollMenuButtons(): void {
     if (state === 'lobby' && hit('view')) toggleCup();
     if (state === 'tour' && (hit('b') || hit('start') || hit('x'))) endTour();
     if (state !== 'race') continue;
-    if (hit('start')) setPaused(!paused);
+    if (hit('start')) pauseAction('toggle');
     else if (paused) {
       if (hit('up')) movePause(-1);
       if (hit('down')) movePause(1);
       if (hit('a')) PAUSE_ITEMS[pauseSel]![1]();
-      else if (hit('b')) setPaused(false);
+      else if (hit('b')) pauseAction('resume');
     }
   }
 }
 
 function pollLocal(): void {
-  const menuUp = !howTo.hidden || paused || !settingsEl.hidden;
+  const menus = () => !howTo.hidden || paused || !settingsEl.hidden || !linkHelp.hidden;
+  const menuUp = menus();
   pollMenuButtons();
   // While the guide, settings or pause menu is up (and on the press that closes it) lobby buttons
   // don't join, ready or leave behind it; their states are still tracked, so the key that
   // closed the menu doesn't count as a fresh press afterwards.
-  const act = !menuUp && !(!howTo.hidden || paused || !settingsEl.hidden);
+  const act = !menuUp && !menus();
   // Keyboard player 1: Enter joins / readies, arrows change ride, Backspace leaves.
   const kb = {
     ...kbArrows.poll(),
@@ -445,7 +825,7 @@ function handleLocal(
     if (e.a && members.length < MAX_HUMANS) {
       members.push({
         key,
-        name: kind === 'keyboard' ? 'P' + (members.length + 1) : 'PAD' + (members.length + 1),
+        name: (kind === 'keyboard' ? 'P' : 'PAD') + (members.length + nameBase()),
         color: freeColor(),
         vehicle: VEHICLES[members.length % 3]!.id,
         ready: false,
@@ -522,6 +902,7 @@ function endTour(): void {
 // ---------------- tournament ----------------
 function toggleCup(): void {
   if (state !== 'lobby') return;
+  if (following()) return net.sendLink({ t: 'cmd', c: 'cup' } satisfies LinkMsg, 0);
   cupMode = !cupMode;
   members.forEach((m) => (m.ready = false));
   renderLobby();
@@ -535,6 +916,18 @@ function endCup(): void {
 /** On from the results: the cup's next race, or back to the lobby. */
 function afterResults(): void {
   if (state !== 'results') return;
+  if (following() && link.spec)
+    return net.sendLink({ t: 'cmd', c: 'continue' } satisfies LinkMsg, 0);
+  if (link.spec && isMain()) {
+    if (cup && !cup.last && partner() !== undefined) {
+      cup.next();
+      trackId = cup.trackId;
+      return startLinked(makeSpec(link.spec.humans));
+    }
+    net.sendLink({ t: 'toLobby' } satisfies LinkMsg, partner());
+    endCup();
+    return toLobby();
+  }
   if (cup && !cup.last && lastRace) {
     cup.next();
     trackId = cup.trackId;
@@ -552,6 +945,9 @@ function toLobby(): void {
   state = 'lobby';
   session?.dispose();
   session = null;
+  link.race = null;
+  link.spec = null;
+  raceMembers = [];
   startAt = 0;
   members.forEach((m) => (m.ready = false));
   for (let i = members.length - 1; i >= 0; i--) if (!members[i]!.connected) members.splice(i, 1);
@@ -566,6 +962,7 @@ function toLobby(): void {
   document.getElementById('hud')!.innerHTML = '';
   members.forEach(syncPhone);
   renderLobby();
+  (window as unknown as { __epic: unknown }).__epic = { view, net, link, members, showroom };
 }
 
 const joinHint = () =>
@@ -573,13 +970,11 @@ const joinHint = () =>
     ? 'Press <b>Enter</b> or <b>Space</b><br>or <b>A</b> on a pad'
     : 'Scan the QR code<br>or press <b>A</b> on a pad';
 
-function renderLobby(): void {
-  if (state !== 'lobby') return;
-  const info = net.info;
-  const slots = Array.from({ length: MAX_HUMANS }, (_, i) => {
-    const m = members[i];
-    if (!m)
-      return `<div class="slot empty"><div>${i === members.length ? joinHint() : ''}</div></div>`;
+/** One player's card in the lobby (`remote`: on the other laptop, shown but not driven here). */
+function slotHtml(m: RosterMember | undefined, i: number, count: number, remote: boolean): string {
+  if (!m)
+    return `<div class="slot empty"><div>${!remote && i === count ? joinHint() : ''}</div></div>`;
+  {
     const v = vehicleById(m.vehicle);
     const tag =
       m.kind === 'phone'
@@ -598,12 +993,79 @@ function renderLobby(): void {
     return `<div class="slot on ${m.connected ? '' : 'off'}" style="--c:${m.color}">
       <div class="who"><span>${m.name}</span><span class="tag">${tag}</span></div>
       <div class="veh">${VEHICLE_ICONS[v.id] ?? ''}<div class="vn">${v.name}</div></div>
-      <div class="state ${m.ready ? 'ready' : ''}">${m.ready ? 'READY!' : m.kind === 'phone' ? 'choosing on phone…' : pick}</div>
+      <div class="state ${m.ready ? 'ready' : ''}">${m.ready ? 'READY!' : m.kind === 'phone' ? 'choosing on phone…' : remote ? 'choosing…' : pick}</div>
     </div>`;
-  }).join('');
-  const allReady = members.length > 0 && members.every((m) => m.ready);
-  if (allReady && !startAt) startAt = performance.now() + 3000;
+  }
+}
+
+/** The 8-Player Local box under the QR code: how to link up, or how the link is doing. */
+function linkPanel(): string {
+  const p = partner();
+  const help = '<i class="hint">ⓘ how it works: Settings → I</i>';
+  if (p !== undefined)
+    return `<div class="link-box on"><b>8-PLAYER LOCAL</b> · linked with laptop ${isMain() ? p + 1 : 1}<br>${linkQuality(link.rtt)}</div>`;
+  if (isMain()) {
+    if (settings.link) {
+      const u = net.info?.screenUrls?.[0];
+      const url = u ? (u.secure ?? u.plain).replace(/\/$/, '') : 'this laptop’s address';
+      return `<div class="link-box"><b>8-PLAYER LOCAL</b> · waiting for the second laptop.<br>On it, open <b class="mono">${url}</b><br>${help}</div>`;
+    }
+    if (link.screens.some((s) => s !== 0))
+      return `<div class="link-box"><b>Another laptop</b> has the game open. Turn on 8-Player Local in ⚙ Settings to race together.</div>`;
+    return '';
+  }
+  return `<div class="link-box">This is <b>laptop ${net.screen + 1}</b>. ${
+    link.full
+      ? 'The main laptop is already racing with another one, so this one runs its own races.'
+      : link.screens.includes(0)
+        ? 'To race together, turn on <b>8-Player Local</b> in ⚙ Settings on the main laptop. Until then this one runs its own races.'
+        : 'The main laptop isn’t connected: this one runs its own races.'
+  }${link.notice ? `<br><b>${link.notice}</b>` : ''}</div>`;
+}
+
+function renderLobby(): void {
+  if (state !== 'lobby') return;
+  const info = net.info;
+  const mine = myRoster();
+  const others = otherRosters();
+  let slots: string;
+  if (others.length || (isMain() && settings.link && linked())) {
+    // 8-Player Local: both laptops' players, main laptop's on top.
+    const groups: [number, RosterMember[]][] = [
+      [net.screen, mine] as [number, RosterMember[]],
+      ...others,
+    ].sort((a, b) => a[0] - b[0]);
+    slots = groups
+      .map(([screen, roster]) => {
+        const me = screen === net.screen;
+        const label = `LAPTOP ${screen + 1}${me ? '<i>this one</i>' : ''}`;
+        return `<div class="laptop-label ${me ? 'me' : ''}">${label}</div>${Array.from(
+          { length: MAX_HUMANS },
+          (_, i) => slotHtml(roster[i], i, roster.length, !me),
+        ).join('')}`;
+      })
+      .join('');
+  } else
+    slots = Array.from({ length: MAX_HUMANS }, (_, i) =>
+      slotHtml(mine[i], i, mine.length, false),
+    ).join('');
+  const everyone = [...mine, ...others.flatMap(([, r]) => r)];
+  const allReady = everyone.length > 0 && everyone.every((m) => m.ready);
+  // The main laptop starts linked races; the second one just shows its countdown.
+  if (following()) startAt = 0;
+  else if (allReady && !startAt) startAt = performance.now() + 3000;
   if (!allReady) startAt = 0;
+  const lob = following() ? link.lobby : null;
+  const goText = lob?.racing
+    ? 'A race is on: you’ll join the next one'
+    : lob?.starting
+      ? `Starting in ${lob.starting}…`
+      : allReady
+        ? 'Starting…'
+        : everyone.length
+          ? 'Waiting for everyone to be ready'
+          : '';
+  const linkedSlots = slots.includes('laptop-label');
   ui.innerHTML = `<div class="lobby">
     <div class="top"><h1>EPIC RACER</h1><div class="actions"><span class="lb-btn" id="set-btn">⚙ SETTINGS <i class="hint">O / Menu</i></span><span class="lb-btn cup-btn ${cupMode ? 'on' : ''}" id="cup-btn">🏆 TOURNAMENT ${cupMode ? 'ON' : 'OFF'} <i class="hint">G / View</i></span><span class="lb-btn" id="tour-btn">🎥 MAP TOUR <i class="hint">M / X</i></span><span class="lb-btn" id="howto-btn">? HOW TO PLAY <i class="hint">H / Y</i></span></div></div>
     ${
@@ -617,19 +1079,22 @@ function renderLobby(): void {
     </div>`
         : `<div class="join">
       <div class="qr">${info?.qrSvg ?? ''}</div>
-      <div class="url">${info ? info.controllerUrl.replace('http://', '') : 'starting server…'}</div>
+      <div class="url">${info ? info.controllerUrl.replace(/^https?:\/\//, '').replace(/\?s=0$/, '') : 'starting server…'}</div>
       <div class="room">ROOM ${info?.room ?? '----'}</div>
       <div class="alt">Phones: scan to get a controller<br>Xbox pads: press A · Keyboard: Enter (arrows) or Space (WASD)</div>
+      ${linkPanel()}
     </div>`
     }
-    <div class="slots">${slots}</div>
+    <div class="slots ${linkedSlots ? 'eight' : ''}">${slots}</div>
     ${modeInfo()}
     <div class="foot"><span class="track">${
       cupMode
         ? `First track: <b>${track().def.name}</b> <i class="hint">(LB/RB or T to change)</i>`
         : `Track: <b>${track().def.name}</b> · ${track().blurb} <i class="hint">(LB/RB or T to change)</i>`
-    }</span><span class="go" id="go">${allReady ? 'Starting…' : members.length ? 'Waiting for everyone to be ready' : ''}</span></div>
+    }</span><span class="go" id="go">${goText}</span></div>
   </div>`;
+  sendRoster();
+  sendLobby();
   document.getElementById('howto-btn')!.onclick = () => toggleHowTo(true);
   document.getElementById('tour-btn')!.onclick = () => startTour();
   document.getElementById('cup-btn')!.onclick = () => toggleCup();
@@ -639,6 +1104,7 @@ function renderLobby(): void {
 /** The line (or, in a tournament, the card) saying what the next start will be. */
 function modeInfo(): string {
   const h = humansNow();
+  const settings = live();
   const ai = Math.min(settings.ai, MAX_RACERS - h);
   const skill = SETTING_ROWS.find((r) => r.key === 'level')!.value(settings, h);
   const field = ai ? `${ai} AI racer${ai > 1 ? 's' : ''} (${skill})` : 'no AI racers';
@@ -658,22 +1124,39 @@ function modeInfo(): string {
 
 /** Laps for the line under the slots: one number, or "each track's own". */
 function lapsText(): string {
-  return settings.laps ? `${settings.laps} laps a race` : "each track's own laps";
+  return live().laps ? `${settings.laps} laps a race` : "each track's own laps";
 }
 net.onInfo = () => renderLobby();
 
 // ---------------- race ----------------
-function startRace(players: PlayerSetup[], laps = lapsFor()): void {
+function startRace(
+  players: PlayerSetup[],
+  laps = lapsFor(),
+  /** 8-Player Local: the racer count and AI skill come from the main laptop. */
+  opts: { total?: number; level?: number; link?: LinkRace } = {},
+): void {
   showroom = null;
   state = 'race';
   howTo.hidden = true;
+  linkHelp.hidden = true;
   lastRace = { players, laps };
   ui.innerHTML = '';
-  const total = players.length + Math.min(settings.ai, Math.max(0, MAX_RACERS - players.length));
-  session = new RaceSession(view, track().def, players, laps, total, track().theme, settings.level);
+  if (!opts.link) raceMembers = [];
+  const total =
+    opts.total ?? players.length + Math.min(settings.ai, Math.max(0, MAX_RACERS - players.length));
+  session = new RaceSession(
+    view,
+    track().def,
+    players,
+    laps,
+    total,
+    track().theme,
+    opts.level ?? settings.level,
+    opts.link,
+  );
   applyQuality();
-  session.onFinished = (order) => {
-    setPaused(false);
+  session.onFinished = (order: Finisher[]) => {
+    setPaused(false, true);
     state = 'results';
     resultsAt = performance.now();
     if (cup) {
@@ -693,7 +1176,7 @@ function startRace(players: PlayerSetup[], laps = lapsFor()): void {
         )
         .join('')}<div class="hint">Press A / Enter, or tap Continue on your phone</div></div>`;
     order.forEach((r, i) => {
-      const m = members.find((x) => x.name === r.name && r.human);
+      const m = r.player >= 0 ? raceMembers[r.player] : undefined;
       if (m?.kind === 'phone' && m.slot !== undefined)
         net.send(m.slot, { t: 'results', place: i + 1 });
     });
@@ -707,32 +1190,31 @@ function startRace(players: PlayerSetup[], laps = lapsFor()): void {
     net,
     cup,
     afterResults,
+    link,
   };
 }
 
 function startFromLobby(): void {
+  if (following()) return; // the main laptop starts linked races
   if (cupMode) {
     cup = new Tournament(trackId, settings.cupRaces);
     cupHome = trackId;
     trackId = cup.trackId;
   }
+  if (linked()) return startLinked(makeSpec(lobbyHumans()));
   // A lone keyboard player gets every key; two share the keyboard half each.
   const kbPlayers = members.filter((m) => m.kind === 'keyboard').length;
+  const racing = [...members];
   startRace(
-    members.map((m) => ({
+    racing.map((m) => ({
       name: m.name,
       color: m.color,
       vehicle: m.vehicle,
-      source:
-        m.kind === 'keyboard'
-          ? new KeyboardSource(kbPlayers > 1 ? (m.key === 'keyboard' ? 'arrows' : 'wasd') : 'all')
-          : m.source,
-      away:
-        m.kind === 'phone'
-          ? () => !m.connected || performance.now() - (m.source as PhoneSource).lastSeen > 10000
-          : undefined,
+      source: sourceFor(m, kbPlayers),
+      away: awayFor(m),
     })),
   );
+  raceMembers = racing;
 }
 
 let hudTimer = 0;
@@ -749,8 +1231,8 @@ function sendPhoneHud(dt: number): void {
   hudTimer += dt;
   if (hudTimer < 0.1 || !session) return;
   hudTimer = 0;
-  members.forEach((m, i) => {
-    if (m.kind !== 'phone' || m.slot === undefined) return;
+  raceMembers.forEach((m, i) => {
+    if (m?.kind !== 'phone' || m.slot === undefined) return;
     const k = session!.humanKart(i);
     if (!k) return;
     net.send(m.slot, {
@@ -825,6 +1307,20 @@ if (params.get('scene') === 'showroom') {
 }
 net.start();
 
+/** 8-Player Local: measure the round trip to the other laptop, once a second. */
+let pingTimer = 0;
+function pingPartner(now: number): void {
+  const p = partner();
+  if (p === undefined || now - pingTimer < 1000) return;
+  pingTimer = now;
+  if (link.pingAt && link.ping && now - link.pingAt > 3000) link.rtt = NaN; // no answer
+  link.ping++;
+  link.pingAt = now;
+  net.sendLink({ t: 'ping', n: link.ping } satisfies LinkMsg, p);
+  if (state === 'lobby' && Math.floor(now / 1000) % 2 === 0) renderLobby();
+  if (!linkHelp.hidden) renderLinkHelp();
+}
+
 let last = performance.now();
 function loop(now: number): void {
   const real = (now - last) / 1000;
@@ -834,6 +1330,8 @@ function loop(now: number): void {
   if (quality.frame(real)) applyQuality();
   fpsMeter?.frame(real, quality, () => view.bufferSize);
   pollLocal();
+  pingPartner(now);
+  if (isMain() && session?.waiting) maybeGo();
   if (tour) {
     tour.frame(dt);
     tourHud();
@@ -841,13 +1339,15 @@ function loop(now: number): void {
   } else if (session) {
     session.frame(dt);
     sendPhoneHud(dt);
-    if (state === 'results' && now - resultsAt > (cup ? 45000 : 20000)) afterResults();
+    if (state === 'results' && !following() && now - resultsAt > (cup ? 45000 : 20000))
+      afterResults();
   } else if (showroom) {
     showroom.frame(dt, !params.has('fixed'));
     if (state === 'lobby' && startAt && now >= startAt) startFromLobby();
     else if (state === 'lobby' && startAt) {
       const go = document.getElementById('go');
       if (go) go.textContent = `Starting in ${Math.ceil((startAt - now) / 1000)}…`;
+      sendLobby(); // the second laptop's countdown
     }
   }
   requestAnimationFrame(loop);
@@ -856,6 +1356,10 @@ requestAnimationFrame(loop);
 
 window.addEventListener('keydown', (e) => {
   if (e.code === 'F2') view.setLook(view.look === 'modern' ? 'retro' : 'modern');
+  if (!linkHelp.hidden) {
+    if (['KeyI', 'Escape', 'Backspace', 'KeyB'].includes(e.code)) toggleLinkHelp(false);
+    return;
+  }
   if (!howTo.hidden) {
     if (e.code === 'KeyH' || e.code === 'Escape') toggleHowTo(false);
     return;
@@ -865,6 +1369,7 @@ window.addEventListener('keydown', (e) => {
     else if (e.code === 'ArrowDown' || e.code === 'KeyS') moveSettings(1);
     else if (e.code === 'ArrowLeft' || e.code === 'KeyA') changeSetting(-1);
     else if (e.code === 'ArrowRight' || e.code === 'KeyD') changeSetting(1);
+    else if (e.code === 'KeyI') toggleLinkHelp(true);
     else if (['Enter', 'NumpadEnter', 'Escape', 'KeyO', 'Backspace', 'Space'].includes(e.code))
       toggleSettings(false);
     return;
@@ -877,16 +1382,18 @@ window.addEventListener('keydown', (e) => {
   if (state === 'lobby' && e.code === 'KeyM') startTour();
   if (state === 'lobby' && e.code === 'KeyG') toggleCup();
   else if (state === 'tour' && ['Escape', 'Backspace', 'KeyM', 'KeyB'].includes(e.code)) endTour();
+  if (state === 'lobby' && e.code === 'KeyI') toggleLinkHelp(true);
   if (state !== 'race') return;
   if (!paused) {
-    if (e.code === 'Escape' || e.code === 'KeyP') setPaused(true);
+    if (e.code === 'Escape' || e.code === 'KeyP') pauseAction('toggle');
     return;
   }
   if (e.code === 'ArrowUp' || e.code === 'KeyW') movePause(-1);
   else if (e.code === 'ArrowDown' || e.code === 'KeyS') movePause(1);
   else if (e.code === 'Enter' || e.code === 'NumpadEnter' || e.code === 'Space')
     PAUSE_ITEMS[pauseSel]![1]();
-  else if (e.code === 'Escape' || e.code === 'KeyP' || e.code === 'Backspace') setPaused(false);
+  else if (e.code === 'Escape' || e.code === 'KeyP' || e.code === 'Backspace')
+    pauseAction('resume');
   else if (e.code === 'KeyH') toggleHowTo(true);
 });
 

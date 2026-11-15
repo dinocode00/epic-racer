@@ -128,16 +128,39 @@ export type HostToPad =
 export type ServerToHost =
   | { t: 'padJoined'; slot: number; playerId: string; name: string }
   | { t: 'padLeft'; slot: number }
-  | { t: 'padMsg'; slot: number; msg: PadToHost };
+  | { t: 'padMsg'; slot: number; msg: PadToHost }
+  /** Which game screens (laptops) are connected, and which one this is (0 = the main one). */
+  | { t: 'screens'; you: number; screens: number[] }
+  /** A message from another game screen (8-Player Local). */
+  | { t: 'link'; from: number; msg: unknown };
 
-export type HostToServer = { t: 'toPad'; slot: number; msg: HostToPad };
+export type HostToServer =
+  | { t: 'toPad'; slot: number; msg: HostToPad }
+  /** To another game screen (`to`), or every other one. */
+  | { t: 'link'; to?: number; msg: unknown };
+
+/**
+ * Binary messages between game screens (8-Player Local race inputs) start with this byte. The
+ * server passes them to every other screen as they are. (Phone input forwarded to a screen
+ * starts with the phone's slot, 0..7, so the two never mix.)
+ */
+export const LINK_TAG = 255;
 
 /** Returned by GET /api/info */
 export interface ServerInfo {
   room: string;
+  /** Where phones join this screen (its own QR code). */
   controllerUrl: string;
   qrSvg: string;
   lanAddresses: string[];
+  /** Which game screen asked: 0 on the computer running the server, 1 on the next laptop... */
+  screen: number;
+  /**
+   * How another laptop opens the game as a second screen (8-Player Local): the secure link
+   * first (it lets that laptop's browser read Xbox controllers), then the plain one, for each
+   * of this computer's network addresses.
+   */
+  screenUrls: { secure: string | null; plain: string; address: string }[];
 }
 
 export const PLAYER_COLORS = [

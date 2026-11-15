@@ -11,7 +11,8 @@
     "typecheck": "tsc -p apps/game && tsc -p apps/controller && tsc -p apps/server && tsc -p packages/sim && tsc -p packages/shared",
     "lint": "prettier --check \"apps/*/src/**/*.ts\" \"packages/*/src/**/*.ts\" \"packages/*/test/**/*.ts\"",
     "format": "prettier --write \"apps/*/src/**/*.ts\" \"packages/*/src/**/*.ts\" \"packages/*/test/**/*.ts\"",
-    "e2e": "node tools/e2e/two-phones.mjs"
+    "e2e": "node tools/e2e/two-phones.mjs",
+    "e2e:link": "node tools/e2e/two-laptops.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

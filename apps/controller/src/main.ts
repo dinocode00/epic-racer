@@ -42,6 +42,20 @@ for (const [q, k] of [
   const v = params.get(q);
   if (v) store.set(k, v);
 }
+/**
+ * Which laptop's QR code this phone scanned (8-Player Local: each laptop has its own). Kept
+ * for this tab only, so a later scan of the other laptop's code moves the phone over.
+ */
+const padScreen = (() => {
+  const SCREEN_KEY = 'epic.screen';
+  try {
+    if (params.has('s') || !sessionStorage.getItem(SCREEN_KEY))
+      sessionStorage.setItem(SCREEN_KEY, String(Number(params.get('s')) || 0));
+    return Number(sessionStorage.getItem(SCREEN_KEY)) || 0;
+  } catch {
+    return Number(params.get('s')) || 0; // (private mode)
+  }
+})();
 if (params.size) history.replaceState(null, '', location.pathname);
 
 let playerId = store.get('epic.playerId');
@@ -155,9 +169,14 @@ async function chooseSteering(choice: 'slide' | 'tilt'): Promise<void> {
   if (choice === 'tilt' && !window.isSecureContext) {
     // Hop to the server's secure link, keeping the name and the choice.
     try {
-      const info = (await (await fetch('/api/info')).json()) as { controllerUrl: string };
+      const info = (await (await fetch(`/api/info?screen=${padScreen}`)).json()) as {
+        controllerUrl: string;
+      };
       if (info.controllerUrl.startsWith('https:')) {
-        location.href = `${info.controllerUrl}?name=${encodeURIComponent(name)}&steer=tilt`;
+        const hop = new URL(info.controllerUrl);
+        hop.searchParams.set('name', name);
+        hop.searchParams.set('steer', 'tilt');
+        location.href = hop.href;
         return;
       }
     } catch {
@@ -177,7 +196,7 @@ async function chooseSteering(choice: 'slide' | 'tilt'): Promise<void> {
 // ---------- networking ----------
 function connect(): void {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-  ws = new WebSocket(`${proto}://${location.host}${WS_PATH}?role=pad`);
+  ws = new WebSocket(`${proto}://${location.host}${WS_PATH}?role=pad&screen=${padScreen}`);
   ws.binaryType = 'arraybuffer';
   ws.onopen = () => {
     connected = true;

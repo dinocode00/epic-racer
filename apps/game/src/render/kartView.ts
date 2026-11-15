@@ -295,9 +295,26 @@ export class KartView {
     return tmp.distanceTo(cam) < this.bounds.radius + 1.2;
   }
 
+  /**
+   * 8-Player Local: when the race is put right after a late input, the kart is drawn from
+   * where it was and eased onto its true place over about a tenth of a second.
+   */
+  private readonly smooth = new THREE.Vector3();
+  correct(dx: number, dy: number, dz: number): void {
+    this.smooth.x += dx;
+    this.smooth.y += dy;
+    this.smooth.z += dz;
+    // A big jump (a rescue, a respawn) is real: show it at once.
+    if (this.smooth.lengthSq() > 25) this.smooth.set(0, 0, 0);
+  }
+
   update(k: KartState, steer: number, alpha: number, dt: number, fx: Effects): void {
     this.t += dt;
     lerpV(this.pos, k.prevPos, k.pos, alpha);
+    if (this.smooth.lengthSq() > 1e-8) {
+      this.pos.add(this.smooth);
+      this.smooth.multiplyScalar(Math.exp(-dt * 25));
+    }
     lerpV(this.fwd, k.prevFwd, k.fwd, alpha).normalize();
     lerpV(this.up, k.prevUp, k.up, alpha).normalize();
     const right = tRight.crossVectors(this.fwd, this.up).normalize();

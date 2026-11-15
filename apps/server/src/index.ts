@@ -3,6 +3,8 @@
  *  - serves the game page (/) and the phone controller (/c/)
  *  - relays phone input to the game host over a WebSocket
  *  - prints the join URL and a QR code
+ *  - 8-Player Local: lets a second laptop open the game as another screen, ties each phone to
+ *    the screen whose QR code it scanned, and relays race inputs between the screens
  *
  * Phones join over HTTPS (with a certificate this server makes for itself), because iPhones
  * only let a page read the tilt sensors on a secure connection. The laptop's game page stays
@@ -21,6 +23,7 @@ import { WebSocketServer, type WebSocket, type RawData } from 'ws';
 import {
   DEFAULT_PORT,
   type HostToServer,
+  LINK_TAG,
   type PadToHost,
   type ServerInfo,
   type ServerToHost,
@@ -56,6 +59,25 @@ const lan = lanAddresses();
 const host = process.env.PUBLIC_HOST ?? lan[0] ?? 'localhost';
 const plainControllerUrl = `http://${host}:${PORT}/c/`;
 let controllerUrl = plainControllerUrl;
+let secureUp = false;
+
+// ---------- screens (8-Player Local) ----------
+// Screen 0 is the game page on this computer (the main laptop). A game page opened from
+// another computer is another screen, numbered by that computer's address so a reload keeps
+// its number (and its phones). `?screen=N` on the page picks one by hand (tests, two windows).
+const isLocal = (ip: string) => ip === '127.0.0.1' || ip === '::1' || lanAddresses().includes(ip);
+const remoteScreens = new Map<string, number>();
+const plainAddress = (a: string | undefined) => (a ?? '').replace(/^::ffff:/, '');
+function screenOf(req: IncomingMessage, url: URL): number {
+  const asked = Number(url.searchParams.get('screen'));
+  if (Number.isInteger(asked) && asked >= 0 && asked < 8 && url.searchParams.has('screen'))
+    return asked;
+  const ip = plainAddress(req.socket.remoteAddress);
+  if (isLocal(ip)) return 0;
+  let n = remoteScreens.get(ip);
+  if (n === undefined) remoteScreens.set(ip, (n = remoteScreens.size + 1));
+  return n;
+}
 
 // ---------- certificate for the phones' secure connection ----------
 const CERT_FILE = join(ROOT, '.tools', 'cert.json');
@@ -144,22 +166,41 @@ async function serveFile(res: ServerResponse, dir: string, rel: string): Promise
   }
 }
 
-let qrSvg = '';
-async function info(): Promise<ServerInfo> {
-  if (!qrSvg)
-    qrSvg = await QRCode.toString(controllerUrl, {
+/** Each screen's phone link (the screen's number rides along) and its QR code. */
+const padUrl = (screen: number) => `${controllerUrl}?s=${screen}`;
+const qrSvgs = new Map<string, string>();
+async function info(screen: number): Promise<ServerInfo> {
+  const url = padUrl(screen);
+  let qrSvg = qrSvgs.get(url);
+  if (!qrSvg) {
+    qrSvg = await QRCode.toString(url, {
       type: 'svg',
       margin: 1,
       color: { dark: '#111111', light: '#ffffff' },
     });
-  return { room: ROOM, controllerUrl, qrSvg, lanAddresses: lan };
+    qrSvgs.set(url, qrSvg);
+  }
+  // Looked up afresh each time: a cable plugged in after the start shows up too.
+  const now = lanAddresses();
+  return {
+    room: ROOM,
+    controllerUrl: url,
+    qrSvg,
+    lanAddresses: now,
+    screen,
+    screenUrls: now.map((a) => ({
+      address: a,
+      secure: secureUp ? `https://${a}:${HTTPS_PORT}/` : null,
+      plain: `http://${a}:${PORT}/`,
+    })),
+  };
 }
 
 async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const url = new URL(req.url ?? '/', 'http://x');
   if (url.pathname === '/api/info') {
     res.writeHead(200, { 'content-type': 'application/json' });
-    return void res.end(JSON.stringify(await info()));
+    return void res.end(JSON.stringify(await info(screenOf(req, url))));
   }
   if (url.pathname === '/c') return void res.writeHead(302, { location: '/c/' }).end();
   if (url.pathname.startsWith('/c/')) return serveFile(res, PAD_DIR, url.pathname.slice(3));
@@ -172,14 +213,25 @@ interface PadConn {
   slot: number;
   playerId: string;
   name: string;
+  /** The screen (laptop) whose QR code the phone scanned. */
+  screen: number;
   ws: WebSocket | null;
   lostAt: number;
 }
 
-let hostWs: WebSocket | null = null;
+/** The game page of each screen (0 = this computer's). */
+const hosts = new Map<number, WebSocket>();
 const pads = new Map<number, PadConn>();
 
-const sendHost = (m: ServerToHost) => hostWs?.readyState === 1 && hostWs.send(JSON.stringify(m));
+function sendHost(screen: number, m: ServerToHost): void {
+  const ws = hosts.get(screen);
+  if (ws?.readyState === 1) ws.send(JSON.stringify(m));
+}
+/** Tell every screen which screens are connected. */
+function announceScreens(): void {
+  const screens = [...hosts.keys()].sort((a, b) => a - b);
+  for (const you of screens) sendHost(you, { t: 'screens', you, screens });
+}
 
 function freeSlot(playerId: string): number {
   for (const [slot, p] of pads) if (p.playerId === playerId) return slot; // reconnect
@@ -197,36 +249,56 @@ function onUpgrade(req: IncomingMessage, socket: Duplex, head: Buffer): void {
 }
 server.on('upgrade', onUpgrade);
 wss.on('connection', (ws, req) => {
-  const role = new URL(req.url ?? '', 'http://x').searchParams.get('role');
+  const url = new URL(req.url ?? '', 'http://x');
+  const role = url.searchParams.get('role');
   if (role === 'host') {
-    hostWs?.close(4000, 'replaced by a new game window');
-    hostWs = ws;
-    console.log('[host] game window connected');
+    const screen = screenOf(req, url);
+    hosts.get(screen)?.close(4000, 'replaced by a new game window');
+    hosts.set(screen, ws);
+    const where = screen ? `screen ${screen + 1} (${plainAddress(req.socket.remoteAddress)})` : '';
+    console.log(`[host] game window connected ${where}`);
     for (const p of pads.values())
-      if (p.ws) sendHost({ t: 'padJoined', slot: p.slot, playerId: p.playerId, name: p.name });
+      if (p.ws && p.screen === screen)
+        sendHost(screen, { t: 'padJoined', slot: p.slot, playerId: p.playerId, name: p.name });
+    announceScreens();
     ws.on('message', (data: RawData, isBinary) => {
-      if (isBinary) return;
+      if (isBinary) {
+        // A race input frame for the other screens: pass it on as it is.
+        const bytes = data instanceof Buffer ? data : Buffer.from(data as ArrayBuffer);
+        if (bytes[0] !== LINK_TAG) return;
+        for (const [s, other] of hosts)
+          if (s !== screen && other.readyState === 1) other.send(bytes, { binary: true });
+        return;
+      }
       try {
         const m = JSON.parse(String(data)) as HostToServer;
         if (m.t === 'toPad') {
           const p = pads.get(m.slot);
           if (p?.ws?.readyState === 1) p.ws.send(JSON.stringify(m.msg));
+        } else if (m.t === 'link') {
+          for (const s of hosts.keys())
+            if (s !== screen && (m.to === undefined || m.to === s))
+              sendHost(s, { t: 'link', from: screen, msg: m.msg });
         }
       } catch {
         /* ignore malformed */
       }
     });
     ws.on('close', () => {
-      if (hostWs === ws) hostWs = null;
-      console.log('[host] game window disconnected');
+      if (hosts.get(screen) !== ws) return;
+      hosts.delete(screen);
+      console.log(`[host] game window disconnected ${where}`);
+      announceScreens();
     });
     return;
   }
+  const padScreen = Math.max(0, Math.min(7, Number(url.searchParams.get('screen')) || 0));
 
   // Phone controller.
   let me: PadConn | null = null;
   ws.on('message', (data: RawData, isBinary) => {
     if (isBinary) {
+      const hostWs = me && hosts.get(me.screen);
       if (!me || !hostWs || hostWs.readyState !== 1) return;
       const frame =
         data instanceof Buffer ? new Uint8Array(data) : new Uint8Array(data as ArrayBuffer);
@@ -245,20 +317,23 @@ wss.on('connection', (ws, req) => {
       const name = String(m.name).slice(0, 12) || 'Player';
       const prev = pads.get(slot);
       if (prev?.ws && prev.ws !== ws) prev.ws.close(4002, 'opened elsewhere');
-      me = { slot, playerId: m.playerId, name, ws, lostAt: 0 };
+      // A phone that scanned the other laptop's code this time leaves the old one.
+      if (prev && prev.screen !== padScreen) sendHost(prev.screen, { t: 'padLeft', slot });
+      me = { slot, playerId: m.playerId, name, screen: padScreen, ws, lostAt: 0 };
       pads.set(slot, me);
-      console.log(`[pad] ${name} joined in slot ${slot}`);
-      sendHost({ t: 'padJoined', slot, playerId: m.playerId, name });
+      const on = padScreen ? ` on screen ${padScreen + 1}` : '';
+      console.log(`[pad] ${name} joined in slot ${slot}${on}`);
+      sendHost(padScreen, { t: 'padJoined', slot, playerId: m.playerId, name });
       return;
     }
-    if (me) sendHost({ t: 'padMsg', slot: me.slot, msg: m });
+    if (me) sendHost(me.screen, { t: 'padMsg', slot: me.slot, msg: m });
   });
   ws.on('close', () => {
     if (!me || pads.get(me.slot) !== me) return;
     me.ws = null;
     me.lostAt = Date.now();
     console.log(`[pad] ${me.name} disconnected`);
-    sendHost({ t: 'padLeft', slot: me.slot });
+    sendHost(me.screen, { t: 'padLeft', slot: me.slot });
   });
 });
 
@@ -272,6 +347,7 @@ async function startSecure(): Promise<void> {
       secure.listen(HTTPS_PORT, '0.0.0.0', ok);
     });
     controllerUrl = `https://${host}:${HTTPS_PORT}/c/`;
+    secureUp = true;
   } catch (e) {
     console.log(`  (Secure phone link unavailable, tilt steering is off: ${(e as Error).message})`);
   }
@@ -296,4 +372,7 @@ server.listen(PORT, '0.0.0.0', async () => {
     );
   }
   if (lan.length > 1) console.log(`  Other addresses: ${lan.slice(1).join(', ')}\n`);
+  const second = secureUp ? `https://${host}:${HTTPS_PORT}/` : `http://${host}:${PORT}/`;
+  console.log(`  8-Player Local: turn it on in the game's Settings, then on the second laptop`);
+  console.log(`  open ${second} in Chrome (same Wi-Fi, or a network cable).\n`);
 });

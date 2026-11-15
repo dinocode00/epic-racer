@@ -14,9 +14,17 @@ export interface RaceSettings {
   laps: number;
   /** Races in a tournament; 0 = every track. */
   cupRaces: number;
+  /** 8-Player Local: race together with a second laptop (4 players on each). */
+  link: boolean;
 }
 
-export const DEFAULT_SETTINGS: RaceSettings = { ai: 7, level: 1, laps: 0, cupRaces: 0 };
+export const DEFAULT_SETTINGS: RaceSettings = {
+  ai: 7,
+  level: 1,
+  laps: 0,
+  cupRaces: 0,
+  link: false,
+};
 export const MAX_RACERS = 8;
 const KEY = 'epic-racer-settings';
 
@@ -60,6 +68,16 @@ export interface SettingRow {
 const wrap = (v: number, lo: number, hi: number) => (v < lo ? hi : v > hi ? lo : v);
 
 export const SETTING_ROWS: SettingRow[] = [
+  {
+    key: 'link',
+    label: '8-Player Local',
+    value: (s) => (s.link ? 'On' : 'Off'),
+    note: (s) =>
+      s.link
+        ? 'On: a second laptop joins this race with up to 4 more players (8 in all). Press I or Y for how it works.'
+        : 'Off: up to 4 players on this laptop. Turn on to add a second laptop with 4 more. Press I or Y for how it works.',
+    step: (s) => (s.link = !s.link),
+  },
   {
     key: 'ai',
     label: 'AI racers',
