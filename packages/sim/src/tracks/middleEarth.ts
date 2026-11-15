@@ -262,11 +262,14 @@ export const MIDDLE_EARTH = (() => {
   b.straight(40, 8);
   b.mark('tierHairpin2').turn(-160, 32, 6);
   b.straight(20, 8);
-  b.turn(70, 35, 6);
+  b.turn(40, 35, 6);
   b.pad(10, 0);
   b.straight(30, 10);
   // Off the prow of Minas Tirith: the biggest drop in Middle-earth.
-  b.mark('prow').ramp(26, 24).flight({ speed: 30, drop: 26, pop: 9, landing: 45 });
+  b.mark('prow').ramp(26, 24).flight({ speed: 30, drop: 26, pop: 9, landing: 60 });
+  // A long, straight run-out over the fields below the city: at full tilt (or off a boost)
+  // you fly well past the landing slope, so there's plenty of road to come down on.
+  b.mark('prowRunout').straight(220);
   // ------------------------------------------------------------ Osgiliath
   // Catapult stones and falling masonry among the ruins.
   b.region('osgiliath').mark('osgiliath');
@@ -278,7 +281,7 @@ export const MIDDLE_EARTH = (() => {
       effect: 'spin',
       strike: { period: 5, warn: 1.4, active: 0.5, phase: i * 1.3 },
     });
-  b.turn(65, 70, 8);
+  b.turn(95, 70, 8);
   b.pad(2, 2.5);
   b.straight(15, 2);
   // Jump the broken bridge of Osgiliath.

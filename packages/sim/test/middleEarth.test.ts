@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { VEHICLES } from '@epic/shared';
+import { VEHICLES, neutralPad } from '@epic/shared';
 import { MIDDLE_EARTH, Race, Track } from '../src/index.ts';
 
 describe('Middle-earth', () => {
@@ -102,6 +102,37 @@ describe('Middle-earth', () => {
       for (const h of MIDDLE_EARTH.hazards!) expect(ahead(h.s)).toBeGreaterThan(run);
       for (const r of MIDDLE_EARTH.itemRows!) expect(ahead(r)).toBeGreaterThan(run);
     }
+  });
+
+  it('off the prow at any speed, you land on the straight run-out with road to spare', () => {
+    const m = MIDDLE_EARTH.marks!;
+    for (const speed of [30, 41, 53, 61])
+      for (const steer of [0, 0.6, -0.6]) {
+        const race = new Race(MIDDLE_EARTH, [{ vehicle: VEHICLES[1]!, human: true }], 1);
+        for (let i = 0; i < 300; i++) race.step([neutralPad()]); // the countdown
+        const k = race.karts[0]!,
+          tr = race.track;
+        const s = m.prow! - 10,
+          f = tr.frameAtS(s);
+        k.pos = tr.pointAt(s, 0, k.params.rideHeight);
+        k.hint = tr.nearestIndex(k.pos);
+        k.s = k.progress = k.safeS = s;
+        k.fwd = { ...f.tan };
+        k.speed = speed;
+        if (speed > 45) k.boostTime = 3; // off a boost pad
+        let flew = false,
+          landed = -1;
+        for (let i = 0; i < 60 * 8 && landed < 0; i++) {
+          race.step([{ ...neutralPad(), throttle: 1, steer: k.air ? steer : 0 }]);
+          expect(k.rescueTime).toBe(0);
+          if (k.air) flew = true;
+          else if (flew) landed = k.s;
+        }
+        const gap = MIDDLE_EARTH.gaps!.find(([g0]) => g0 > m.prow!)!;
+        expect(landed).toBeGreaterThan(gap[1]);
+        // At least 150 m of straight road still ahead before Osgiliath's bend.
+        expect(m.osgiliath! - landed).toBeGreaterThan(150);
+      }
   });
 
   it('eight AI karts finish two laps', () => {
