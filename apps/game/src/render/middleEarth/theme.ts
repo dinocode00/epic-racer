@@ -358,7 +358,12 @@ export function features(track: Track): Features {
         return [p.x, p.z] as [number, number];
       }),
     ]),
-    doom: at('mountDoom', -260, 40),
+    // Well back from the road (wherever it winds), so its lava streams never reach it.
+    doom: clearOf(
+      track,
+      [-260, -290, -320, -350, -380].map((lat) => at('mountDoom', lat, 40)),
+      250,
+    ),
     baradDur: at('baradDur', -230, 30),
     durinLake: [0, 25, 50, 70].map((a) => {
       const p = at('doorsOfDurin', -38, a - 15);
@@ -371,6 +376,22 @@ export function features(track: Track): Features {
   };
   featureCache.set(track, f);
   return f;
+}
+
+/** The first of the candidate spots at least `min` metres from every part of the road. */
+function clearOf(
+  track: Track,
+  spots: { x: number; z: number }[],
+  min: number,
+): { x: number; z: number } {
+  const far = (p: { x: number; z: number }) => {
+    for (let s = 0; s < track.length; s += 4) {
+      const q = track.frameAtS(s).pos;
+      if (Math.hypot(q.x - p.x, q.z - p.z) < min) return false;
+    }
+    return true;
+  };
+  return spots.find(far) ?? spots[spots.length - 1]!;
 }
 
 /** Distance to a polyline, but only where the foot of the perpendicular lies between its ends. */

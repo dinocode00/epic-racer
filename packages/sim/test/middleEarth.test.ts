@@ -54,6 +54,56 @@ describe('Middle-earth', () => {
     expect(MIDDLE_EARTH.gaps!.length).toBeGreaterThanOrEqual(8);
   });
 
+  it('the eagles watch over both bridges you can fall off', () => {
+    const m = MIDDLE_EARTH.marks!;
+    const bridges = MIDDLE_EARTH.eagleBridges!;
+    expect(bridges.length).toBe(2);
+    expect(bridges[0]![0]).toBeCloseTo(m.rivendellBridge!, 0);
+    expect(bridges[1]![0]).toBeCloseTo(m.khazadDum!, 0);
+    // The broken middle of Khazad-dum lies inside its bridge: fall short there and you're
+    // carried across too.
+    const khazadGap = MIDDLE_EARTH.gaps!.find(([g0]) => g0 > m.khazadDum! && g0 < m.moriaExit!)!;
+    expect(khazadGap[0]).toBeGreaterThan(bridges[1]![0]);
+    expect(khazadGap[1]).toBeLessThan(bridges[1]![1]);
+  });
+
+  it('has boost pads and big-air kicker ramps all round, clear of jumps and hazards', () => {
+    const L = t.length;
+    const pads = MIDDLE_EARTH.pads!;
+    expect(pads.length).toBeGreaterThanOrEqual(12);
+    expect(pads.filter((p) => p.super).length).toBeGreaterThanOrEqual(2);
+    const inside = (s: number, ranges: [number, number][] = [], pad = 0) =>
+      ranges.some(([a, b]) => s >= a - pad && s <= b + pad);
+    for (const p of pads) {
+      // On solid, walled road: never over a gap or on an open edge.
+      expect(inside(p.s, MIDDLE_EARTH.gaps, 5)).toBe(false);
+      expect(inside(p.s, MIDDLE_EARTH.open, 5)).toBe(false);
+      expect(Math.abs(p.lat) + p.width / 2).toBeLessThan(t.frameAtS(p.s).width / 2);
+    }
+    // Pads spread round the lap, not bunched in one land.
+    const lands = new Set(
+      pads.map((p) => MIDDLE_EARTH.regions!.filter(([, s0]) => s0 <= p.s).pop()![0]),
+    );
+    expect(lands.size).toBeGreaterThanOrEqual(8);
+
+    const ramps = MIDDLE_EARTH.kickers!.filter((k) => k.ramp);
+    expect(ramps.length).toBeGreaterThanOrEqual(5);
+    expect(Math.max(...ramps.map((k) => k.pop))).toBeGreaterThanOrEqual(20);
+    for (const k of ramps) {
+      // A long landing run after each: no gap, no open edge, no tunnel, no hazard, no items.
+      const ahead = (s: number) => (s - k.s + L) % L;
+      const run = 110 + (k.pop - 14) * 10;
+      for (const [a, b] of [
+        ...(MIDDLE_EARTH.gaps ?? []),
+        ...(MIDDLE_EARTH.open ?? []),
+        ...(MIDDLE_EARTH.tunnels ?? []),
+      ])
+        expect(ahead(a) > run || ahead(b) > L - 5).toBe(true);
+      for (const h of MIDDLE_EARTH.hazards!) expect(ahead(h.s)).toBeGreaterThan(run);
+      for (const r of MIDDLE_EARTH.itemRows!) expect(ahead(r)).toBeGreaterThan(run);
+    }
+  });
+
   it('eight AI karts finish two laps', () => {
     const entrants = Array.from({ length: 8 }, (_, i) => ({
       vehicle: VEHICLES[i % VEHICLES.length]!,

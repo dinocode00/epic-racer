@@ -35,7 +35,6 @@ const LABELS: Record<string, string> = {
   gandalfLane: "Gandalf's cart",
   millBridge: 'Mill & Green Dragon',
   weathertopSummit: 'Weathertop ruins',
-  rivendellBridge: 'Elven bridge',
   rivendellFalls: 'Waterfalls',
   doorsOfDurin: 'Doors of Durin & the Watcher',
   dwarrowdelf: 'Dwarrowdelf pillars',
@@ -52,11 +51,17 @@ const LABELS: Record<string, string> = {
   weathertopLeap: 'LEAP off Weathertop',
   bridgeBreak: 'Broken bridge JUMP',
   anduinJump: 'JUMP the Anduin between the kings',
-  greatGate: 'Great Gate, switchbacks up Minas Tirith',
+  greatGate: 'Great Gate, winding climb up Minas Tirith',
+  bywaterKicker: 'Bywater KICKER',
+  rivendellKicker: 'Kicker by the falls',
+  nimrodelKicker: 'Nimrodel KICKER',
+  rohanKicker: 'BIG KICKER on the plains',
+  gorgorothKicker: 'Gorgoroth KICKER',
   prow: 'LEAP off the prow (26 m drop)',
   mallornLeap: 'Mallorn root JUMP',
   osgiliathBridge: 'Broken bridge of Osgiliath JUMP',
   lavaJump: 'JUMP the lava (Eagles rescue)',
+  rivendellBridge: 'Elven bridge (Eagles carry you across)',
   crest1: 'Blind crest',
   bridgeStart: 'Stone bridge over the brook, watermill',
   villageStart: 'Hobbit-hole lane',
@@ -127,6 +132,10 @@ for (const [a0, a1] of def.tunnels ?? []) {
   let d = '';
   for (let s0 = a0; s0 <= a1; s0 += 4) d += `${d ? 'L' : 'M'}${sx(at(s0).x).toFixed(1)},${sz(at(s0).z).toFixed(1)}`;
   extras += `<path d="${d}" stroke="#000" stroke-width="2" stroke-dasharray="8 4" fill="none"/>`;
+}
+for (const p of def.pads ?? []) {
+  const q = at(p.s);
+  extras += `<circle cx="${sx(q.x).toFixed(1)}" cy="${sz(q.z).toFixed(1)}" r="3.6" fill="${p.super ? '#2a8cff' : '#ff9a1a'}" stroke="#000" stroke-width="1"/>`;
 }
 for (const h of def.hazards ?? []) {
   const p = at(h.s);

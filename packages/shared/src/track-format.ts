@@ -58,12 +58,21 @@ export interface TrackDef {
   superBoost?: { time: number; kick: number };
   /** Arc-length positions of item box rows. */
   itemRows?: number[];
-  /** Ramps that throw karts into the air at s, with this much extra upward speed (m/s). */
-  kickers?: { s: number; pop: number }[];
+  /**
+   * Ramps that throw karts into the air at s, with this much extra upward speed (m/s).
+   * `ramp`: a kicker ramp sitting on flat road, drawn as a wedge (otherwise the road itself
+   * is the ramp, at a jump's lip).
+   */
+  kickers?: { s: number; pop: number; ramp?: boolean }[];
   /** Ranges with no road: karts must fly over them or fall. */
   gaps?: [number, number][];
   /** Ranges with no side walls: drive off the edge and you fall. */
   open?: [number, number][];
+  /**
+   * Bridges the Great Eagles watch over: fall off one (or short of a gap in it) and an eagle
+   * catches you, holds you in the air a moment, then sets you down past its far end.
+   */
+  eagleBridges?: [number, number][];
   hazards?: HazardDef[];
   /** Ranges that are closed tubes: you can't fly out of them. */
   tubes?: [number, number][];

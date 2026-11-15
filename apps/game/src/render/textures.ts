@@ -179,11 +179,12 @@ export function checker(): THREE.CanvasTexture {
 }
 
 /** Glowing chevrons for boost pads (used as emissive map). */
-export function chevrons(): THREE.CanvasTexture {
+/** Boost pad chevrons: orange, or blue for the super pads. */
+export function chevrons(blue = false): THREE.CanvasTexture {
   const [c, x] = canvas(128, 128);
-  x.fillStyle = '#5a1d00';
+  x.fillStyle = blue ? '#06306e' : '#5a1d00';
   x.fillRect(0, 0, 128, 128);
-  x.fillStyle = '#ffb02e';
+  x.fillStyle = blue ? '#7fd0ff' : '#ffb02e';
   for (let k = 0; k < 3; k++) {
     const y = 18 + k * 36;
     x.beginPath();

@@ -144,8 +144,13 @@ export interface KartState {
   launchS: number;
   /** In the air at (or just off) an invisible wall: which side (-1 left, +1 right), else 0. */
   airWall: number;
-  /** > 0 while the eagle carries the kart back to the road. */
+  /** > 0 while the eagle carries the kart back to the road (or across a bridge). */
   rescueTime: number;
+  /**
+   * Fell off an eagle bridge (see TrackDef.eagleBridges): a Great Eagle has caught the kart
+   * and, after holding it up in the air a moment, carries it over past the bridge's far end.
+   */
+  carry: BridgeCarry | null;
   /** Last place the kart was safely on the road, for rescues. */
   safeS: number;
   hitCooldown: number;
@@ -153,6 +158,25 @@ export interface KartState {
   finishTime: number;
   place: number;
 }
+
+/** A Great Eagle carrying a kart that fell off a bridge across to the far side. */
+export interface BridgeCarry {
+  /** Where the eagle caught it. */
+  from: Vec3;
+  fromS: number;
+  fromLat: number;
+  /** Where it'll be set down, past the bridge. */
+  toS: number;
+  /** Seconds since the catch. */
+  time: number;
+}
+/** The bridge carry: swept up out of the fall, held in the air, then flown across. */
+export const CARRY_LIFT = 0.6;
+export const CARRY_HOLD = 1.4;
+export const CARRY_FLY = 1.0;
+export const CARRY_TIME = CARRY_LIFT + CARRY_HOLD + CARRY_FLY;
+/** How high over the road the eagle holds a kart it has caught (m). */
+const CARRY_HEIGHT = 7;
 
 /** What the track says about a given arc length. */
 export interface TrackRules {
@@ -166,6 +190,11 @@ export interface TrackRules {
   runUp?(s: number): boolean;
   /** Can a kart fly off a crest here (see TrackDef.crestAir)? */
   crestAir?(s: number): boolean;
+  /**
+   * On an eagle bridge (see TrackDef.eagleBridges): the arc length past its far end where a
+   * kart that falls off is set down. Null anywhere else.
+   */
+  eagleBridge?(s: number): number | null;
 }
 
 export const NO_RULES: TrackRules = {
@@ -228,6 +257,7 @@ export function createKart(
     launchS: s,
     airWall: 0,
     rescueTime: 0,
+    carry: null,
     safeS: s,
     hitCooldown: 0,
     finished: false,
@@ -314,6 +344,7 @@ export function stepKart(
   k.hitCooldown = Math.max(0, k.hitCooldown - dt);
   k.slowTime = Math.max(0, k.slowTime - dt);
 
+  if (k.carry) return stepCarry(k, track, dt);
   if (k.rescueTime > 0) {
     k.rescueTime = Math.max(0, k.rescueTime - dt);
     return;
@@ -617,6 +648,76 @@ function stepAir(k: KartState, pad: PadState, track: Track, dt: number, rules: T
   }
   // Apply any invisible-wall correction sideways.
   k.pos = lat !== p.lateral ? addScaled(pos, p.frame.right, lat - p.lateral) : pos;
+  // Off one of the eagle bridges (or short of its gap): an eagle catches you on the way down
+  // and carries you across.
+  const across = rules.eagleBridge?.(p.s) ?? null;
+  if (across !== null && !overRoad && (height < -3 || k.airTime > 5))
+    return catchOnBridge(k, across);
   // Fell into the abyss: the Great Eagles bring you back.
   if (height < -14 || k.airTime > 7) rescue(k, track, rules);
 }
+
+/** A Great Eagle catches a kart falling off a bridge (it'll be carried across: stepCarry). */
+export function catchOnBridge(k: KartState, toS: number): void {
+  k.carry = { from: clone(k.pos), fromS: k.s, fromLat: k.lat, toS, time: 0 };
+  // Inert while carried: hazards, items and other karts all leave it alone.
+  k.rescueTime = CARRY_TIME;
+  k.air = false;
+  k.vel = v3();
+  k.speed = 0;
+  k.slide = 0;
+  k.boostTime = 0;
+  k.stunTime = 0;
+  k.wobbleTime = 0;
+  k.drift = { active: false, dir: 0, charge: 0 };
+}
+
+const ease = (u: number) => u * u * (3 - 2 * u);
+
+function stepCarry(k: KartState, track: Track, dt: number): void {
+  const c = k.carry!;
+  c.time += dt;
+  k.rescueTime = Math.max(0, CARRY_TIME - c.time);
+  const L = track.length;
+  const ride = k.params.rideHeight;
+  // Held just beside the deck where the kart went over, up in the air.
+  const edge = track.frameAtS(c.fromS).width / 2 + 2;
+  const holdLat = clamp(c.fromLat, -edge, edge);
+  const hover = track.pointAt(c.fromS, holdLat, ride + CARRY_HEIGHT);
+  let s = c.fromS,
+    lat = holdLat;
+  if (c.time < CARRY_LIFT) {
+    // Swept up out of the fall.
+    k.pos = lerpV(c.from, hover, ease(c.time / CARRY_LIFT));
+  } else if (c.time < CARRY_LIFT + CARRY_HOLD) {
+    // Held up there a moment, wings beating.
+    const t = c.time - CARRY_LIFT;
+    k.pos = add(hover, v3(0, Math.sin(t * 5) * 0.35, 0));
+  } else {
+    // Then flown along the bridge and set down past its far end.
+    const u = ease(Math.min(1, (c.time - CARRY_LIFT - CARRY_HOLD) / CARRY_FLY));
+    const span = (((c.toS - c.fromS) % L) + L) % L;
+    s = (c.fromS + span * u) % L;
+    lat = holdLat * (1 - u);
+    k.pos = track.pointAt(s, lat, ride + CARRY_HEIGHT * (1 - u) * (1 - u * 0.3));
+  }
+  const f = track.frameAtS(s);
+  k.fwd = clone(f.tan);
+  k.up = clone(f.up);
+  k.hint = track.nearestIndex(k.pos);
+  updateProgress(k, track, s);
+  k.lat = lat;
+  if (c.time >= CARRY_TIME) {
+    // Set down on the far side, rolling.
+    k.carry = null;
+    k.rescueTime = 0;
+    k.pos = track.pointAt(c.toS, 0, ride);
+    k.hint = track.nearestIndex(k.pos);
+    updateProgress(k, track, c.toS);
+    k.lat = 0;
+    k.speed = 18;
+    k.safeS = c.toS;
+  }
+}
+
+const lerpV = (a: Vec3, b: Vec3, t: number): Vec3 => addScaled(a, sub(b, a), t);

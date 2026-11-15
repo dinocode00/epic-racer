@@ -308,17 +308,20 @@ function gateCliff(track: Track, s: number, durin: boolean): THREE.Group {
     H = 120,
     gw = 11,
     gh = 13;
+  // The gateway runs right down into the ground, so where the road dips through the 24 m of
+  // rock no kart scrapes through its sill.
+  const sill = -14;
   const shape = new THREE.Shape(
-    [V(-W / 2, -10, 0), V(W / 2, -10, 0), V(W / 2, H, 0), V(-W / 2, H, 0)].map(
+    [V(-W / 2, sill - 10, 0), V(W / 2, sill - 10, 0), V(W / 2, H, 0), V(-W / 2, H, 0)].map(
       (v) => new THREE.Vector2(v.x, v.y),
     ),
   );
   const hole = new THREE.Path();
-  hole.moveTo(-gw, -1);
-  hole.lineTo(gw, -1);
+  hole.moveTo(-gw, sill);
+  hole.lineTo(gw, sill);
   hole.lineTo(gw, gh - gw * 0.5);
   hole.absarc(0, gh - gw * 0.5, gw, 0, Math.PI, false);
-  hole.lineTo(-gw, -1);
+  hole.lineTo(-gw, sill);
   shape.holes.push(hole);
   const geo = new THREE.ExtrudeGeometry(shape, {
     depth: 24,
@@ -335,7 +338,9 @@ function gateCliff(track: Track, s: number, durin: boolean): THREE.Group {
   // Local z (extrusion) runs along the road; place it so the face is at s.
   const along = V(f.tan.x, 0, f.tan.z).normalize();
   const right = new THREE.Vector3().crossVectors(along, V(0, 1, 0));
-  const basis = new THREE.Matrix4().makeBasis(right, V(0, 1, 0), along.clone());
+  // (A right-handed basis: a mirrored one has no rotation to match, and leaves the arch
+  // skewed across the road. The cliff is symmetric, so its x may run either way.)
+  const basis = new THREE.Matrix4().makeBasis(right.clone().negate(), V(0, 1, 0), along.clone());
   cliff.quaternion.setFromRotationMatrix(basis);
   cliff.position.copy(tv(f.pos)).addScaledVector(along, durin ? 0 : -24);
   g.add(cliff);
@@ -354,7 +359,7 @@ function gateCliff(track: Track, s: number, durin: boolean): THREE.Group {
       .add(V(0, gw * 1.2, 0))
       .addScaledVector(along, -0.3);
     door.quaternion.setFromRotationMatrix(
-      new THREE.Matrix4().makeBasis(right.clone().negate(), V(0, 1, 0), along.clone().negate()),
+      new THREE.Matrix4().makeBasis(right.clone(), V(0, 1, 0), along.clone().negate()),
     );
     g.add(door);
   }

@@ -96,6 +96,10 @@ export class Race {
           if (ahead < 0) ahead += L;
           return ahead < 140;
         }),
+      eagleBridge: (s) => {
+        for (const [a, b] of def.eagleBridges ?? []) if (s >= a - 2 && s <= b) return (b + 14) % L;
+        return null;
+      },
       rescueS: (s) => {
         // Never drop a kart just before a gap: back it up for a proper run-up.
         for (const [g0] of def.gaps ?? []) {

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { type KartState, RESCUE_TIME, driftLevel } from '@epic/sim';
+import { CARRY_HOLD, CARRY_LIFT, type KartState, RESCUE_TIME, driftLevel } from '@epic/sim';
 import { angelWings } from './angelWings.ts';
 import { greatEagle } from './eagle.ts';
 import { DRIFT_COLORS, type Effects, flame } from './effects.ts';
@@ -314,8 +314,15 @@ export class KartView {
       right.crossVectors(tA.copy(back).negate(), up).normalize();
     }
     this.root.quaternion.setFromRotationMatrix(tM.makeBasis(right, up, back));
-    // Eagle rescue: carried down from the sky.
-    if (k.rescueTime > 0) {
+    // Off a bridge: an eagle has caught the kart and holds it up (the sim flies it across).
+    if (k.carry) {
+      const eagle = this.rescueEagle();
+      eagle.group.visible = true;
+      eagle.group.position.set(0, this.lift === 'angel' ? 0 : 3.2, 0);
+      // Beating hard to hold the weight, then gliding as it carries you across.
+      eagle.flap(this.t * (k.carry.time < CARRY_LIFT + CARRY_HOLD ? 1.6 : 0.8));
+    } else if (k.rescueTime > 0) {
+      // Eagle rescue: carried down from the sky.
       const eagle = this.rescueEagle();
       const t = k.rescueTime / RESCUE_TIME;
       this.root.position.addScaledVector(this.up, t * t * 16);

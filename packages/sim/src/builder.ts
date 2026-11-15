@@ -3,6 +3,8 @@ import { Track } from './track.ts';
 
 const GRAVITY = 21;
 
+type RangeKind = 'gaps' | 'open' | 'tunnels' | 'eagleBridges';
+
 /**
  * A "turtle" for laying out tracks in code: drive forward, turn, climb, loop.
  * Each command emits control points with their own up vector. Good for gray-boxing;
@@ -17,8 +19,9 @@ export class TrackBuilder {
   /** Features recorded at world positions, resolved to arc lengths in build(). */
   private marksAt: { name: string; p: V3 }[] = [];
   private regionsAt: { id: string; p: V3 }[] = [];
-  private rangesAt: { kind: 'gaps' | 'open' | 'tunnels'; a: V3; b?: V3 }[] = [];
-  private kickersAt: { p: V3; pop: number }[] = [];
+  private rangesAt: { kind: RangeKind; a: V3; b?: V3 }[] = [];
+  private kickersAt: { p: V3; pop: number; ramp?: boolean }[] = [];
+  private padsAt: { p: V3; ahead: number; lat: number; super: boolean }[] = [];
   private hazardsAt: { p: V3; ahead: number; def: Omit<HazardDef, 's'> }[] = [];
   /** Approximate distance driven so far (sum of control-point gaps), for landmark marks. */
   get length(): number {
@@ -193,11 +196,11 @@ export class TrackBuilder {
   }
 
   /** Open / close a range of a kind at the current position. */
-  begin(kind: 'gaps' | 'open' | 'tunnels'): this {
+  begin(kind: RangeKind): this {
     this.rangesAt.push({ kind, a: this.here() });
     return this;
   }
-  end(kind: 'gaps' | 'open' | 'tunnels'): this {
+  end(kind: RangeKind): this {
     const r = [...this.rangesAt].reverse().find((x) => x.kind === kind && !x.b);
     if (!r) throw new Error(`end(${kind}) without begin`);
     r.b = this.here();
@@ -207,6 +210,25 @@ export class TrackBuilder {
   /** Place a hazard `ahead` metres past the current position. */
   hazard(ahead: number, def: Omit<HazardDef, 's'>): this {
     this.hazardsAt.push({ p: this.here(), ahead, def });
+    return this;
+  }
+
+  /**
+   * A boost pad `ahead` metres past the current position, `lat` metres off the centre line
+   * (super pads are the rarer blue ones that kick much harder).
+   */
+  pad(ahead: number, lat = 0, isSuper = false): this {
+    this.padsAt.push({ p: this.here(), ahead, lat, super: isSuper });
+    return this;
+  }
+
+  /**
+   * A kicker ramp sitting on the road right here (the road itself stays flat): it throws a
+   * kart `pop` m/s upward and lands it further down the road. Leave a long, straight run
+   * after it for the landing.
+   */
+  kicker(pop: number): this {
+    this.kickersAt.push({ p: this.here(), pop, ramp: true });
     return this;
   }
 
@@ -302,7 +324,8 @@ export class TrackBuilder {
       !this.regionsAt.length &&
       !this.rangesAt.length &&
       !this.kickersAt.length &&
-      !this.hazardsAt.length
+      !this.hazardsAt.length &&
+      !this.padsAt.length
     )
       return def;
     // Resolve recorded world positions to arc lengths on the finished spline.
@@ -332,10 +355,11 @@ export class TrackBuilder {
     const regions: [string, number][] = [];
     for (const m of this.marksAt) items.push({ p: m.p, apply: (s) => (marks[m.name] = s) });
     for (const r of this.regionsAt) items.push({ p: r.p, apply: (s) => regions.push([r.id, s]) });
-    const ranges: Record<'gaps' | 'open' | 'tunnels', [number, number][]> = {
+    const ranges: Record<RangeKind, [number, number][]> = {
       gaps: [],
       open: [],
       tunnels: [],
+      eagleBridges: [],
     };
     for (const r of this.rangesAt) {
       const pair: [number, number] = [0, 0];
@@ -343,9 +367,21 @@ export class TrackBuilder {
       items.push({ p: r.a, apply: (s) => (pair[0] = s) });
       items.push({ p: r.b ?? r.a, apply: (s) => (pair[1] = s) });
     }
-    const kickers: { s: number; pop: number }[] = [];
+    const kickers: NonNullable<TrackDef['kickers']> = [];
     for (const k of this.kickersAt)
-      items.push({ p: k.p, apply: (s) => kickers.push({ s, pop: k.pop }) });
+      items.push({
+        p: k.p,
+        apply: (s) => kickers.push(k.ramp ? { s, pop: k.pop, ramp: true } : { s, pop: k.pop }),
+      });
+    const pads: NonNullable<TrackDef['pads']> = [];
+    for (const q of this.padsAt)
+      items.push({
+        p: q.p,
+        apply: (s) => {
+          const pad = { s: (s + q.ahead) % t.length, lat: q.lat, width: PAD_WIDTH };
+          pads.push(q.super ? { ...pad, super: true } : pad);
+        },
+      });
     const hazards: HazardDef[] = [];
     for (const h of this.hazardsAt)
       items.push({ p: h.p, apply: (s) => hazards.push({ ...h.def, s: (s + h.ahead) % t.length }) });
@@ -372,10 +408,15 @@ export class TrackBuilder {
       gaps: ranges.gaps.length ? ranges.gaps : def.gaps,
       open: ranges.open.length ? ranges.open : def.open,
       tunnels: ranges.tunnels.length ? ranges.tunnels : def.tunnels,
+      eagleBridges: ranges.eagleBridges.length ? ranges.eagleBridges : def.eagleBridges,
+      pads: pads.length ? [...(def.pads ?? []), ...pads.sort((a, b) => a.s - b.s)] : def.pads,
       kickers: [...(def.kickers ?? []), ...kickers],
       hazards: [...(def.hazards ?? []), ...hazards],
     };
   }
 }
+
+/** Boost pads are narrow, as at the farm: you have to aim for them. */
+const PAD_WIDTH = 4;
 
 const round = (v: number): number => Math.round(v * 1000) / 1000;

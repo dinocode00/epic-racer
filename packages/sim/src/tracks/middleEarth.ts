@@ -6,19 +6,24 @@ import { Track } from '../track.ts';
  * Middle-earth: one big lap through the lands of The Lord of the Rings, clockwise.
  *
  *  Hobbiton    sheep, hay, Gandalf's cart, Green Dragon barrels; jump over Bag End;
- *              fireworks from lap 2
+ *              fireworks from lap 2; the Bywater kicker
  *  Weathertop  climb against charging Nazgul, summit hairpin, leap off the summit
- *  Rivendell   narrow elven bridge with no railings over the gorge, waterfall spray
+ *  Rivendell   narrow elven bridge with no railings over the gorge (fall off and an eagle
+ *              carries you across), waterfall spray, a kicker by the falls
  *  Moria       the Watcher's tentacles at the Doors of Durin; slalom through the
  *              Dwarrowdelf pillars; falling rock; the Bridge of Khazad-dum: narrow,
- *              no railings, broken in the middle, the Balrog's whip
- *  Lothlorien  mallorn trunks growing in the road
+ *              no railings, broken in the middle, the Balrog's whip (fall and an eagle
+ *              carries you across)
+ *  Lothlorien  a kicker over the Nimrodel, mallorn trunks growing in the road
  *  Argonath    jump the Anduin between the two kings
- *  Rohan       rolling whoops, Rohirrim galloping across
- *  Pelennor    Oliphaunts and catapult boulders; switchbacks up Minas Tirith and a leap
- *              off the citadel's prow
- *  Mordor      the Black Gate opens and shuts; jump the lava (fall in and the Eagles
- *              come); the Eye's searchlight
+ *  Rohan       rolling whoops, Rohirrim galloping across; the biggest kicker on the plains
+ *  Pelennor    Oliphaunts and catapult boulders; a winding climb up through the tiers of
+ *              Minas Tirith and a leap off the citadel's prow
+ *  Mordor      the Black Gate opens and shuts; a kicker on the Gorgoroth plain; jump the
+ *              lava (fall in and the Eagles come); the Eye's searchlight
+ *
+ * Boost pads are as at the farm: narrow (you have to aim for them), off to one side or the
+ * other, with the odd blue super pad lined up in the middle of a long run.
  *  Dead Marshes narrow causeway, no edges, mud
  */
 const bump = (
@@ -48,6 +53,7 @@ export const MIDDLE_EARTH = (() => {
     effect: 'bump',
     move: { axis: 'lat', amp: 5, period: 4, phase: 2 },
   });
+  b.pad(22, -2.5);
   b.straight(85);
   // Big air clean over the top of Bag End.
   b.mark('bagEnd').ramp(30, 22).flight({ speed: 32, drop: 6, pop: 7, landing: 40 });
@@ -69,6 +75,7 @@ export const MIDDLE_EARTH = (() => {
       strike: { period: 5, warn: 1, active: 0.4, phase: i * 1.2 },
       fromLap: 2,
     });
+  b.pad(78, 2.5);
   b.straight(110, 8); // climbing back up from the Bag End landing
   b.turn(-40, 60, 6);
   b.mark('millBridge');
@@ -90,9 +97,15 @@ export const MIDDLE_EARTH = (() => {
   b.straight(14).ramp(16, 20).flight({ speed: 31, drop: 3, pop: 5, landing: 25 });
   b.turn(25, 80);
   b.straight(20, 7);
+  // The Bywater road: a kicker ramp, and a long run to land on.
+  b.pad(18, 0, true);
+  b.straight(45);
+  b.mark('bywaterKicker').kicker(15);
+  b.straight(120);
 
   // ------------------------------------------------------------ Weathertop
   b.region('weathertop');
+  b.pad(8, 0);
   for (let i = 0; i < 3; i++)
     b.hazard(20 + i * 25, {
       kind: 'nazgulRider',
@@ -112,13 +125,17 @@ export const MIDDLE_EARTH = (() => {
   // ------------------------------------------------------------ Rivendell
   b.region('rivendell');
   b.turn(-45, 60, 6);
-  b.mark('rivendellBridge').width(10).begin('open');
+  b.mark('rivendellBridge').width(10).begin('open').begin('eagleBridges');
   b.straight(140);
-  b.end('open').width();
+  b.end('open').end('eagleBridges').width();
   b.turn(50, 70, 8);
   b.mark('rivendellFalls');
   b.hazard(25, { kind: 'spray', lat: 4, r: 4, effect: 'slow' });
-  b.straight(120);
+  b.pad(12, -2.5);
+  b.straight(65);
+  // Off a kicker beside the falls, through the spray.
+  b.mark('rivendellKicker').kicker(14);
+  b.straight(135);
 
   // ------------------------------------------------------------ Moria
   b.region('moria').mark('doorsOfDurin');
@@ -146,7 +163,7 @@ export const MIDDLE_EARTH = (() => {
     });
   b.straight(150);
   b.turn(-45, 50, 6);
-  b.mark('khazadDum').width(8).begin('open');
+  b.mark('khazadDum').width(8).begin('open').begin('eagleBridges');
   b.straight(30);
   b.hazard(8, {
     kind: 'balrogWhip',
@@ -160,14 +177,20 @@ export const MIDDLE_EARTH = (() => {
     .ramp(14, 16)
     .flight({ speed: 30, drop: 0, pop: 7, landing: 24, open: true });
   b.straight(10);
-  b.end('open').width();
+  b.end('open').end('eagleBridges').width();
   b.mark('moriaExit').straight(30).end('tunnels');
   b.straight(10);
 
   // ------------------------------------------------------------ Lothlorien
   b.region('lothlorien');
   b.turn(40, 80, 6);
+  // Over the Nimrodel off a kicker, out of the dark of Moria into the golden wood.
+  b.pad(10, 2.5);
+  b.straight(30);
+  b.mark('nimrodelKicker').kicker(14);
+  b.straight(120);
   b.mark('mallorns');
+  b.pad(95, 4);
   for (let i = 0; i < 7; i++)
     b.hazard(25 + i * 28, bump('mallorn', [-3.5, 3.5, 0, -4.5, 2, 4.5, -1][i]!, 2.2));
   b.straight(205, 10);
@@ -178,6 +201,7 @@ export const MIDDLE_EARTH = (() => {
 
   // ------------------------------------------------------------ Argonath
   b.region('argonath').mark('argonath');
+  b.pad(24, -2.5);
   b.straight(40);
   // Fly the Anduin between the two kings.
   b.mark('anduinJump').ramp(32, 24).flight({ speed: 29, drop: 4, pop: 9, landing: 50 });
@@ -198,11 +222,19 @@ export const MIDDLE_EARTH = (() => {
       move: { axis: 'lat', amp: 8, period: 4.5, phase: i * 1.6 },
     });
   b.turn(50, 28, 8).turn(-50, 28, 8); // a tight S through the charge
+  // Across the plains of the Riddermark: a super pad lined up with the biggest kicker in
+  // Middle-earth, and a long, long run to come down on.
+  b.straight(25);
+  b.pad(8, 0, true);
+  b.straight(45);
+  b.mark('rohanKicker').kicker(22);
+  b.straight(230);
 
   // ------------------------------------------------------------ Pelennor & Minas Tirith
   b.region('pelennor');
   b.turn(35, 100, 6);
   b.mark('oliphaunts');
+  b.pad(8, -2.5);
   for (let i = 0; i < 3; i++)
     b.hazard(20 + i * 42, {
       kind: 'oliphaunt',
@@ -221,11 +253,18 @@ export const MIDDLE_EARTH = (() => {
     });
   b.straight(60, 18);
   b.mark('minasTirith').mark('greatGate');
-  b.straight(50, 13);
-  b.turn(170, 15, 0); // switchback up the tiers
-  b.straight(55, 13);
-  b.turn(-170, 15, 0);
-  b.straight(45, 12);
+  // Winding up through the tiers of the city: wide sweeping bends and two hairpins, the legs
+  // far enough apart for the houses to stand between them, clear of the road.
+  b.straight(40, 8);
+  b.turn(-70, 35, 6);
+  b.straight(20, 4);
+  b.mark('tierHairpin1').turn(160, 32, 6);
+  b.straight(40, 8);
+  b.mark('tierHairpin2').turn(-160, 32, 6);
+  b.straight(20, 8);
+  b.turn(70, 35, 6);
+  b.pad(10, 0);
+  b.straight(30, 10);
   // Off the prow of Minas Tirith: the biggest drop in Middle-earth.
   b.mark('prow').ramp(26, 24).flight({ speed: 30, drop: 26, pop: 9, landing: 45 });
   // ------------------------------------------------------------ Osgiliath
@@ -240,6 +279,7 @@ export const MIDDLE_EARTH = (() => {
       strike: { period: 5, warn: 1.4, active: 0.5, phase: i * 1.3 },
     });
   b.turn(65, 70, 8);
+  b.pad(2, 2.5);
   b.straight(15, 2);
   // Jump the broken bridge of Osgiliath.
   b.mark('osgiliathBridge').ramp(16, 20).flight({ speed: 31, drop: 0, pop: 6, landing: 28 });
@@ -261,8 +301,14 @@ export const MIDDLE_EARTH = (() => {
     effect: 'bump',
     strike: { period: 7, warn: 1.2, active: 1.8 },
   });
-  b.straight(60, 3);
-  b.turn(-30, 60, 6);
+  b.straight(50, 3);
+  b.turn(50, 60, 6);
+  // Over the plain of Gorgoroth off a kicker.
+  b.pad(3, -2.5);
+  b.straight(10);
+  b.mark('gorgorothKicker').kicker(15);
+  b.straight(120);
+  b.turn(-80, 60, 6);
   b.mark('mountDoom');
   for (let i = 0; i < 3; i++)
     b.hazard(10 + i * 20, {
@@ -272,6 +318,7 @@ export const MIDDLE_EARTH = (() => {
       effect: 'launch',
       strike: { period: 4, warn: 1.1, active: 0.5, phase: i * 1.3 },
     });
+  b.pad(54, 2.5);
   b.straight(60);
   b.mark('lavaJump').ramp(24, 22).flight({ speed: 32, drop: 0, pop: 8, landing: 35, open: true });
   b.mark('baradDur');
@@ -282,7 +329,9 @@ export const MIDDLE_EARTH = (() => {
     effect: 'slow',
     move: { axis: 'lat', amp: 7, period: 5 },
   });
-  b.turn(25, 60, 8);
+  // Round under the dark tower and away east, for home.
+  b.straight(15);
+  b.turn(130, 55, 8);
   b.straight(30, 10);
 
   // ------------------------------------------------------------ Dead Marshes
@@ -299,7 +348,9 @@ export const MIDDLE_EARTH = (() => {
     name: 'Middle-earth',
     defaultWidth: 16,
     laps: 2,
-    boostPads: [],
+    // As at the farm: a hard kick, and the blue super pads a much bigger one.
+    padBoost: { time: 1.7, kick: 10 },
+    superBoost: { time: 2.8, kick: 26 },
   });
   // Home to the party field for the last stretch, so the starting grid sits in Hobbiton.
   def.regions!.push(['hobbiton', new Track(def).length - 50]);
@@ -309,7 +360,7 @@ export const MIDDLE_EARTH = (() => {
     25,
     m.gandalfLane! + 85,
     m.rivendellFalls! + 30,
-    m.mallorns! - 30,
+    m.mallorns! + 5,
     m.argonath! + 6,
     m.oliphaunts! - 25,
     m.mountDoom! - 30,

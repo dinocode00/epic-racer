@@ -1,6 +1,6 @@
 # Middle-earth: the epic map
 
-One 4.4 km circuit through the lands of *The Lord of the Rings*, raced over 2 laps
+One 5.6 km circuit through the lands of *The Lord of the Rings*, raced over 2 laps
 (about 2.5 minutes a lap). The goal: every few seconds, something on screen should be
 unmistakably from the films. Characters appear as scenery and hazards, not racers.
 
@@ -21,7 +21,7 @@ Eye of Sauron. Maps should be ridiculous: big air, brutal corners, lots of movie
 | **Lothlórien** | Huge silver-gold mallorn trees, flets and stairs, soft light | Galadriel's light | Mallorn trunks growing in the road |
 | **The Argonath** | The two colossal kings raising their hands over the Anduin | — | Jump the river between the statues |
 | **Rohan** | Golden plains, Edoras and the golden hall Meduseld on its hill | The Rohirrim riding | Rolling whoops (three small jumps), riders galloping across the road |
-| **Pelennor & Minas Tirith** | The white seven-tiered city, the prow, the Great Gate, siege towers, burning fields | Oliphaunts, Rohirrim charge, Nazgûl on fell beasts | Oliphaunts sweeping across the road, catapult boulders smashing down, switchbacks up through the city, then a leap off the prow (30 m drop) back to the fields |
+| **Pelennor & Minas Tirith** | The white seven-tiered city, the prow, the Great Gate, siege towers, burning fields | Oliphaunts, Rohirrim charge, Nazgûl on fell beasts | Oliphaunts sweeping across the road, catapult boulders smashing down, a winding climb through the city's tiers (houses kept clear of the road and the view), then a leap off the prow (30 m drop) back to the fields |
 | **Mordor** | The Black Gate, Mount Doom erupting, Barad-dûr and the Eye | Orc armies, the Eye of Sauron | The Black Gate opens and slams shut on a timer, lava bursts, a jump over a lava river (fall in and the Great Eagles rescue you), the Eye's searchlight slows whoever it catches |
 | **Dead Marshes** | Misty pools with drowned faces and corpse candles | Gollum | Narrow open causeway, mud |
 
@@ -29,7 +29,15 @@ Eye of Sauron. Maps should be ridiculous: big air, brutal corners, lots of movie
 
 - **Air**: ramps and gaps are real ballistic flights. Too slow and you fall short.
 - **Open edges**: bridges and causeways have no walls. Drive off and you fall.
-- **Great Eagles**: falling anywhere means an eagle sets you back on the road, rolling,
+- **Eagle bridges**: fall off the Elven bridge of Rivendell or the Bridge of Khazad-dûm
+  (or short of its broken middle) and an eagle catches you, holds you up in the air for a
+  couple of seconds, then sets you down past the bridge's far end.
+- **Kicker ramps**: wedges on long straights throw you into big air (Bywater, the Rivendell
+  falls, the Nimrodel, Gorgoroth, and the biggest of all on the plains of Rohan, lined up
+  with a super pad).
+- **Boost pads** as at the farm: narrow, off to one side or the other, the blue super pads
+  in the middle of long runs.
+- **Great Eagles**: falling anywhere else means an eagle sets you back on the road, rolling,
   with a proper run-up before the next jump. It costs about two seconds.
 - **Hazards** are data: movers sweep across or along the road, strikers flash a warning
   then hit, slow zones drag you down, launchers throw you into the air. AI drivers see

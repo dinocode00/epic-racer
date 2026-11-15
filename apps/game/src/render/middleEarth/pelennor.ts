@@ -5,6 +5,7 @@ import { DETAIL, MAT } from '../modelKit.ts';
 import * as tex from '../textures.ts';
 import type { DressContext } from '../themes.ts';
 import { off, tv } from '../trackMesh.ts';
+import { type RoadKeeper, roadKeeper } from './keepClear.ts';
 
 /**
  * The Pelennor Fields and Minas Tirith: the white city's Great Gate and tiers,
@@ -66,29 +67,32 @@ export function dressPelennor(ctx: DressContext): (t: number, dt: number) => voi
   const white = new THREE.MeshStandardMaterial({ map: tex.paving('#ece8de'), roughness: 0.8 });
   const gate0 = marks.greatGate ?? 3269,
     prow = marks.prow ?? 3511;
+  const keep = roadKeeper(track, [gate0, prow]);
 
   // ---------------- The Great Gate and the first wall, curving away on both sides.
   {
     const f = track.frameAtS(gate0);
     const along = V(f.tan.x, 0, f.tan.z).normalize();
-    const right = new THREE.Vector3().crossVectors(along, V(0, 1, 0));
     const wallH = 26;
     for (const side of [-1, 1]) {
-      // Wall segments sweeping back in an arc from the gate.
+      // Wall segments sweeping back in an arc from the gatehouse towers (the road runs through
+      // the gate between them, never through the wall).
+      const R = 220,
+        SEG = 32;
+      const centre = tv(f.pos).addScaledVector(along, R);
+      const a0 = Math.asin(22 / R);
       for (let k = 0; k < 14; k++) {
-        const a = (k / 14) * 1.2 * side;
-        const R = 220;
-        const centre = tv(f.pos).addScaledVector(along, R);
+        const a = (a0 + ((k + 0.5) * SEG) / R) * side;
         const dir = along
           .clone()
           .negate()
-          .applyAxisAngle(V(0, 1, 0), a + side * 0.07);
+          .applyAxisAngle(V(0, 1, 0), a);
         const p = centre.clone().addScaledVector(dir, R);
-        const seg = new THREE.Mesh(new THREE.BoxGeometry(32, wallH, 8), white);
+        if (!keep.clear(p.x, p.z, SEG / 2, 4)) continue;
+        const seg = new THREE.Mesh(new THREE.BoxGeometry(SEG + 1, wallH, 8), white);
         seg.position.set(p.x, f.pos.y + wallH / 2 - 2, p.z);
         seg.lookAt(centre.x, seg.position.y, centre.z);
         seg.castShadow = seg.receiveShadow = true;
-        if (k === 0) seg.position.addScaledVector(right, side * 4);
         scene.add(seg);
       }
     }
@@ -107,31 +111,39 @@ export function dressPelennor(ctx: DressContext): (t: number, dt: number) => voi
     lintel.position.copy(tv(off(f, 0, 30)));
     lintel.lookAt(lintel.position.clone().add(along));
     scene.add(lintel);
-    // The broken gate doors lying on the ground (Grond came through).
+    // The broken gate doors lying on the ground (Grond came through), thrown off the road.
     const iron = DETAIL.steel(0x2a2a2c);
     for (const side of [-1, 1]) {
       const door = new THREE.Mesh(new THREE.BoxGeometry(8, 1, 18), iron);
-      door.position.copy(tv(off(f, side * 13, 0.2))).addScaledVector(along, 10);
+      door.position.copy(tv(off(f, side * 22, 0.2))).addScaledVector(along, 18);
+      if (!keep.clear(door.position.x, door.position.z, 9, 1)) continue;
       door.rotation.y = Math.atan2(along.x, along.z) + side * 0.4;
       door.rotation.z = side * 0.08;
       scene.add(door);
     }
   }
 
-  // ---------------- White houses stacked around the switchbacks.
+  // ---------------- White houses stacked around the winding climb: between its legs and
+  // round its bends, but never on the road, never in the way of the view down it.
   {
     const box = new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0);
     const houses: THREE.Matrix4[] = [];
     const roofs: THREE.Matrix4[] = [];
+    const placed: { x: number; z: number; r: number }[] = [];
     for (let s = gate0 + 10; s < prow; s += 7) {
       const f = track.frameAtS(s);
       for (const side of [-1, 1]) {
-        for (const lat of [13, 22, 31]) {
+        for (const lat of [15, 24, 33, 42]) {
           const p = off(f, side * lat, 0);
-          const gy = terrain.height(p.x, p.z);
           const w = 6 + ((s * 13 + lat) % 5),
             h = 7 + ((s * 7 + lat * 3) % 9),
             d = 6 + ((s + lat) % 4);
+          const r = Math.hypot(w, d) / 2;
+          if (!keep.clear(p.x, p.z, r, 3) || keep.blocksView(p.x, p.z, r)) continue;
+          // (Houses from neighbouring legs fill the same blocks: don't stack them twice.)
+          if (placed.some((q) => Math.hypot(q.x - p.x, q.z - p.z) < (q.r + r) * 0.8)) continue;
+          placed.push({ x: p.x, z: p.z, r });
+          const gy = terrain.height(p.x, p.z);
           const m = new THREE.Matrix4().compose(
             V(p.x, Math.min(gy, f.pos.y) - 1, p.z),
             new THREE.Quaternion().setFromAxisAngle(V(0, 1, 0), Math.atan2(f.tan.x, f.tan.z)),
@@ -162,9 +174,14 @@ export function dressPelennor(ctx: DressContext): (t: number, dt: number) => voi
     const f = track.frameAtS(prow + 24);
     const along = V(f.tan.x, 0, f.tan.z).normalize();
     const right = new THREE.Vector3().crossVectors(along, V(0, 1, 0));
+    // Its top follows the road back down the ramp and the approach, just under it, so the
+    // rock carries the road instead of standing across it.
+    const lipS = prow + 24;
+    const crest: THREE.Vector2[] = [];
+    for (let x = 0; x <= 60; x += 3)
+      crest.push(new THREE.Vector2(-x, track.frameAtS(lipS - x).pos.y - f.pos.y - 0.6));
     const shape = new THREE.Shape([
-      new THREE.Vector2(0, 0),
-      new THREE.Vector2(-60, 0),
+      ...crest,
       new THREE.Vector2(-60, -80),
       new THREE.Vector2(-8, -80),
     ]);
@@ -176,10 +193,8 @@ export function dressPelennor(ctx: DressContext): (t: number, dt: number) => voi
       geo,
       new THREE.MeshStandardMaterial({ map: tex.paving('#dcd8cc'), roughness: 0.9 }),
     );
-    rock.quaternion.setFromRotationMatrix(
-      new THREE.Matrix4().makeBasis(along, V(0, 1, 0), right.clone().negate()),
-    );
-    rock.position.copy(tv(f.pos)).add(V(0, -0.9, 0));
+    rock.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(along, V(0, 1, 0), right));
+    rock.position.copy(tv(f.pos));
     rock.castShadow = rock.receiveShadow = true;
     scene.add(rock);
     const tower = new THREE.Group();
@@ -193,7 +208,13 @@ export function dressPelennor(ctx: DressContext): (t: number, dt: number) => voi
     const b = banner();
     b.position.set(0, 70, 6.6);
     tower.add(b);
-    tower.position.copy(tv(off(track.frameAtS(prow - 20), 60, 10)));
+    // Up on the citadel beside the last stretch to the prow, wherever the road leaves room.
+    const fa = track.frameAtS(prow - 20);
+    const spot =
+      [60, 75, -60, -75, 90, -90]
+        .map((lat) => off(fa, lat, 10))
+        .find((p) => keep.clear(p.x, p.z, 8, 8)) ?? off(fa, 60, 10);
+    tower.position.copy(tv(spot));
     tower.traverse((o) => (o.castShadow = true));
     scene.add(tower);
   }
@@ -205,6 +226,7 @@ export function dressPelennor(ctx: DressContext): (t: number, dt: number) => voi
     for (let i = 0; i < 4; i++) {
       const f = track.frameAtS(s0 + 20 + i * 45);
       const p = off(f, -50 - (i % 2) * 25, 0);
+      if (!keep.clear(p.x, p.z, 6, 4)) continue;
       const tower = siegeTower(wood);
       tower.position.set(p.x, terrain.height(p.x, p.z), p.z);
       // Rolling toward the city walls, broadly the way the racers are going.
@@ -228,6 +250,7 @@ export function dressPelennor(ctx: DressContext): (t: number, dt: number) => voi
             -70 - j * 2.2 - (b % 2) * 30,
             0,
           );
+          if (!keep.clear(q.x, q.z, 0.5, 4)) continue;
           orcs.push(new THREE.Matrix4().makeTranslation(q.x, terrain.height(q.x, q.z), q.z));
           void p;
         }
@@ -261,13 +284,13 @@ export function dressPelennor(ctx: DressContext): (t: number, dt: number) => voi
   }
 
   // ---------------- Osgiliath: the ruined city where the prow jump lands, on the way to Mordor.
-  scene.add(osgiliath(ctx, prow + 90, (marks.blackGate ?? 3882) - 35));
+  scene.add(osgiliath(ctx, prow + 90, (marks.blackGate ?? 3882) - 35, keep));
 
   return (t, dt) => animated.forEach((a) => a(t, dt));
 }
 
 /** Ruined halls, colonnades and broken arches either side of the road, all ash-stained. */
-function osgiliath(ctx: DressContext, s0: number, s1: number): THREE.Mesh {
+function osgiliath(ctx: DressContext, s0: number, s1: number, keep: RoadKeeper): THREE.Mesh {
   const { track, terrain } = ctx;
   const parts: THREE.BufferGeometry[] = [];
   let seed = 7;
@@ -283,6 +306,10 @@ function osgiliath(ctx: DressContext, s0: number, s1: number): THREE.Mesh {
       const p = off(f, lat, 0);
       const y = ground(p.x, p.z) - 0.5;
       const kind = Math.floor(rnd() * 3);
+      // The ruins stand beside the road, not on it (where it bends, a near one would).
+      const size = [10, 2, 11][kind]!;
+      const ok = (x: number, z: number, r: number) => keep.clear(x, z, r, 2);
+      if (!ok(p.x, p.z, size)) continue;
       if (kind === 0) {
         // A roofless hall: four walls of broken, gap-toothed masonry.
         const w = 10 + rnd() * 8,
@@ -312,6 +339,7 @@ function osgiliath(ctx: DressContext, s0: number, s1: number): THREE.Mesh {
         const hs = Array.from({ length: n }, () => (rnd() < 0.55 ? 8 : 2 + rnd() * 5));
         for (let k = 0; k < n; k++) {
           const q = off(track.frameAtS(s + (k - 2) * 4), lat, 0);
+          if (!ok(q.x, q.z, 1)) continue;
           put(
             new THREE.CylinderGeometry(0.55, 0.65, hs[k]!, 10).translate(0, hs[k]! / 2, 0),
             q.x,
@@ -344,33 +372,31 @@ function osgiliath(ctx: DressContext, s0: number, s1: number): THREE.Mesh {
           yaw + Math.PI / 2,
         );
         const q = off(f, lat + side * 10, 0);
-        put(
-          new THREE.SphereGeometry(6, 14, 8, 0, Math.PI * 1.3, 0, Math.PI / 2).translate(0, 3, 0),
-          q.x,
-          ground(q.x, q.z) - 0.5,
-          q.z,
-          rnd() * 6,
-        );
-        put(
-          new THREE.CylinderGeometry(6.2, 6.2, 3.2, 16, 1, true).translate(0, 1.6, 0),
-          q.x,
-          ground(q.x, q.z) - 0.5,
-          q.z,
-          0,
-        );
+        if (ok(q.x, q.z, 6.5))
+          put(
+            new THREE.SphereGeometry(6, 14, 8, 0, Math.PI * 1.3, 0, Math.PI / 2).translate(0, 3, 0),
+            q.x,
+            ground(q.x, q.z) - 0.5,
+            q.z,
+            rnd() * 6,
+          );
+        if (ok(q.x, q.z, 6.5))
+          put(
+            new THREE.CylinderGeometry(6.2, 6.2, 3.2, 16, 1, true).translate(0, 1.6, 0),
+            q.x,
+            ground(q.x, q.z) - 0.5,
+            q.z,
+            0,
+          );
       }
       // Rubble.
       for (let k = 0; k < 5; k++) {
         const q = off(track.frameAtS(s + (rnd() - 0.5) * 20), lat + (rnd() - 0.5) * 14, 0);
-        put(
-          new THREE.BoxGeometry(0.8 + rnd() * 1.6, 0.5 + rnd(), 0.8 + rnd() * 1.4).rotateZ(
-            (rnd() - 0.5) * 0.8,
-          ),
-          q.x,
-          ground(q.x, q.z),
-          q.z,
-          rnd() * 3,
-        );
+        const rubble = new THREE.BoxGeometry(0.8 + rnd() * 1.6, 0.5 + rnd(), 0.8 + rnd() * 1.4);
+        const tilt = (rnd() - 0.5) * 0.8,
+          turn = rnd() * 3;
+        if (!ok(q.x, q.z, 1.5)) continue;
+        put(rubble.rotateZ(tilt), q.x, ground(q.x, q.z), q.z, turn);
       }
     }
   }

@@ -186,26 +186,108 @@ export function buildTrackMesh(
   g.add(line);
   g.add(style.gantry(f0));
 
-  // --- Boost pads ---
-  const padMat = new THREE.MeshStandardMaterial({
-    color: 0x331100,
-    emissive: style.padColor ?? 0xffffff,
-    emissiveMap: tex.chevrons(),
-    emissiveIntensity: 1.6,
-    roughness: 0.4,
-  });
-  for (const s of track.def.boostPads ?? []) {
+  // --- Boost pads: where (and as wide as) they work. Super pads are blue. ---
+  // Unlit, so they glow in any light (Moria's dark included), as at the farm.
+  const normalPad = new THREE.MeshBasicMaterial({ map: tex.chevrons() });
+  const superPad = new THREE.MeshBasicMaterial({ map: tex.chevrons(true) });
+  const pads =
+    track.def.pads ??
+    (track.def.boostPads ?? []).map((s) => ({ s, lat: 0, width: 6, super: false }));
+  for (const p of pads) {
+    const half = p.width / 2 - 0.2;
     const pad = new THREE.Mesh(
-      sweep(track, s - 3, s + 3, 1, 6, (f) => [
-        { p: off(f, -2.8, 0.04), n: f.up, u: 0 },
-        { p: off(f, 2.8, 0.04), n: f.up, u: 1 },
+      sweep(track, p.s, p.s + 3, 1, 3, (f) => [
+        { p: off(f, p.lat - half, 0.04), n: f.up, u: 0 },
+        { p: off(f, p.lat + half, 0.04), n: f.up, u: 1 },
       ]),
-      padMat,
+      p.super ? superPad : normalPad,
     );
-    // Map v so the chevrons point forward: v runs 0..1 across the 6 m pad.
+    // Map v so the chevrons point forward: v runs 0..1 along the pad.
     const uvs = pad.geometry.attributes.uv as THREE.BufferAttribute;
-    for (let i = 0; i < uvs.count; i++) uvs.setY(i, (uvs.getY(i) * 6 - (s - 3)) / 6);
+    for (let i = 0; i < uvs.count; i++) uvs.setY(i, (uvs.getY(i) * 3 - p.s) / 3);
     g.add(pad);
+  }
+
+  // --- Kicker ramps sitting on the road: a wedge across it with a glowing lip. ---
+  const kickers = (track.def.kickers ?? []).filter((k) => k.ramp);
+  if (kickers.length) {
+    const wedgeMats = new Map<RoadStyle, THREE.Material>();
+    const wedgeMat = (st: RoadStyle) => {
+      let m = wedgeMats.get(st);
+      if (!m) {
+        m = new THREE.MeshStandardMaterial({
+          map: st.road(),
+          color: 0xc8bca8,
+          roughness: 0.8,
+          side: THREE.DoubleSide,
+        });
+        wedgeMats.set(st, m);
+      }
+      return m;
+    };
+    const lipMat = new THREE.MeshStandardMaterial({
+      color: 0x331100,
+      emissive: style.padColor ?? 0xffaa33,
+      emissiveIntensity: 1.8,
+    });
+    for (const k of kickers) {
+      // Longer and taller the harder it throws you.
+      const len = 6 + k.pop * 0.35,
+        height = 0.5 + k.pop * 0.07;
+      const s0 = k.s - len;
+      const rise = (s: number) => {
+        const t = Math.max(0, Math.min(1, (s - s0) / len));
+        return height * t * t;
+      };
+      const ww = (f: Frame) => f.width / 2 - 1.2;
+      const mat = wedgeMat(P.styleAt(k.s));
+      g.add(
+        new THREE.Mesh(
+          sweep(track, s0, k.s, 0.5, 4, (f, s) => [
+            { p: off(f, -ww(f), 0.02), n: f.up, u: 0 },
+            { p: off(f, -ww(f), rise(s)), n: f.up, u: 0.05 },
+            { p: off(f, ww(f), rise(s)), n: f.up, u: 0.95 },
+            { p: off(f, ww(f), 0.02), n: f.up, u: 1 },
+          ]),
+          mat,
+        ),
+      );
+      // The steep back face, under the lip.
+      const fl = track.frameAtS(k.s);
+      const w = ww(fl);
+      const face = new THREE.BufferGeometry().setFromPoints(
+        [
+          off(fl, -w, height),
+          off(fl, w, height),
+          off(fl, w, 0),
+          off(fl, -w, height),
+          off(fl, w, 0),
+          off(fl, -w, 0),
+        ].map(tv),
+      );
+      face.computeVertexNormals();
+      g.add(new THREE.Mesh(face, mat));
+      // A lit strip along the lip, and lit edges up both sides, so it reads from far off.
+      g.add(
+        new THREE.Mesh(
+          sweep(track, k.s - 0.6, k.s, 0.3, 1, (f, s) => [
+            { p: off(f, -ww(f), rise(s) + 0.03), n: f.up, u: 0 },
+            { p: off(f, ww(f), rise(s) + 0.03), n: f.up, u: 1 },
+          ]),
+          lipMat,
+        ),
+      );
+      for (const side of [-1, 1])
+        g.add(
+          new THREE.Mesh(
+            sweep(track, s0, k.s, 0.5, 1, (f, s) => [
+              { p: off(f, side * ww(f), rise(s) + 0.03), n: f.up, u: 0 },
+              { p: off(f, side * (ww(f) - 0.4), rise(s) + 0.03), n: f.up, u: 1 },
+            ]),
+            lipMat,
+          ),
+        );
+    }
   }
   return g;
 }

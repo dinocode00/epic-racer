@@ -3,6 +3,7 @@ import { greatEagle } from '../eagle.ts';
 import { MAT } from '../modelKit.ts';
 import type { DressContext } from '../themes.ts';
 import { off, tv } from '../trackMesh.ts';
+import { roadKeeper } from './keepClear.ts';
 import { features } from './theme.ts';
 
 /** Mordor: Mount Doom's fire, lava rivers and streams, fell beasts in the red sky. */
@@ -13,6 +14,7 @@ const lavaMat = () => new THREE.MeshBasicMaterial({ color: 0xff5a14 });
 export function dressMordor(ctx: DressContext): (t: number, dt: number) => void {
   const { scene, track, terrain } = ctx;
   const F = features(track);
+  const keep = roadKeeper(track);
   const animated: ((t: number, dt: number) => void)[] = [];
 
   // Mount Doom: glowing crater, lava streams down the flanks, a column of smoke.
@@ -31,8 +33,10 @@ export function dressMordor(ctx: DressContext): (t: number, dt: number) => void 
       for (let r = 20; r < 210; r += 15) {
         const x = F.doom.x + Math.cos(a + Math.sin(r * 0.03) * 0.3) * r,
           z = F.doom.z + Math.sin(a + Math.sin(r * 0.03) * 0.3) * r;
+        if (!keep.clear(x, z, 3, 12)) break; // the lava stops short of the road
         pts.push(V(x, terrain.height(x, z) + 0.6, z));
       }
+      if (pts.length < 2) continue;
       scene.add(
         new THREE.Mesh(
           new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 40, 2.2, 6),
