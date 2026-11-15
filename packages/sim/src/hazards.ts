@@ -2,6 +2,7 @@ import type { HazardDef } from '@epic/shared';
 import { type KartState, launch, spinOut } from './kart.ts';
 import type { Track } from './track.ts';
 import { addScaled } from './vec.ts';
+import { M } from './dmath.ts';
 
 /** Live state of a hazard, recomputed every step from the race clock. */
 export interface HazardState {
@@ -58,7 +59,7 @@ export function updateHazards(hs: HazardState[], time: number, leaderLap: number
       }
     }
     if (d.move) {
-      const off = d.move.amp * Math.sin((2 * Math.PI * t) / d.move.period + (d.move.phase ?? 0));
+      const off = d.move.amp * M.sin((2 * Math.PI * t) / d.move.period + (d.move.phase ?? 0));
       if (d.move.axis === 'lat') h.lat += off;
       else h.s += off;
     }
@@ -100,7 +101,7 @@ export function collideHazards(k: KartState, hs: HazardState[], track: Track): v
     const ds = sDelta(h.s, k.s, track.length);
     if (Math.abs(ds) > h.def.r + 6) continue;
     const dl = k.lat - h.lat;
-    const dist = Math.hypot(ds, dl);
+    const dist = M.hypot(ds, dl);
     if (dist > h.def.r + KART_R) continue;
     // Flying over low hazards is allowed.
     if (k.air && h.def.effect !== 'launch' && h.def.kind !== 'tall') {

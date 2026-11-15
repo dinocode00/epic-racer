@@ -1,4 +1,5 @@
 import { TrackBuilder } from '../builder.ts';
+import { M } from '../dmath.ts';
 
 /**
  * Proving Grounds: the gray-box test track. A banked rectangle with a hill,
@@ -22,7 +23,7 @@ export const PROVING = (() => {
     .straight(B)
     .turn(90, R, 14);
   const end = b.position;
-  if (Math.hypot(end[0], end[1], end[2]) > 0.5) {
+  if (M.hypot(end[0], end[1], end[2]) > 0.5) {
     throw new Error(`Proving Grounds does not close: ends at ${end.join(',')}`);
   }
   return b.build({

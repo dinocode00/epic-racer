@@ -3,6 +3,8 @@ import { sDelta } from './hazards.ts';
 import { EAGLE_CARRY, type ItemKind, type KartState, SPECIAL_OF, launch, spinOut } from './kart.ts';
 import type { Track } from './track.ts';
 import { cross, dot, sub } from './vec.ts';
+import { cloneData, refill } from './snapshot.ts';
+import { M } from './dmath.ts';
 
 /**
  * Items: rows of boxes on the road, a one-slot inventory with a short roulette, odds that
@@ -133,6 +135,18 @@ const TABLES: { maxGap: number; table: Table }[] = [
   },
 ];
 
+/** The item system's changing state (see ItemSystem.save). */
+export interface ItemSnap {
+  boxes: ItemBox[];
+  projectiles: Projectile[];
+  traps: Trap[];
+  strikes: Strike[];
+  nextId: number;
+  seed: number;
+  held: boolean[];
+  aiTimer: number[];
+}
+
 export const TRAILABLE: ReadonlySet<ItemKind> = new Set(['shot', 'homing', 'trap']);
 
 export class ItemSystem {
@@ -144,6 +158,11 @@ export class ItemSystem {
   events: ItemEvent[] = [];
   /** Events since the renderer last asked (several steps can run per frame). */
   private log: ItemEvent[] = [];
+  /**
+   * Off while 8-Player Local replays steps it has already shown (after learning a remote
+   * input late), so their sparks and sounds don't fire twice.
+   */
+  logging = true;
   private nextId = 1;
   private seed = 1234567;
   private held: boolean[];
@@ -215,8 +234,39 @@ export class ItemSystem {
     if (!racing) return;
     this.pickups(time);
     this.stepActions(dt, pads);
-    this.log.push(...this.events);
+    if (this.logging) this.addToLog(this.events);
+  }
+
+  /** Queue events for the renderer. */
+  addToLog(events: ItemEvent[]): void {
+    this.log.push(...events);
     if (this.log.length > 200) this.log.splice(0, this.log.length - 200);
+  }
+
+  /** Everything that changes during a race, as plain data (see Race.save). */
+  save(): ItemSnap {
+    return cloneData({
+      boxes: this.boxes,
+      projectiles: this.projectiles,
+      traps: this.traps,
+      strikes: this.strikes,
+      nextId: this.nextId,
+      seed: this.seed,
+      held: this.held,
+      aiTimer: this.aiTimer,
+    });
+  }
+
+  load(s: ItemSnap): void {
+    refill(this.boxes, s.boxes);
+    refill(this.projectiles, s.projectiles);
+    refill(this.traps, s.traps);
+    refill(this.strikes, s.strikes);
+    this.nextId = s.nextId;
+    this.seed = s.seed;
+    this.held = [...s.held];
+    this.aiTimer = [...s.aiTimer];
+    this.events = [];
   }
 
   /** Hand over (and clear) the events since the last call. */
@@ -383,7 +433,7 @@ export class ItemSystem {
         continue;
       }
       c.goal = t.progress - CHASE_BEHIND;
-      c.pace = t.air ? Math.hypot(t.vel.x, t.vel.y, t.vel.z) : Math.max(0, t.speed);
+      c.pace = t.air ? M.hypot(t.vel.x, t.vel.y, t.vel.z) : Math.max(0, t.speed);
     }
   }
 
@@ -467,7 +517,7 @@ export class ItemSystem {
         for (const B of this.karts) {
           if (B === A) continue;
           const rel = sub(B.pos, A.pos);
-          const d = Math.hypot(dot(rel, A.fwd), dot(rel, right));
+          const d = M.hypot(dot(rel, A.fwd), dot(rel, right));
           if (d < best) {
             best = d;
             sp.side = Math.sign(dot(rel, right)) || sp.side;

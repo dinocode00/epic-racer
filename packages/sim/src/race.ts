@@ -1,10 +1,11 @@
 import { type PadState, type TrackDef, type VehicleDef, neutralPad } from '@epic/shared';
 import { AI_POWER, type AiBrain, aiDrive, createBrain } from './ai.ts';
 import { type HazardState, collideHazards, createHazards, updateHazards } from './hazards.ts';
-import { ItemSystem } from './items.ts';
+import { type ItemSnap, ItemSystem } from './items.ts';
 import { type KartState, type TrackRules, createKart, spinOut, stepKart } from './kart.ts';
 import { Track } from './track.ts';
 import { addScaled, cross, dist2, dot, norm, reject, sub } from './vec.ts';
+import { assignData, cloneData, hashData } from './snapshot.ts';
 
 export const STEP = 1 / 60;
 export const COUNTDOWN = 3;
@@ -17,10 +18,26 @@ export interface Entrant {
 
 export type Phase = 'countdown' | 'racing' | 'finished';
 
+/** Everything about a race that changes as it runs, as plain data (Race.save / Race.load). */
+export interface RaceSnap {
+  phase: Phase;
+  time: number;
+  firstThrottle: number[];
+  padCooldown: number[];
+  /** Karts without their vehicle (which never changes). */
+  karts: Omit<KartState, 'vehicle'>[];
+  brains: (AiBrain | null)[];
+  autoBrains: (AiBrain | null)[];
+  hazards: Omit<HazardState, 'def'>[];
+  items: ItemSnap;
+}
+
 export class Race {
   readonly track: Track;
   readonly karts: KartState[];
   readonly brains: (AiBrain | null)[];
+  /** The autopilot driving a player's kart while their input says so (PadState.auto). */
+  readonly autoBrains: (AiBrain | null)[];
   readonly laps: number;
   phase: Phase = 'countdown';
   /** Seconds since the green light (negative during countdown). */
@@ -51,6 +68,7 @@ export class Race {
     this.brains = entrants.map((e, i) =>
       e.human ? null : createBrain(i + 1, 0.55 + (0.45 * ((i * 37) % 10)) / 10, aiLevel),
     );
+    this.autoBrains = entrants.map(() => null);
     this.firstThrottle = entrants.map(() => NaN);
     this.padCooldown = entrants.map(() => 0);
     this.hazards = createHazards(def.hazards ?? []);
@@ -108,6 +126,39 @@ export class Race {
     };
   }
 
+  /** A copy of everything that changes as the race runs. */
+  save(): RaceSnap {
+    return {
+      phase: this.phase,
+      time: this.time,
+      firstThrottle: [...this.firstThrottle],
+      padCooldown: [...this.padCooldown],
+      karts: cloneData(this.karts),
+      brains: cloneData(this.brains),
+      autoBrains: cloneData(this.autoBrains),
+      hazards: cloneData(this.hazards),
+      items: this.items.save(),
+    };
+  }
+
+  /** Put the race back exactly as it was when `s` was saved (live objects are kept). */
+  load(s: RaceSnap): void {
+    this.phase = s.phase;
+    this.time = s.time;
+    this.firstThrottle = [...s.firstThrottle];
+    this.padCooldown = [...s.padCooldown];
+    s.karts.forEach((k, i) => assignData(this.karts[i]!, k));
+    s.brains.forEach((b, i) => (this.brains[i] = cloneData(b)));
+    s.autoBrains.forEach((b, i) => (this.autoBrains[i] = cloneData(b)));
+    s.hazards.forEach((h, i) => assignData(this.hazards[i]!, h));
+    this.items.load(s.items);
+  }
+
+  /** Fingerprint of the race's state: two laptops in step have the same one. */
+  hash(s: RaceSnap = this.save()): number {
+    return hashData(s);
+  }
+
   get leaderProgress(): number {
     return Math.max(...this.karts.map((k) => k.progress));
   }
@@ -125,11 +176,23 @@ export class Race {
     const leaderLap = Math.max(1, Math.floor(lead / this.track.length) + 1);
     updateHazards(this.hazards, this.time, leaderLap);
 
+    const used: (PadState | undefined)[] = [];
     this.karts.forEach((k, i) => {
       const brain = this.brains[i];
-      let pad = brain
-        ? aiDrive(brain, k, this.track, lead, dt, this.hazards)
-        : (pads[i] ?? neutralPad());
+      let pad: PadState;
+      if (brain) pad = aiDrive(brain, k, this.track, lead, dt, this.hazards);
+      else {
+        const p = pads[i];
+        if (p?.auto) {
+          // A player's autopilot (away, or a demo) drives like a racing-line AI.
+          const ab = (this.autoBrains[i] ??= createBrain(200 + i, p.auto));
+          pad = aiDrive(ab, k, this.track, lead, dt);
+        } else {
+          this.autoBrains[i] = null;
+          pad = p ?? neutralPad();
+        }
+        used[i] = pad;
+      }
       if (k.finished) pad = brain ? pad : { ...neutralPad(), throttle: 0.4 };
 
       if (frozen) {
@@ -152,7 +215,7 @@ export class Race {
       });
     }
 
-    this.items.step(this.time, dt, pads, !frozen);
+    this.items.step(this.time, dt, used, !frozen);
     if (!frozen) this.slipstream();
     this.collideKarts();
     this.applyBoostPads();

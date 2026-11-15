@@ -1,5 +1,6 @@
 import type { HazardDef, TrackDef, TrackPoint, V3 } from '@epic/shared';
 import { Track } from './track.ts';
+import { M } from './dmath.ts';
 
 const GRAVITY = 21;
 
@@ -26,7 +27,7 @@ export class TrackBuilder {
     for (let i = 1; i < this.pts.length; i++) {
       const a = this.pts[i - 1]!.p,
         b = this.pts[i]!.p;
-      d += Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
+      d += M.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
     }
     return d;
   }
@@ -40,10 +41,10 @@ export class TrackBuilder {
   ) {}
 
   private fwd(): V3 {
-    return [Math.sin(this.yaw), 0, -Math.cos(this.yaw)];
+    return [M.sin(this.yaw), 0, -M.cos(this.yaw)];
   }
   private right(): V3 {
-    return [Math.cos(this.yaw), 0, Math.sin(this.yaw)];
+    return [M.cos(this.yaw), 0, M.sin(this.yaw)];
   }
   private w: number | undefined;
   /** Road width for the points that follow (undefined = track default). */
@@ -66,7 +67,7 @@ export class TrackBuilder {
     const y0 = this.y;
     for (let i = 0; i < n; i++) {
       const t = i / n;
-      const e = rise ? (1 - Math.cos(Math.PI * t)) / 2 : 0;
+      const e = rise ? (1 - M.cos(Math.PI * t)) / 2 : 0;
       this.emit([this.x + f[0] * length * t, y0 + rise * e, this.z + f[2] * length * t]);
     }
     this.x += f[0] * length;
@@ -83,7 +84,7 @@ export class TrackBuilder {
       const t = i / n;
       this.emit([
         this.x + f[0] * length * t,
-        this.y + (height * (1 - Math.cos(2 * Math.PI * t))) / 2,
+        this.y + (height * (1 - M.cos(2 * Math.PI * t))) / 2,
         this.z + f[2] * length * t,
       ]);
     }
@@ -105,22 +106,19 @@ export class TrackBuilder {
     for (let i = 0; i < n; i++) {
       const t = i / n;
       const yaw = yaw0 + ang * t;
-      const px = cx - Math.cos(yaw) * r * sign;
-      const pz = cz - Math.sin(yaw) * r * sign;
-      const bank = ((bankDeg * Math.PI) / 180) * Math.min(1, Math.sin(Math.PI * t) * 1.6);
+      const px = cx - M.cos(yaw) * r * sign;
+      const pz = cz - M.sin(yaw) * r * sign;
+      const bank = ((bankDeg * Math.PI) / 180) * Math.min(1, M.sin(Math.PI * t) * 1.6);
       // Tilt up toward the inside of the corner.
-      const inX = Math.cos(yaw) * sign,
-        inZ = Math.sin(yaw) * sign;
+      const inX = M.cos(yaw) * sign,
+        inZ = M.sin(yaw) * sign;
       // Lift the centre so the inner edge stays at grade, like a real banked turn.
-      const lift = this.halfWidth * Math.sin(bank);
-      this.emit(
-        [px, this.y + lift, pz],
-        [inX * Math.sin(bank), Math.cos(bank), inZ * Math.sin(bank)],
-      );
+      const lift = this.halfWidth * M.sin(bank);
+      this.emit([px, this.y + lift, pz], [inX * M.sin(bank), M.cos(bank), inZ * M.sin(bank)]);
     }
     this.yaw = yaw0 + ang;
-    this.x = cx - Math.cos(this.yaw) * r * sign;
-    this.z = cz - Math.sin(this.yaw) * r * sign;
+    this.x = cx - M.cos(this.yaw) * r * sign;
+    this.z = cz - M.sin(this.yaw) * r * sign;
     return this;
   }
 
@@ -132,10 +130,10 @@ export class TrackBuilder {
     const n = Math.max(12, Math.round(arc / (this.step * 0.75)));
     for (let i = 0; i < n; i++) {
       const th = (2 * Math.PI * i) / n;
-      const along = r * Math.sin(th);
-      const h = r * (1 - Math.cos(th));
-      const side = (shift * (th - Math.sin(th))) / (2 * Math.PI);
-      const up: V3 = [-f[0] * Math.sin(th), Math.cos(th), -f[2] * Math.sin(th)];
+      const along = r * M.sin(th);
+      const h = r * (1 - M.cos(th));
+      const side = (shift * (th - M.sin(th))) / (2 * Math.PI);
+      const up: V3 = [-f[0] * M.sin(th), M.cos(th), -f[2] * M.sin(th)];
       this.emit(
         [this.x + f[0] * along + rt[0] * side, this.y + h, this.z + f[2] * along + rt[2] * side],
         up,
@@ -153,17 +151,17 @@ export class TrackBuilder {
   closeLoop(): this {
     const p0 = [this.x, this.y, this.z];
     const f0 = this.fwd();
-    const dist = Math.hypot(this.x, this.z);
+    const dist = M.hypot(this.x, this.z);
     const k = dist * 1.1;
     const t0 = [f0[0] * k, 0, f0[2] * k];
     const t1 = [0, 0, -k];
     const n = Math.max(3, Math.round((dist * 1.3) / this.step));
     for (let i = 0; i < n; i++) {
       const u = i / n;
-      const h00 = 2 * u ** 3 - 3 * u ** 2 + 1,
-        h10 = u ** 3 - 2 * u ** 2 + u,
-        h01 = -2 * u ** 3 + 3 * u ** 2,
-        h11 = u ** 3 - u ** 2;
+      const h00 = 2 * (u * u * u) - 3 * (u * u) + 1,
+        h10 = u * u * u - 2 * (u * u) + u,
+        h01 = -2 * (u * u * u) + 3 * (u * u),
+        h11 = u * u * u - u * u;
       const x = h00 * p0[0]! + h10 * t0[0]! + h11 * t1[0]!;
       const z = h00 * p0[2]! + h10 * t0[2]! + h11 * t1[2]!;
       const y = p0[1]! * (h00 + 0) + 0 * h01;
@@ -214,7 +212,7 @@ export class TrackBuilder {
   ramp(length: number, angleDeg: number): this {
     const n = Math.max(2, Math.round(length / 3));
     const f = this.fwd();
-    const slope = Math.tan((angleDeg * Math.PI) / 180);
+    const slope = M.tan((angleDeg * Math.PI) / 180);
     const y0 = this.y;
     // y = a t^2 with dy/dx at the lip = slope  =>  rise = slope * length / 2
     const rise = (slope * length) / 2;
@@ -246,9 +244,9 @@ export class TrackBuilder {
     const v = opts.speed ?? 30;
     const pop = opts.pop ?? 3;
     const f = this.fwd();
-    const ang = Math.atan(this.lipSlope);
-    const vx = v * Math.cos(ang),
-      vy = v * Math.sin(ang) + pop;
+    const ang = M.atan(this.lipSlope);
+    const vx = v * M.cos(ang),
+      vy = v * M.sin(ang) + pop;
     this.kickersAt.push({ p: this.here(), pop });
     // Time until y = -drop:  -drop = vy t - g t^2 / 2
     const tEnd = (vy + Math.sqrt(vy * vy + 2 * GRAVITY * opts.drop)) / GRAVITY;
@@ -316,7 +314,7 @@ export class TrackBuilder {
       for (let k = 0; k < t.count * 0.6; k++) {
         const i = (hint + k) % t.count;
         const q = t.frame(i).pos;
-        const d = (q.x - pt.x) ** 2 + (q.y - pt.y) ** 2 * 4 + (q.z - pt.z) ** 2;
+        const d = M.sq(q.x - pt.x) + M.sq(q.y - pt.y) * 4 + M.sq(q.z - pt.z);
         if (d < bd) {
           bd = d;
           best = i;
@@ -354,7 +352,7 @@ export class TrackBuilder {
       let best = 0,
         bd = Infinity;
       this.pts.forEach((q, i) => {
-        const d = (q.p[0] - p[0]) ** 2 + (q.p[1] - p[1]) ** 2 * 4 + (q.p[2] - p[2]) ** 2;
+        const d = M.sq(q.p[0] - p[0]) + M.sq(q.p[1] - p[1]) * 4 + M.sq(q.p[2] - p[2]);
         if (d < bd) {
           bd = d;
           best = i;

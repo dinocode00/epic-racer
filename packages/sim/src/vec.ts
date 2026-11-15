@@ -1,3 +1,4 @@
+import { M } from './dmath.ts';
 export interface Vec3 {
   x: number;
   y: number;
@@ -21,8 +22,8 @@ export const cross = (a: Vec3, b: Vec3): Vec3 => ({
   y: a.z * b.x - a.x * b.z,
   z: a.x * b.y - a.y * b.x,
 });
-export const len = (a: Vec3): number => Math.hypot(a.x, a.y, a.z);
-export const dist = (a: Vec3, b: Vec3): number => Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
+export const len = (a: Vec3): number => M.hypot(a.x, a.y, a.z);
+export const dist = (a: Vec3, b: Vec3): number => M.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
 export const dist2 = (a: Vec3, b: Vec3): number => {
   const dx = a.x - b.x,
     dy = a.y - b.y,
@@ -43,8 +44,8 @@ export const reject = (a: Vec3, n: Vec3): Vec3 => addScaled(a, n, -dot(a, n));
 
 /** Rotate vector `a` around unit axis `k` by `angle` radians (Rodrigues). */
 export function rotateAround(a: Vec3, k: Vec3, angle: number): Vec3 {
-  const c = Math.cos(angle),
-    s = Math.sin(angle);
+  const c = M.cos(angle),
+    s = M.sin(angle);
   const kxa = cross(k, a);
   const kda = dot(k, a);
   return {

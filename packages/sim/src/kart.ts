@@ -16,6 +16,7 @@ import {
   sub,
   v3,
 } from './vec.ts';
+import { M } from './dmath.ts';
 
 export type ItemKind =
   'boost' | 'boost3' | 'shot' | 'homing' | 'trap' | 'shield' | 'whip' | 'special' | 'eagle';
@@ -512,7 +513,7 @@ function stepEagle(k: KartState, track: Track, dt: number, rules: TrackRules): v
   if (k.eagleTime === 0 && rules.isGap((k.s + 8) % track.length)) k.eagleTime = 0.1;
   const s = (k.s + v * dt) % track.length;
   const f = track.frameAtS(s);
-  const lat = k.lat * Math.exp(-dt * 2);
+  const lat = k.lat * M.exp(-dt * 2);
   const lift = k.eagleTime > 0 ? Math.min(1, k.eagleTime * 2, (2.6 - k.eagleTime) * 3 + 0.3) : 0;
   k.pos = track.pointAt(s, lat, k.params.rideHeight + EAGLE_HEIGHT * lift);
   k.fwd = clone(f.tan);
@@ -572,7 +573,7 @@ function stepAir(k: KartState, pad: PadState, track: Track, dt: number, rules: T
     const n = norm(reject(scale(p.frame.right, Math.sign(lat)), worldUp));
     const tan = norm(reject(p.frame.tan, worldUp));
     const flat = reject(k.vel, worldUp);
-    let spd = Math.hypot(flat.x, flat.z);
+    let spd = M.hypot(flat.x, flat.z);
     if (spd > 0.1) {
       let dir = scale(flat, 1 / spd);
       const into = dot(dir, n);

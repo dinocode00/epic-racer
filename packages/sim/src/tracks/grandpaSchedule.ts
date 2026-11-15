@@ -1,5 +1,6 @@
 import DRAFT from './farmDraft.json';
 import ROUTES from './grandpaRoutes.json';
+import { M } from '../dmath.ts';
 
 /**
  * Grandpa's rounds on the farm as a timetable: where each of him is at any moment, worked out
@@ -37,7 +38,7 @@ export class Loop {
       const p = pts[i % pts.length]!;
       this.x[i] = p[0];
       this.y[i] = p[1];
-      if (i) this.s[i] = this.s[i - 1]! + Math.hypot(p[0] - this.x[i - 1]!, p[1] - this.y[i - 1]!);
+      if (i) this.s[i] = this.s[i - 1]! + M.hypot(p[0] - this.x[i - 1]!, p[1] - this.y[i - 1]!);
     }
     this.length = this.s[n - 1]!;
   }
@@ -70,11 +71,11 @@ export class Loop {
   dir(s: number, span = 0.3): number {
     const a = this.at(s - span),
       b = this.at(s + span);
-    return Math.atan2(b[1] - a[1], b[0] - a[0]);
+    return M.atan2(b[1] - a[1], b[0] - a[0]);
   }
 }
 
-const wrapPi = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
+const wrapPi = (a: number) => M.atan2(M.sin(a), M.cos(a));
 const smooth = (x: number) => {
   const t = Math.min(1, Math.max(0, x));
   return t * t * (3 - 2 * t);
@@ -200,7 +201,7 @@ export class WalkerSchedule {
           wave: number | null = null;
         if (h.wave && h.face) {
           // Turn to face whoever he's waving at, wave, and turn back to the way he's going.
-          const face = Math.atan2(h.face[1] - y, h.face[0] - x);
+          const face = M.atan2(h.face[1] - y, h.face[0] - x);
           const tau = t - h.t0;
           const back = smooth((tau - (TURN + WAVE_TIME + 0.2)) / 1.0);
           heading = along + wrapPi(face - along) * smooth(tau / TURN) * (1 - back);
@@ -260,7 +261,7 @@ export class MowerSchedule {
       let sum = 0;
       for (let j = -w; j <= w; j++) sum += k[(i + j + n) % n]!;
       const kap = sum / (2 * w + 1);
-      this.steerA[i] = Math.min(1, Math.max(-1, -Math.atan(wheelbase * kap) / maxLock));
+      this.steerA[i] = Math.min(1, Math.max(-1, -M.atan(wheelbase * kap) / maxLock));
       const tight = Math.min(1, Math.max(0, (Math.abs(kap) - 0.15) / 0.55));
       this.vmax[i] = r.speed * (1 - 0.5 * tight);
     }
@@ -331,11 +332,11 @@ function inView(x: number, y: number): number {
       [bx, by] = LINE[i + 1]!;
     const dx = x - ax,
       dy = y - ay,
-      d = Math.hypot(dx, dy);
+      d = M.hypot(dx, dy);
     if (d > 40 || d < 1) continue;
     const fx = bx - ax,
       fy = by - ay,
-      fl = Math.hypot(fx, fy);
+      fl = M.hypot(fx, fy);
     if (fl < 1e-6) continue;
     if ((dx * fx + dy * fy) / (d * fl) > 0.75) m += fl;
   }
@@ -354,7 +355,7 @@ export function watchingStops(r: RouteData): RouteData {
     let best = Infinity,
       at: XY = [x, y];
     for (const q of LOW_ROAD) {
-      const d = Math.hypot(q[0] - x, q[1] - y);
+      const d = M.hypot(q[0] - x, q[1] - y);
       if (d < best) {
         best = d;
         at = q;

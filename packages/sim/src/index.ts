@@ -20,3 +20,6 @@ export {
   type FarmPieceKind,
 } from './tracks/farm.ts';
 export * from './tracks/grandpaSchedule.ts';
+export * from './snapshot.ts';
+export * from './netplay.ts';
+export { M } from './dmath.ts';

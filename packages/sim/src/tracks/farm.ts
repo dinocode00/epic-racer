@@ -2,6 +2,7 @@ import type { HazardDef, TrackDef, TrackPoint, V3 } from '@epic/shared';
 import { Track } from '../track.ts';
 import DRAFT from './farmDraft.json';
 import { grandpaSchedules } from './grandpaSchedule.ts';
+import { M } from '../dmath.ts';
 
 /**
  * The Drefahl Farm: the owner's route round the grandparents' farm (docs/farm), laid out at 1:10
@@ -49,7 +50,7 @@ const STEP = 4; // game metres between centre-line points
 type V = [number, number, number];
 const sub = (a: V, b: V): V => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 const addS = (a: V, b: V, k: number): V => [a[0] + b[0] * k, a[1] + b[1] * k, a[2] + b[2] * k];
-const len = (a: V) => Math.hypot(a[0], a[1], a[2]);
+const len = (a: V) => M.hypot(a[0], a[1], a[2]);
 const norm = (a: V): V => {
   const l = len(a) || 1;
   return [a[0] / l, a[1] / l, a[2] / l];
@@ -161,7 +162,7 @@ function centreLine(): Pt[] {
       const sh = u * u * (3 - 2 * u) * LOOP_SHIFT;
       const c = addS(addS(p, up, LOOP_R), right, sh);
       const pos = addS(
-        addS(addS(p, t, Math.sin(th) * LOOP_R), up, LOOP_R * (1 - Math.cos(th))),
+        addS(addS(p, t, M.sin(th) * LOOP_R), up, LOOP_R * (1 - M.cos(th))),
         right,
         sh,
       );
@@ -264,7 +265,7 @@ const hazards: HazardDef[] = D.trunks.map(([x, y]) => {
     const f = track.frames[i]!;
     const ds = (((i * track.spacing - forestS) % L) + L) % L;
     if (ds > 2200) continue;
-    const d = (f.pos.x - p[0]) ** 2 + (f.pos.z - p[2]) ** 2;
+    const d = M.sq(f.pos.x - p[0]) + M.sq(f.pos.z - p[2]);
     if (d < bd) {
       bd = d;
       best = i;
@@ -305,7 +306,7 @@ function grandpaHazards(): HazardDef[] {
       for (let j = -1; j <= 1; j++)
         for (const k of grid.get(`${cx + i},${cz + j}`) ?? []) {
           const q = PTS[k]!.p;
-          const d = (q[0] - gx) ** 2 + (q[2] - gz) ** 2;
+          const d = M.sq(q[0] - gx) + M.sq(q[2] - gz);
           if (d < bd) {
             bd = d;
             best = k;
@@ -347,7 +348,7 @@ function grandpaHazards(): HazardDef[] {
   // The tractor, round its middle (half a metre ahead of the rear axle).
   add('mower', 9, G.mower.period, (t) => {
     const p = G.mower.at(t);
-    return [p.x + Math.cos(p.heading) * 0.45, p.y + Math.sin(p.heading) * 0.45];
+    return [p.x + M.cos(p.heading) * 0.45, p.y + M.sin(p.heading) * 0.45];
   });
   return out;
 }
@@ -374,7 +375,7 @@ const BARN: [number, number] = [68.25, 136.89];
 function catCrossings(): { s: number; reach: number }[] {
   // Ground-level road nearest the barn (and a second spot well along the lap from it).
   const [bx, , bz] = game(BARN[0], BARN[1], 0);
-  const low = PTS.map((q, i) => ({ i, d: Math.hypot(q.p[0] - bx, q.p[2] - bz), q })).filter(
+  const low = PTS.map((q, i) => ({ i, d: M.hypot(q.p[0] - bx, q.p[2] - bz), q })).filter(
     (c) =>
       c.q.low &&
       !PTS[(c.i + 3) % PTS.length]!.loop &&
@@ -399,7 +400,7 @@ function catRoute(s0: number, reach: number, sitA: number, sitB: number, phase: 
   };
   const [ax, ay] = map(reach),
     [bx, by] = map(-reach);
-  const toB = Math.atan2(by - ay, bx - ax);
+  const toB = M.atan2(by - ay, bx - ax);
   return {
     period,
     at(t) {

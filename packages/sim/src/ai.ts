@@ -3,6 +3,7 @@ import { type HazardState, sDelta } from './hazards.ts';
 import type { KartState } from './kart.ts';
 import type { Track } from './track.ts';
 import { clamp, cross, dot, sub } from './vec.ts';
+import { M } from './dmath.ts';
 
 export interface AiBrain {
   /** Preferred lane, metres from centre. */
@@ -74,12 +75,12 @@ export function aiDrive(
   const target = track.pointAt(k.s + look, lane, 0);
   const to = sub(target, k.pos);
   const right = cross(k.fwd, k.up);
-  const angle = Math.atan2(dot(to, right), dot(to, k.fwd));
+  const angle = M.atan2(dot(to, right), dot(to, k.fwd));
   pad.steer = clamp(angle * 2.2, -1, 1);
 
   // Corner severity further ahead decides drifting and lifting.
   const far = track.frameAtS(k.s + look * 2.2).tan;
-  const bend = Math.acos(clamp(dot(far, k.fwd), -1, 1));
+  const bend = M.acos(clamp(dot(far, k.fwd), -1, 1));
   // Better drivers lift later and brake later for the bends.
   const lv = Math.max(0, Math.min(3, Math.round(b.level)));
   pad.throttle = bend > LIFT[lv]! && k.speed > 26 ? 0.5 : 1;

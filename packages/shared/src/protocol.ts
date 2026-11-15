@@ -26,6 +26,12 @@ export interface PadState {
   item: boolean;
   lookBack: boolean;
   pause: boolean;
+  /**
+   * The race's own autopilot drives this player's kart at this skill (0..1): a phone that has
+   * gone away, or a demo. Part of the input so that every laptop in an 8-Player Local race
+   * hands the kart over on the same step.
+   */
+  auto?: number;
 }
 
 export const neutralPad = (): PadState => ({
