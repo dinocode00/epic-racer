@@ -275,10 +275,10 @@ const hazards: HazardDef[] = D.trunks.map(([x, y]) => {
 });
 
 // Windfalls in the orchard: now and then an apple drops from the trees onto the road. Each
-// falls (a ring on the road warns where), then lies there a while; drive into one and you spin
-// out. Spots, timing and rhythm are scattered (but fixed, so every screen sees the same apples).
+// falls (a ring on the road warns where), lies there a second or two and pops; drive into one
+// and you spin out. One apple per spot at a time, so they never pile up. Spots, timing and rhythm are scattered (but fixed, so every screen sees the same apples).
 export const APPLE_FALL = 1.1; // seconds falling (the warning)
-export const APPLE_LIE = 2.6; // seconds lying on the road (dangerous)
+export const APPLE_LIE = 1.5; // seconds lying on the road (dangerous), then it pops
 function appleHazards(): HazardDef[] {
   let seed = 7331;
   const rnd = () => {
@@ -297,7 +297,7 @@ function appleHazards(): HazardDef[] {
     while (lips.some((l) => Math.abs(s - l) < 9)) s += 9;
     const w = track.frameAtS(s).width;
     const lat = (rnd() * 2 - 1) * (w / 2 - 2.5);
-    const period = 5 + rnd() * 5;
+    const period = 4 + rnd() * 4;
     out.push({
       kind: 'apple',
       s: Math.round(s * 10) / 10,

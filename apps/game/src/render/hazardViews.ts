@@ -40,6 +40,8 @@ const TRAIL_SMOKE = new THREE.Color(0.3, 0.28, 0.26);
 const RISE = V(0, 1, 0);
 const DRIFT_UP = V(0, 0.4, 0);
 const DOWN = V(0, -1, 0);
+const APPLE_RED = new THREE.Color(1.1, 0.12, 0.08);
+const APPLE_FLESH = new THREE.Color(1, 0.92, 0.6);
 
 type RoadFrame = {
   pos: THREE.Vector3;
@@ -467,7 +469,7 @@ function fallingRock(): HazardView {
   };
 }
 
-/** A windfall in the farm's orchard: drops out of the tree, bounces, lies there, then rolls off. */
+/** A windfall in the farm's orchard: drops out of the tree, bounces, lies there, then pops. */
 function apple(): HazardView {
   const root = new THREE.Group();
   const ring = telegraph(1.5);
@@ -490,7 +492,8 @@ function apple(): HazardView {
   leaf.position.set(0.3, 0.92, 0);
   leaf.rotation.z = 0.5;
   fruit.add(body, stem, leaf);
-  let landed = false;
+  let landed = false,
+    popped = false;
   return {
     root: root.add(ring, fruit),
     update(h, c) {
@@ -501,7 +504,7 @@ function apple(): HazardView {
       const fallStart = S.period - S.active - S.warn;
       fruit.visible = h.warning || h.active;
       if (!fruit.visible) {
-        landed = false;
+        landed = popped = false;
         return;
       }
       let lift = 0.7,
@@ -513,10 +516,34 @@ function apple(): HazardView {
         fruit.rotation.x += c.dt * 4;
       } else {
         const t = ph - (S.period - S.active);
-        // A little bounce as it hits the road, then it sits; at the end it rolls off and is gone.
+        // A little bounce as it hits the road, then it sits; at the end it swells and pops.
         lift += Math.max(0, Math.sin(Math.min(t / 0.35, 1) * Math.PI)) * 1.2;
         const left = S.active - t;
-        if (left < 0.3) sc = Math.max(0.01, left / 0.3);
+        if (left < 0.18) sc = 1 + (1 - left / 0.18) * 0.4;
+        if (left < 0.06 && !popped) {
+          popped = true;
+          const at = sB.copy(b.pos).addScaledVector(b.up, 0.8);
+          for (let i = 0; i < 24; i++)
+            c.fx.sparks.emit(
+              at,
+              V((Math.random() - 0.5) * 9, 1 + Math.random() * 6, (Math.random() - 0.5) * 9),
+              i % 3 ? APPLE_RED : APPLE_FLESH,
+              1,
+              0.45,
+              0.45,
+            );
+          for (let i = 0; i < 6; i++)
+            c.fx.smoke.emit(
+              at,
+              V((Math.random() - 0.5) * 3, 1 + Math.random(), (Math.random() - 0.5) * 3),
+              APPLE_FLESH,
+              0.35,
+              0.8,
+              0.5,
+              1.5,
+            );
+        }
+        if (popped) sc = 0.01;
         if (!landed) {
           landed = true;
           for (let i = 0; i < 10; i++)
