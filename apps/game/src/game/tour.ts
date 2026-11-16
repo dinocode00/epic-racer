@@ -7,15 +7,18 @@ import type { TrackEntry } from './tracks.ts';
 /**
  * Map Tour: a slow drone tour of the whole map, round and round until you leave.
  *
- * Rather than chasing the road through every bend, it works like a camera crew: one shot for
- * each part of the course (long parts get two). For each shot the drone stands out toward the
- * edge of the map on that part's outer side and looks in across it (there's nothing to see
- * looking out past the boundary), choosing a spot with a clear view. It then pans slowly
- * sideways across the scene (9 to 14 seconds a shot), its view sweeping left and right, while
- * craning up or settling down, somewhere between 6 ft off the
- * ground and 30 ft, never looking straight down. Between shots it glides over to the next spot
- * in a gentle arc. It keeps clear of roofs and trees by looking down at what's under it and
- * just ahead.
+ * Rather than chasing the road through every bend, it works like a camera crew showing off
+ * the property: one shot for each area of the map. The areas come from the ground the course
+ * covers, not the road's length, so a patch where the road weaves or loops round itself gets
+ * one shot like any other; neighbouring parts small enough to take in at one look share a shot
+ * (captioned with each of their names in turn), and a part too big for one look gets more. The
+ * areas are flown in the shortest loop round the map, not in lap order. For each shot the
+ * drone stands out toward the edge of the map on that area's outer side and looks in across
+ * it (there's nothing to see looking out past the boundary), choosing a spot with a clear view.
+ * It then drifts slowly sideways for 10 to 13 seconds, its view panning once across the
+ * scene, while craning up or settling down, somewhere between 6 ft off the ground and 30 ft,
+ * never looking straight down. Between shots it glides over to the next spot in a gentle arc.
+ * It keeps clear of roofs and trees by looking down at what's under it and just ahead.
  *
  * Heights are real feet: on the farm (built at 1:10) a foot is ten times bigger in world units.
  */
@@ -33,8 +36,9 @@ const PROFILES: [number, number][] = [
 ];
 
 interface Shot {
-  name: string;
-  /** Arc length in the middle of the part (for the light, e.g. Middle-earth's lands). */
+  /** The named parts of the course in view (biggest first), captioned in turn. */
+  names: string[];
+  /** Arc length near the middle of the area (for the light, e.g. Middle-earth's lands). */
   s: number;
   /** Camera slides from a to b (ground plane), looking across the scene round `target`. */
   a: THREE.Vector2;
@@ -48,6 +52,21 @@ interface Shot {
   /** The glide over to the next shot, and how high it arcs to keep the view open. */
   move: number;
   lift?: number;
+}
+
+interface TourPoint {
+  x: number;
+  z: number;
+  y: number;
+  s: number;
+}
+/** A patch of the map to show in one shot. */
+interface Area {
+  names: string[];
+  pts: TourPoint[];
+  centre: THREE.Vector2;
+  s: number;
+  first: number;
 }
 
 /** Planned tours by track, so going back into a tour starts at once. */
@@ -198,7 +217,7 @@ export class MapTour {
     const tr = this.track;
     const sc = this.sc;
     const step = 4 * sc;
-    const pts: { x: number; z: number; y: number; s: number }[] = [];
+    const pts: TourPoint[] = [];
     for (let s = 0; s < tr.length; s += step) {
       const f = tr.frameAtS(s);
       pts.push({ x: f.pos.x, z: f.pos.z, y: f.pos.y, s });
@@ -214,32 +233,10 @@ export class MapTour {
       z0 = Math.min(...pts.map((p) => p.z)) - 14 * sc,
       z1 = Math.max(...pts.map((p) => p.z)) + 14 * sc;
 
-    // The parts of the course: the track's named parts, or eight equal stretches.
-    const stops = [...(this.entry.stops ?? [])].sort((a, b) => a.s - b.s);
-    let parts: { name: string; s0: number; s1: number }[] = stops.length
-      ? stops.map((st, i) => ({
-          name: st.name,
-          s0: st.s,
-          s1: stops[i + 1]?.s ?? tr.length,
-        }))
-      : Array.from({ length: 8 }, (_, i) => ({
-          name: '',
-          s0: (i * tr.length) / 8,
-          s1: ((i + 1) * tr.length) / 8,
-        }));
-    // Long parts get two shots.
-    const avg = tr.length / parts.length;
-    parts = parts.flatMap((p) =>
-      p.s1 - p.s0 > avg * 1.8
-        ? [
-            { ...p, s1: (p.s0 + p.s1) / 2 },
-            { ...p, s0: (p.s0 + p.s1) / 2 },
-          ]
-        : [p],
-    );
+    const parts = this.planAreas(pts, Math.hypot(x1 - x0, z1 - z0));
 
     parts.forEach((part, k) => {
-      const ps = pts.filter((p) => p.s >= part.s0 && p.s < part.s1);
+      const ps = part.pts;
       if (ps.length < 2) return;
       const C = new THREE.Vector2(
         ps.reduce((a, p) => a + p.x, 0) / ps.length,
@@ -264,8 +261,7 @@ export class MapTour {
       const r = Math.min(Math.max(extent * 0.8 + 10 * sc, 22 * sc), 75 * sc);
       const span = Math.min(extent * 0.7, 20 * sc);
       const feet = PROFILES[this.shots.length % PROFILES.length]!;
-      const nextPart = parts[(k + 1) % parts.length]!;
-      const np = pts.find((p) => p.s >= nextPart.s0) ?? pts[0]!;
+      const np = parts[(k + 1) % parts.length]!.centre;
       const eye = new THREE.Vector3(),
         look = new THREE.Vector3();
       // First rank every spot cheaply (out by the edge, looking in), then check the views of
@@ -286,19 +282,19 @@ export class MapTour {
           const edge = cand.distanceTo(M) / Math.max(reach, 1);
           // Slide sideways across the scene, heading the way the next part lies.
           const side = new THREE.Vector2(-toC.y, toC.x);
-          if (side.dot(new THREE.Vector2(np.x - C.x, np.z - C.y)) < 0) side.negate();
+          if (side.dot(new THREE.Vector2(np.x - C.x, np.y - C.y)) < 0) side.negate();
           cands.push({
             cheap: edge + inward * 0.9 - ri * 0.12,
             shot: {
-              name: part.name,
-              s: (part.s0 + part.s1) / 2,
+              names: part.names,
+              s: part.s,
               a: cand.clone().addScaledVector(side, -span / 2),
               b: cand.clone().addScaledVector(side, span / 2),
               target,
               side,
               amp: Math.min(Math.max(extent * 0.7, 8 * sc), r * rm * 0.75),
               feet,
-              dur: Math.min(14, Math.max(9, span / (1.8 * sc))),
+              dur: Math.min(13, Math.max(10, span / (1.8 * sc))),
               move: 0,
             },
           });
@@ -359,6 +355,146 @@ export class MapTour {
     }
   }
 
+  /**
+   * The areas of the map to show, one shot each, in the order to fly them. They're made from
+   * the ground the course covers, not the road's length: where the road weaves or loops round
+   * the same patch, that patch is still one shot. The track's named parts are the starting
+   * point; a part too big to take in at one look is split into pieces, and neighbours small
+   * enough to take in together are merged (named after both). The areas are then flown in a
+   * loop as short as possible, starting at the start line, rather than in lap order.
+   */
+  private planAreas(pts: TourPoint[], diag: number): Area[] {
+    const tr = this.track;
+    const G = diag / 40;
+    const RMAX = diag * 0.1;
+    const keyOf = (p: TourPoint) => `${Math.floor(p.x / G)},${Math.floor(p.z / G)}`;
+    // Ground cells the road crosses, with the road points in each.
+    const cellPts = new Map<string, TourPoint[]>();
+    for (const p of pts) {
+      const k = keyOf(p);
+      (cellPts.get(k) ?? cellPts.set(k, []).get(k)!).push(p);
+    }
+    const centreOf = (k: string) => {
+      const ps = cellPts.get(k)!;
+      return new THREE.Vector2(
+        ps.reduce((a, p) => a + p.x, 0) / ps.length,
+        ps.reduce((a, p) => a + p.z, 0) / ps.length,
+      );
+    };
+    const cellC = new Map([...cellPts.keys()].map((k) => [k, centreOf(k)]));
+    const footprint = (keys: Iterable<string>) => {
+      const cs = [...keys].map((k) => cellC.get(k)!);
+      const c = cs.reduce((a, v) => a.add(v), new THREE.Vector2()).divideScalar(cs.length);
+      const d = cs.map((v) => v.distanceTo(c)).sort((a, b) => a - b);
+      return { c, r: d[Math.floor(d.length * 0.85)] ?? 0 };
+    };
+    /** Split cells into n spatial groups (k-means from far-apart seeds). */
+    const kmeans = (keys: string[], n: number): string[][] => {
+      const seeds = [cellC.get(keys[0]!)!.clone()];
+      while (seeds.length < n) {
+        let far = keys[0]!,
+          fd = -1;
+        for (const k of keys) {
+          const d = Math.min(...seeds.map((q) => q.distanceTo(cellC.get(k)!)));
+          if (d > fd) [fd, far] = [d, k];
+        }
+        seeds.push(cellC.get(far)!.clone());
+      }
+      let groups: string[][] = [];
+      for (let it = 0; it < 25; it++) {
+        groups = seeds.map(() => []);
+        for (const k of keys) {
+          const v = cellC.get(k)!;
+          let bi = 0;
+          seeds.forEach((q, i) => {
+            if (q.distanceTo(v) < seeds[bi]!.distanceTo(v)) bi = i;
+          });
+          groups[bi]!.push(k);
+        }
+        groups.forEach((g, i) => g.length && seeds[i]!.copy(footprint(g).c));
+      }
+      return groups.filter((g) => g.length);
+    };
+
+    // The course's named parts (or the whole lap, unnamed), each taking the ground it reaches
+    // first; pieces of a part too big for one look.
+    const stops = [...(this.entry.stops ?? [])].sort((a, b) => a.s - b.s);
+    const named = stops.length ? stops : [{ s: 0, name: '' }];
+    const owner = new Map<string, number>();
+    let groups: { keys: Set<string>; names: Map<string, number> }[] = [];
+    named.forEach((st, i) => {
+      const s1 = named[i + 1]?.s ?? tr.length;
+      const fresh = new Set<string>();
+      for (const p of pts) if (p.s >= st.s && p.s < s1 && !owner.has(keyOf(p))) fresh.add(keyOf(p));
+      if (!fresh.size) return;
+      const keys = [...fresh];
+      let pieces = [keys];
+      for (let n = 2; n <= 20 && pieces.some((g) => footprint(g).r > RMAX * 1.6); n++)
+        pieces = kmeans(keys, n);
+      for (const g of pieces) {
+        for (const k of g) owner.set(k, groups.length);
+        groups.push({ keys: new Set(g), names: new Map([[st.name, g.length]]) });
+      }
+    });
+    // Merge the closest neighbours while the pair still fits in one look.
+    for (;;) {
+      const fp = groups.map((g) => footprint(g.keys));
+      let pair: [number, number] | null = null,
+        bd = Infinity;
+      for (let i = 0; i < groups.length; i++)
+        for (let j = i + 1; j < groups.length; j++) {
+          const d = fp[i]!.c.distanceTo(fp[j]!.c);
+          if (d >= bd || footprint([...groups[i]!.keys, ...groups[j]!.keys]).r > RMAX) continue;
+          bd = d;
+          pair = [i, j];
+        }
+      if (!pair) break;
+      const [a, b] = [groups[pair[0]]!, groups[pair[1]]!];
+      for (const k of b.keys) a.keys.add(k);
+      for (const [n, c] of b.names) a.names.set(n, (a.names.get(n) ?? 0) + c);
+      groups.splice(pair[1], 1);
+    }
+
+    const areas: Area[] = groups.map((g) => {
+      const ps = [...g.keys].flatMap((k) => cellPts.get(k)!);
+      const centre = footprint(g.keys).c;
+      const mid = ps.reduce((a, p) =>
+        Math.hypot(p.x - centre.x, p.z - centre.y) < Math.hypot(a.x - centre.x, a.z - centre.y)
+          ? p
+          : a,
+      );
+      return {
+        names: [...g.names]
+          .filter(([n]) => n)
+          .sort((x, y) => y[1] - x[1])
+          .map(([n]) => n),
+        pts: ps,
+        centre,
+        s: mid.s,
+        first: Math.min(...ps.map((p) => p.s)),
+      };
+    });
+    // In lap order to begin with, then the shortest loop round them all (2-opt), from the start.
+    areas.sort((a, b) => a.first - b.first);
+    const dist = (i: number, j: number) => areas[i]!.centre.distanceTo(areas[j]!.centre);
+    let ord = areas.map((_, i) => i);
+    for (let better = true; better;) {
+      better = false;
+      for (let i = 1; i < ord.length - 1; i++)
+        for (let j = i + 1; j < ord.length; j++) {
+          const a = ord[i - 1]!,
+            b = ord[i]!,
+            c = ord[j]!,
+            d = ord[(j + 1) % ord.length]!;
+          if (dist(a, c) + dist(b, d) < dist(a, b) + dist(c, d) - 1e-6) {
+            ord = [...ord.slice(0, i), ...ord.slice(i, j + 1).reverse(), ...ord.slice(j + 1)];
+            better = true;
+          }
+        }
+    }
+    return ord.map((i) => areas[i]!);
+  }
+
   /** Is the view blocked: something close in front of the lens (not the subject itself)? */
   private blocked(open: number, dist: number): boolean {
     return open < Math.min(dist * 0.6, 15 * this.sc);
@@ -370,7 +506,7 @@ export class MapTour {
     // Glides between shots: a few seconds, longer for longer hops.
     this.shots.forEach((sh, i) => {
       const nx = this.shots[(i + 1) % this.shots.length]!;
-      sh.move = Math.min(7, Math.max(3, sh.b.distanceTo(nx.a) / (14 * sc)));
+      sh.move = Math.min(8, Math.max(3.5, sh.b.distanceTo(nx.a) / (12 * sc)));
     });
     this.total = this.shots.reduce((a, sh) => a + sh.dur + sh.move, 0);
   }
@@ -388,7 +524,8 @@ export class MapTour {
       z = sh.a.y + (sh.b.y - sh.a.y) * e;
     const ft = sh.feet[0] + (sh.feet[1] - sh.feet[0]) * smooth(u);
     pos.set(x, this.world.groundHeight(x, z) + ft * FT * sc, z);
-    const sweep = -Math.cos(u * Math.PI * 2) * sh.amp;
+    // One slow pan across the scene, the way the drone drifts (no swinging back and forth).
+    const sweep = -Math.cos(u * Math.PI) * sh.amp * 0.7;
     look.set(sh.target.x + sh.side.x * sweep, sh.target.y, sh.target.z + sh.side.y * sweep);
   }
 
@@ -426,6 +563,23 @@ export class MapTour {
       u -= sh.move;
     }
     return this.shots[0]!;
+  }
+
+  /**
+   * The name to show: an area holding several named parts of the course names them in turn
+   * (a few seconds each, as many as fit in the shot).
+   */
+  private captionAt(t: number, shot: Shot): string {
+    let u = ((t % this.total) + this.total) % this.total;
+    for (const sh of this.shots) {
+      if (u < sh.dur) {
+        const n = Math.max(1, Math.min(sh.names.length, Math.floor(sh.dur / 4)));
+        return sh.names[Math.min(n - 1, Math.floor((u / sh.dur) * n))] ?? '';
+      }
+      u -= sh.dur + sh.move;
+      if (u < 0) break;
+    }
+    return shot.names[0] ?? '';
   }
 
   frame(dt: number): void {
@@ -494,7 +648,7 @@ export class MapTour {
     this.look.lerp(look, Math.min(1, dt * 3));
     this.camera.lookAt(this.look);
 
-    this.caption = shot.name;
+    this.caption = this.captionAt(this.t, shot);
     this.world.applyAtmosphere(this.world.atmosphereAt(shot.s, true));
     this.world.focusSun(
       this.camera.position.clone().lerp(this.look, 0.5),
