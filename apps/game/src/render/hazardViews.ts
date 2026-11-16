@@ -467,6 +467,76 @@ function fallingRock(): HazardView {
   };
 }
 
+/** A windfall in the farm's orchard: drops out of the tree, bounces, lies there, then rolls off. */
+function apple(): HazardView {
+  const root = new THREE.Group();
+  const ring = telegraph(1.5);
+  const fruit = new THREE.Group();
+  const body = new THREE.Mesh(
+    new THREE.SphereGeometry(0.8, 18, 14).scale(1, 0.88, 1),
+    new THREE.MeshStandardMaterial({ color: 0xc8261e, roughness: 0.38 }),
+  );
+  body.castShadow = true;
+  const stem = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.05, 0.07, 0.45, 6),
+    new THREE.MeshStandardMaterial({ color: 0x4a3018, roughness: 0.9 }),
+  );
+  stem.position.set(0.04, 0.82, 0);
+  stem.rotation.z = -0.25;
+  const leaf = new THREE.Mesh(
+    new THREE.SphereGeometry(0.28, 8, 6).scale(1, 0.15, 0.5),
+    new THREE.MeshStandardMaterial({ color: 0x3f8a2a, roughness: 0.7 }),
+  );
+  leaf.position.set(0.3, 0.92, 0);
+  leaf.rotation.z = 0.5;
+  fruit.add(body, stem, leaf);
+  let landed = false;
+  return {
+    root: root.add(ring, fruit),
+    update(h, c) {
+      const b = frameAt(c.track, h.s, h.lat);
+      updateRing(ring, h, c, b);
+      const S = h.def.strike!;
+      const ph = h.cycle * S.period;
+      const fallStart = S.period - S.active - S.warn;
+      fruit.visible = h.warning || h.active;
+      if (!fruit.visible) {
+        landed = false;
+        return;
+      }
+      let lift = 0.7,
+        sc = 1;
+      if (h.warning) {
+        // Dropping from the branches about 15 m up (like a real fall: slow, then fast).
+        const k = Math.min(1, (ph - fallStart) / S.warn);
+        lift += 15 * (1 - k * k);
+        fruit.rotation.x += c.dt * 4;
+      } else {
+        const t = ph - (S.period - S.active);
+        // A little bounce as it hits the road, then it sits; at the end it rolls off and is gone.
+        lift += Math.max(0, Math.sin(Math.min(t / 0.35, 1) * Math.PI)) * 1.2;
+        const left = S.active - t;
+        if (left < 0.3) sc = Math.max(0.01, left / 0.3);
+        if (!landed) {
+          landed = true;
+          for (let i = 0; i < 10; i++)
+            c.fx.smoke.emit(
+              sB.copy(b.pos).addScaledVector(b.up, 0.3),
+              V((Math.random() - 0.5) * 4, 1 + Math.random() * 1.5, (Math.random() - 0.5) * 4),
+              new THREE.Color(0.55, 0.5, 0.4),
+              0.4,
+              0.9,
+              0.8,
+              1.2,
+            );
+        }
+      }
+      fruit.position.copy(b.pos).addScaledVector(b.up, lift * sc);
+      fruit.scale.setScalar(sc);
+    },
+  };
+}
+
 function balrogWhip(): HazardView {
   const root = new THREE.Group();
   const ring = telegraph(2.4);
@@ -908,6 +978,7 @@ const REGISTRY: Record<string, (h: HazardState) => HazardView> = {
   grandpa: () => ({ root: new THREE.Group(), update() {} }),
   mower: () => ({ root: new THREE.Group(), update() {} }),
   cat: () => ({ root: new THREE.Group(), update() {} }), // drawn by the farm (critters.ts)
+  apple,
   lavaBurst,
   eyeBeam,
   mud: simple(mud),

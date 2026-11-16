@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { VEHICLES, neutralPad } from '@epic/shared';
-import { FARM_PIECES, FARM_TRACK, Race, Track } from '../src/index.ts';
+import {
+  FARM_MARKS,
+  FARM_PIECES,
+  FARM_TRACK,
+  Race,
+  Track,
+  collideHazards,
+  updateHazards,
+} from '../src/index.ts';
 
 describe('The Drefahl Farm', () => {
   it('is a long lap with loops, a drop, the barn and trunks in the forest', () => {
@@ -147,4 +155,40 @@ describe('The Drefahl Farm, driven badly', () => {
     expect(jumps).toEqual([]);
     expect(rescues).toBeLessThanOrEqual(2);
   }, 60000);
+
+  it('drops apples on the road in the orchard that spin you out', () => {
+    const apples = FARM_TRACK.hazards!.filter((h) => h.kind === 'apple');
+    expect(apples.length).toBeGreaterThan(15);
+    const lo = FARM_MARKS.orchard!,
+      hi = FARM_MARKS.pine!;
+    for (const a of apples) {
+      expect(a.s).toBeGreaterThan(lo);
+      expect(a.s).toBeLessThan(hi);
+      expect(a.effect).toBe('spin');
+      expect(Math.abs(a.lat)).toBeLessThan(FARM_TRACK.defaultWidth / 2);
+    }
+    // Not all at once: at any moment some are lying on the road and some aren't.
+    const race = new Race(FARM_TRACK, [{ vehicle: VEHICLES[0]!, human: true }]);
+    const states = race.hazards.filter((h) => h.def.kind === 'apple');
+    const lying: number[] = [];
+    for (let t = 0; t < 60; t += 0.5) {
+      updateHazards(race.hazards, t, 1);
+      lying.push(states.filter((h) => h.active).length);
+    }
+    expect(Math.min(...lying)).toBeGreaterThan(0);
+    expect(Math.max(...lying)).toBeLessThan(apples.length);
+    // Drive into one lying on the road: it spins you out.
+    const h = states[0]!;
+    let t = 0;
+    while (!h.active) updateHazards(race.hazards, (t += 0.05), 1);
+    const k = race.karts[0]!;
+    const f = race.track.frameAtS(h.s - 0.5);
+    k.s = h.s - 0.5;
+    k.lat = h.lat;
+    k.pos = { x: f.pos.x + f.right.x * h.lat, y: f.pos.y, z: f.pos.z + f.right.z * h.lat };
+    k.speed = 40;
+    collideHazards(k, race.hazards, race.track);
+    expect(k.stunTime).toBeGreaterThan(0.5);
+    expect(k.speed).toBeLessThan(25);
+  });
 });

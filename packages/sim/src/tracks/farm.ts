@@ -274,6 +274,42 @@ const hazards: HazardDef[] = D.trunks.map(([x, y]) => {
   return { kind: 'trunk', s: pr.s, lat: pr.lateral, r: 0.9, effect: 'bump' };
 });
 
+// Windfalls in the orchard: now and then an apple drops from the trees onto the road. Each
+// falls (a ring on the road warns where), then lies there a while; drive into one and you spin
+// out. Spots, timing and rhythm are scattered (but fixed, so every screen sees the same apples).
+export const APPLE_FALL = 1.1; // seconds falling (the warning)
+export const APPLE_LIE = 2.6; // seconds lying on the road (dangerous)
+function appleHazards(): HazardDef[] {
+  let seed = 7331;
+  const rnd = () => {
+    seed = (seed * 16807) % 2147483647;
+    return seed / 2147483647;
+  };
+  const orchard = D.features.filter((f) => f.label.includes('under the apples'));
+  const s0 = sForDraft(736),
+    s1 = sForDraft(846);
+  const lips = orchard.map((f) => sForDraft(f.s));
+  const out: HazardDef[] = [];
+  const N = 22;
+  for (let i = 0; i < N; i++) {
+    // Spread along the orchard, jittered, and not right on a crest's lip.
+    let s = s0 + ((i + 0.2 + rnd() * 0.6) / N) * (s1 - s0);
+    while (lips.some((l) => Math.abs(s - l) < 9)) s += 9;
+    const w = track.frameAtS(s).width;
+    const lat = (rnd() * 2 - 1) * (w / 2 - 2.5);
+    const period = 5 + rnd() * 5;
+    out.push({
+      kind: 'apple',
+      s: Math.round(s * 10) / 10,
+      lat: Math.round(lat * 10) / 10,
+      r: 0.9,
+      effect: 'spin',
+      strike: { period, warn: APPLE_FALL, active: APPLE_LIE, phase: rnd() * period },
+    });
+  }
+  return out;
+}
+
 // Item boxes about every 900 m, never in the air.
 const gaps = ranges('air');
 const itemRows: number[] = [];
@@ -493,7 +529,7 @@ export const FARM_TRACK: TrackDef = {
   tunnels: ranges('barn'),
   tubes: ranges('tube'),
   crestAir: true,
-  hazards: [...hazards, ...grandpaHazards(), ...catHazards()],
+  hazards: [...hazards, ...grandpaHazards(), ...catHazards(), ...appleHazards()],
   itemRows,
   marks: FARM_MARKS,
 };
