@@ -96,6 +96,10 @@ export class Race {
           if (ahead < 0) ahead += L;
           return ahead < 140;
         }),
+      sureGapEnd: (s) => {
+        for (const [a, b] of def.sureGaps ?? []) if (s >= a && s < b) return b;
+        return null;
+      },
       eagleBridge: (s) => {
         for (const [a, b] of def.eagleBridges ?? []) if (s >= a - 2 && s <= b) return (b + 14) % L;
         return null;

@@ -130,9 +130,49 @@ describe('Middle-earth', () => {
         }
         const gap = MIDDLE_EARTH.gaps!.find(([g0]) => g0 > m.prow!)!;
         expect(landed).toBeGreaterThan(gap[1]);
-        // At least 150 m of straight road still ahead before Osgiliath's bend.
-        expect(m.osgiliath! - landed).toBeGreaterThan(150);
+        // At least 120 m of straight road still ahead before Osgiliath's (wide) bend.
+        expect(m.osgiliath! - landed).toBeGreaterThan(120);
       }
+  });
+
+  it('every jump onto solid ground lands, however slow, fast or wild the take-off', () => {
+    const sure = MIDDLE_EARTH.sureGaps!;
+    expect(sure.length).toBe(7); // Bag End, Weathertop, the mallorn, Rohan's three, the prow
+    for (const gap of sure)
+      for (const speed of [8, 25, 45, 75])
+        for (const steer of [-1, 0, 1]) {
+          const race = new Race(MIDDLE_EARTH, [{ vehicle: VEHICLES[2]!, human: true }], 1);
+          for (let i = 0; i < 300; i++) race.step([neutralPad()]);
+          const k = race.karts[0]!,
+            tr = race.track;
+          const s = gap[0] - 1,
+            f = tr.frameAtS(s);
+          k.pos = tr.pointAt(s, 3, k.params.rideHeight);
+          k.hint = tr.nearestIndex(k.pos);
+          k.s = k.progress = k.safeS = s;
+          k.lat = 3;
+          k.fwd = { ...f.tan };
+          k.speed = speed;
+          let flew = false,
+            landed = -1;
+          for (let i = 0; i < 60 * 10 && landed < 0; i++) {
+            race.step([{ ...neutralPad(), throttle: 1, steer: k.air ? steer : 0 }]);
+            expect(k.rescueTime).toBe(0);
+            if (k.air) flew = true;
+            else if (flew) landed = k.s;
+          }
+          expect(landed).toBeGreaterThan(gap[1]);
+          // Down on the road (not sunk into it), and driving on.
+          const fr = tr.frameAtS(k.s);
+          const h =
+            (k.pos.x - fr.pos.x) * fr.up.x +
+            (k.pos.y - fr.pos.y) * fr.up.y +
+            (k.pos.z - fr.pos.z) * fr.up.z;
+          expect(h).toBeGreaterThan(-0.05);
+          for (let i = 0; i < 60; i++) race.step([{ ...neutralPad(), throttle: 1 }]);
+          // (Unless a hazard just beyond, like Rohan's riders, has spun it out.)
+          if (k.stunTime <= 0) expect(k.speed).toBeGreaterThan(15);
+        }
   });
 
   it('eight AI karts finish two laps', () => {

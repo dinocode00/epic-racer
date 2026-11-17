@@ -37,6 +37,10 @@ Eye of Sauron. Maps should be ridiculous: big air, brutal corners, lots of movie
   with a super pad).
 - **Boost pads** as at the farm: narrow, off to one side or the other, the blue super pads
   in the middle of long runs.
+- **Sure landings**: every jump that lands on solid ground (Bag End, Weathertop, the mallorn
+  root, Rohan's whoops and the leap off Minas Tirith) always gets you across: however slow,
+  fast or wild the take-off, you're carried on through the air to the road beyond and never
+  sink below it. Only water, lava and the Moria chasm can swallow you.
 - **Great Eagles**: falling anywhere else means an eagle sets you back on the road, rolling,
   with a proper run-up before the next jump. It costs about two seconds.
 - **Hazards** are data: movers sweep across or along the road, strikers flash a warning

@@ -3,7 +3,7 @@ import { Track } from './track.ts';
 
 const GRAVITY = 21;
 
-type RangeKind = 'gaps' | 'open' | 'tunnels' | 'eagleBridges';
+type RangeKind = 'gaps' | 'open' | 'tunnels' | 'eagleBridges' | 'sureGaps';
 
 /**
  * A "turtle" for laying out tracks in code: drive forward, turn, climb, loop.
@@ -264,6 +264,8 @@ export class TrackBuilder {
     pop?: number;
     landing?: number;
     open?: boolean;
+    /** Every kart makes it across (see TrackDef.sureGaps). */
+    sure?: boolean;
   }): this {
     const v = opts.speed ?? 30;
     const pop = opts.pop ?? 3;
@@ -280,6 +282,8 @@ export class TrackBuilder {
     const n = Math.max(6, Math.round((vx * tEnd) / 5));
     this.rangesAt.push({ kind: 'gaps', a: this.here() });
     const gapRange = this.rangesAt[this.rangesAt.length - 1]!;
+    if (opts.sure) this.rangesAt.push({ kind: 'sureGaps', a: this.here() });
+    const sureRange = opts.sure ? this.rangesAt[this.rangesAt.length - 1]! : null;
     if (opts.open) this.rangesAt.push({ kind: 'open', a: this.here() });
     const openRange = opts.open ? this.rangesAt[this.rangesAt.length - 1]! : null;
     for (let i = 1; i <= n; i++) {
@@ -289,7 +293,10 @@ export class TrackBuilder {
         py = y0 + vy * t - (GRAVITY * t * t) / 2;
       this.emit([px, py, pz]);
       // Road resumes for the last 30% of the arc: short jumps land on a downslope.
-      if (i === Math.round(n * 0.7)) gapRange.b = [px, py, pz];
+      if (i === Math.round(n * 0.7)) {
+        gapRange.b = [px, py, pz];
+        if (sureRange) sureRange.b = gapRange.b;
+      }
     }
     this.x = x0 + f[0] * vx * tEnd;
     this.z = z0 + f[2] * vx * tEnd;
@@ -360,6 +367,7 @@ export class TrackBuilder {
       open: [],
       tunnels: [],
       eagleBridges: [],
+      sureGaps: [],
     };
     for (const r of this.rangesAt) {
       const pair: [number, number] = [0, 0];
@@ -409,6 +417,7 @@ export class TrackBuilder {
       open: ranges.open.length ? ranges.open : def.open,
       tunnels: ranges.tunnels.length ? ranges.tunnels : def.tunnels,
       eagleBridges: ranges.eagleBridges.length ? ranges.eagleBridges : def.eagleBridges,
+      sureGaps: ranges.sureGaps.length ? ranges.sureGaps : def.sureGaps,
       pads: pads.length ? [...(def.pads ?? []), ...pads.sort((a, b) => a.s - b.s)] : def.pads,
       kickers: [...(def.kickers ?? []), ...kickers],
       hazards: [...(def.hazards ?? []), ...hazards],

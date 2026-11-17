@@ -56,7 +56,7 @@ export const MIDDLE_EARTH = (() => {
   b.pad(22, -2.5);
   b.straight(85);
   // Big air clean over the top of Bag End.
-  b.mark('bagEnd').ramp(30, 22).flight({ speed: 32, drop: 6, pop: 7, landing: 40 });
+  b.mark('bagEnd').ramp(30, 22).flight({ speed: 32, drop: 6, pop: 7, landing: 40, sure: true });
   b.turn(55, 70, 6);
   b.mark('gandalfLane');
   b.hazard(10, {
@@ -118,7 +118,9 @@ export const MIDDLE_EARTH = (() => {
   b.mark('weathertopSummit');
   b.turn(150, 20, 4); // summit hairpin: brake or drift at these speeds
   // Leap off the summit of Amon Sûl: the longest hang time in the Shire.
-  b.mark('weathertopLeap').ramp(24, 24).flight({ speed: 30, drop: 12, pop: 8, landing: 55 });
+  b.mark('weathertopLeap')
+    .ramp(24, 24)
+    .flight({ speed: 30, drop: 12, pop: 8, landing: 55, sure: true });
   b.turn(-65, 45, 6);
   b.straight(20, 17);
 
@@ -195,7 +197,9 @@ export const MIDDLE_EARTH = (() => {
     b.hazard(25 + i * 28, bump('mallorn', [-3.5, 3.5, 0, -4.5, 2, 4.5, -1][i]!, 2.2));
   b.straight(205, 10);
   // Off a great mallorn root and through the canopy.
-  b.mark('mallornLeap').ramp(18, 22).flight({ speed: 30, drop: 0, pop: 7, landing: 35 });
+  b.mark('mallornLeap')
+    .ramp(18, 22)
+    .flight({ speed: 30, drop: 0, pop: 7, landing: 35, sure: true });
   b.straight(10, 2);
   b.turn(25, 100);
 
@@ -212,7 +216,8 @@ export const MIDDLE_EARTH = (() => {
   b.turn(45, 90, 6);
   b.mark('edoras');
   // Rolling whoops across the plains: hit them flat out and you sail.
-  for (let i = 0; i < 3; i++) b.ramp(12, 16).flight({ speed: 36, drop: 0, pop: 4, landing: 20 });
+  for (let i = 0; i < 3; i++)
+    b.ramp(12, 16).flight({ speed: 36, drop: 0, pop: 4, landing: 20, sure: true });
   for (let i = 0; i < 3; i++)
     b.hazard(12 + i * 22, {
       kind: 'rohirrim',
@@ -265,8 +270,10 @@ export const MIDDLE_EARTH = (() => {
   b.turn(40, 35, 6);
   b.pad(10, 0);
   b.straight(30, 10);
-  // Off the prow of Minas Tirith: the biggest drop in Middle-earth.
-  b.mark('prow').ramp(26, 24).flight({ speed: 30, drop: 26, pop: 9, landing: 60 });
+  // Off the prow of Minas Tirith: the biggest drop in Middle-earth. Like every jump that lands
+  // on solid ground (not water, lava or a chasm), it's sure: however slow or wild the take-off,
+  // the kart is carried on to the landing rather than dropping into the ground.
+  b.mark('prow').ramp(26, 24).flight({ speed: 30, drop: 26, pop: 9, landing: 60, sure: true });
   // A long, straight run-out over the fields below the city: at full tilt (or off a boost)
   // you fly well past the landing slope, so there's plenty of road to come down on.
   b.mark('prowRunout').straight(220);

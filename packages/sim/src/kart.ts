@@ -195,6 +195,11 @@ export interface TrackRules {
    * kart that falls off is set down. Null anywhere else.
    */
   eagleBridge?(s: number): number | null;
+  /**
+   * Over a gap every kart gets across (see TrackDef.sureGaps): where the gap ends (arc length).
+   * Null anywhere else.
+   */
+  sureGapEnd?(s: number): number | null;
 }
 
 export const NO_RULES: TrackRules = {
@@ -577,8 +582,22 @@ function stepAir(k: KartState, pad: PadState, track: Track, dt: number, rules: T
   const yaw = -pad.steer * rate * dt;
   k.vel = rotateAround(k.vel, worldUp, yaw);
   k.vel.y -= AIR_GRAVITY * dt;
+  // Over a gap every kart gets across: carried on toward the landing if coming up short.
+  const sureEnd = rules.sureGapEnd?.(k.s) ?? null;
+  if (sureEnd !== null) carryAcross(k, track, sureEnd, dt);
   const pos = add(k.pos, scale(k.vel, dt));
-  const p = track.project(pos, k.hint, 40);
+  // ... and never below the road it lands on.
+  if (sureEnd !== null) {
+    const floor = track.frameAtS(sureEnd).pos.y + k.params.rideHeight;
+    if (pos.y < floor) {
+      pos.y = floor;
+      if (k.vel.y < 0) k.vel.y = 0;
+    }
+  }
+  let p = track.project(pos, k.hint, 40);
+  // Over a gap the centre line is only a notional arc: a kart flying far above or below it is
+  // placed by how far across it has got over the ground.
+  if (rules.isGap(p.s)) p = track.projectFlat(pos, k.hint, 40);
   k.hint = p.index;
   updateProgress(k, track, p.s);
   k.lat = p.lateral;
@@ -654,7 +673,29 @@ function stepAir(k: KartState, pad: PadState, track: Track, dt: number, rules: T
   if (across !== null && !overRoad && (height < -3 || k.airTime > 5))
     return catchOnBridge(k, across);
   // Fell into the abyss: the Great Eagles bring you back.
-  if (height < -14 || k.airTime > 7) rescue(k, track, rules);
+  if ((height < -14 && sureEnd === null) || k.airTime > 7) rescue(k, track, rules);
+}
+
+/** How hard a kart coming up short over a sure gap is carried on (m/s^2). */
+const CARRY_ACROSS = 45;
+/**
+ * Over a sure gap: if, falling as it is, the kart wouldn't reach the far side before dropping
+ * to the landing's height, push it on along the course (in the air, a little at a time).
+ */
+function carryAcross(k: KartState, track: Track, end: number, dt: number): void {
+  const L = track.length;
+  const left = ((((end - k.s) % L) + L) % L) + 3;
+  const land = track.frameAtS(end).pos.y + k.params.rideHeight;
+  const above = k.pos.y - land;
+  const vy = k.vel.y;
+  const disc = vy * vy + 2 * AIR_GRAVITY * above;
+  const time = above > 0 && disc > 0 ? (vy + Math.sqrt(disc)) / AIR_GRAVITY : 0.05;
+  const need = Math.min(90, left / Math.max(time, 0.05));
+  const t = track.frameAtS(k.s).tan;
+  const flat = Math.hypot(t.x, t.z) || 1;
+  const dir = v3(t.x / flat, 0, t.z / flat);
+  const along = dot(k.vel, dir);
+  if (along < need) k.vel = addScaled(k.vel, dir, Math.min(need - along, CARRY_ACROSS * dt));
 }
 
 /** A Great Eagle catches a kart falling off a bridge (it'll be carried across: stepCarry). */

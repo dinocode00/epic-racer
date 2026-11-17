@@ -209,6 +209,49 @@ export class Track {
     };
   }
 
+  /**
+   * Like project, but by position over the ground alone (height ignored). For a kart high over
+   * a gap: there the centre line is only a notional arc, and a kart flying well above or below
+   * it must still be placed by how far across it has got.
+   */
+  projectFlat(p: Vec3, hint: number, window = 24): Projection {
+    let best = hint,
+      bd = Infinity;
+    for (let k = -window; k <= window; k++) {
+      const f = this.frame(hint + k);
+      const d = (p.x - f.pos.x) ** 2 + (p.z - f.pos.z) ** 2;
+      if (d < bd) {
+        bd = d;
+        best = hint + k;
+      }
+    }
+    const a = this.frame(best);
+    let i0 = best;
+    if ((p.x - a.pos.x) * a.tan.x + (p.z - a.pos.z) * a.tan.z < 0) i0 = best - 1;
+    const f0 = this.frame(i0),
+      f1 = this.frame(i0 + 1);
+    const sx = f1.pos.x - f0.pos.x,
+      sz = f1.pos.z - f0.pos.z;
+    const t = Math.min(
+      1,
+      Math.max(
+        0,
+        ((p.x - f0.pos.x) * sx + (p.z - f0.pos.z) * sz) / Math.max(1e-6, sx * sx + sz * sz),
+      ),
+    );
+    const frame = this.blend(i0, t);
+    const d = sub(p, frame.pos);
+    const n = this.frames.length;
+    const index = ((i0 % n) + n) % n;
+    return {
+      index,
+      s: (index + t) * this.spacing,
+      lateral: dot(d, frame.right),
+      height: dot(d, frame.up),
+      frame,
+    };
+  }
+
   /** World position for (arc length, lateral offset, height). */
   pointAt(s: number, lateral: number, height = 0): Vec3 {
     const f = this.frameAtS(s);

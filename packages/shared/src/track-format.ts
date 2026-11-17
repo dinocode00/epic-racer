@@ -73,6 +73,12 @@ export interface TrackDef {
    * catches you, holds you in the air a moment, then sets you down past its far end.
    */
   eagleBridges?: [number, number][];
+  /**
+   * Gaps every kart gets across (big drops onto solid ground, like the leap off Minas Tirith):
+   * a kart coming up short is carried on through the air to the landing, and never drops below
+   * the road it lands on.
+   */
+  sureGaps?: [number, number][];
   hazards?: HazardDef[];
   /** Ranges that are closed tubes: you can't fly out of them. */
   tubes?: [number, number][];
