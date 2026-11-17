@@ -16,6 +16,7 @@ import nitemareGlb from './models/nitemare.glb?inline';
 import podracerGlb from './models/podracer.glb?inline';
 import roseGlb from './models/rose.glb?inline';
 import pumpkinsGlb from './models/pumpkins.glb?inline';
+import tractorsGlb from './models/tractors.glb?inline';
 import { wraithCloak } from './nazgul.ts';
 
 /**
@@ -42,6 +43,7 @@ export async function preloadRigged(): Promise<void> {
     ['nazgul', nazgulGlb],
     ['cat', catGlb],
     ['pumpkins', pumpkinsGlb],
+    ['tractors', tractorsGlb],
     ['podracer', podracerGlb],
     ['corolla', corollaGlb],
     ['landcruiser', landcruiserGlb],

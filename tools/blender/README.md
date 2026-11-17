@@ -10,6 +10,7 @@ is rebuilt from scratch by one command and the script is the source of truth.
 | `cat.py` | `apps/game/src/render/models/cat.glb` (both barn cats) | `apps/game/src/render/rigged.ts`, `farm/critters.ts` |
 | `trees.py` | `apps/game/src/farm/treesAo.json` (shading in the crowns) | `apps/game/src/farm/treesAo.ts` |
 | `pumpkin.py` | `apps/game/src/render/models/pumpkins.glb` (pumpkin bodies and stem) | `apps/game/src/farm/plants.ts` |
+| `tractors.py` | `apps/game/src/render/models/tractors.glb` (a 1954 Allis-Chalmers WD45 and a 1953 Case SC) | `apps/game/src/farm/tractors.ts` |
 | `podracer.py` | `apps/game/src/render/models/podracer.glb` (the pod racer and its pilot) | `apps/game/src/render/blenderVehicles.ts` |
 | `corolla.py` | `apps/game/src/render/models/corolla.glb` ('95 Corolla) | `apps/game/src/render/blenderVehicles.ts` |
 | `landcruiser.py` | `apps/game/src/render/models/landcruiser.glb` ('89 Land Cruiser) | `apps/game/src/render/blenderVehicles.ts` |

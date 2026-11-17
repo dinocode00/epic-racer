@@ -90,3 +90,19 @@ describe.each(BLENDER_VEHICLES)('Blender vehicle $file', ({ file, nodes }) => {
       for (const p of m.primitives) expect(p.attributes.COLOR_0, m.name).toBeDefined();
   });
 });
+
+describe('Blender tractors (tools/blender/tractors.py)', () => {
+  const g = gltfJson('../src/render/models/tractors.glb') as ReturnType<typeof gltfJson> & {
+    nodes: { name: string }[];
+    meshes: { name: string; primitives: { attributes: Record<string, number> }[] }[];
+  };
+
+  it('is the two tractors the farm parks (farm/tractors.ts), and nothing else', () => {
+    expect(g.nodes.map((n) => n.name).sort()).toEqual(['sc', 'wd45']);
+  });
+
+  it('carries its baked shading as vertex colour on every part', () => {
+    for (const m of g.meshes)
+      for (const p of m.primitives) expect(p.attributes.COLOR_0, m.name).toBeDefined();
+  });
+});

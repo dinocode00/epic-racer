@@ -5,6 +5,7 @@ import { FarmScene } from './farm/farmScene.ts';
 import { FARM, FARM_SCALE, U, type XY, add, mid } from './farm/layout.ts';
 import { KartView } from './render/kartView.ts';
 import { preloadRigged } from './render/rigged.ts';
+import { TRACTOR_SPOTS } from './farm/tractorSpots.ts';
 import { View } from './render/view.ts';
 
 /**
@@ -135,6 +136,24 @@ const LANDMARKS: Landmark[] = [
     pitch: 0.22,
   },
   { id: 'well', name: 'Old well and sandbox', at: FARM.well, dist: 140, yaw: -2.0, pitch: 0.4 },
+  {
+    id: 'tractor-wd45',
+    name: 'Allis-Chalmers WD45 tractor',
+    at: TRACTOR_SPOTS.find((t) => t.id === 'wd45')!.c,
+    dist: 75,
+    yaw: -2.3,
+    pitch: 0.18,
+    lift: 9,
+  },
+  {
+    id: 'tractor-sc',
+    name: 'Case SC tractor and the wagon',
+    at: TRACTOR_SPOTS.find((t) => t.id === 'sc')!.c,
+    dist: 90,
+    yaw: 0.9,
+    pitch: 0.2,
+    lift: 9,
+  },
 ];
 
 let flight: {

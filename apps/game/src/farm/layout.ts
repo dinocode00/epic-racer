@@ -1,5 +1,6 @@
 import RAW from './farmLayout.json';
 import ROUNDS from './grandpaRoutes.json';
+import { underTractor } from './tractorSpots.ts';
 
 /**
  * The Drefahl Farm: the locked blueprint (docs/farm), exported by
@@ -104,6 +105,8 @@ FARM.stumps = ROUNDS.stumps as XY[];
   const cut = new Set(FARM.stumps.map(([x, y]) => `${x},${y}`));
   FARM.christmas_trees = FARM.christmas_trees.filter((t) => !cut.has(`${t.x},${t.y}`));
 }
+// The pumpkins where grandpa's Case tractor is parked in the patch (tractors.ts) aren't there.
+FARM.pumpkins = FARM.pumpkins.filter(([x, y]) => !underTractor(x, y));
 
 /** Centre of the property in map metres; the scene puts it at the world origin. */
 export const CENTRE: XY = [50, 100];

@@ -7,6 +7,8 @@ import { type FlowerKind, FlowerField, flowerRnd, pick } from './flowers.ts';
 import { applyBuildingAo } from './buildingsAo.ts';
 import { addGrime } from './grime.ts';
 import DRAFT from './racetrackDraft.json';
+import { barnSilhouettes, parkedTractors } from './tractors.ts';
+import { TRACTOR_SPOTS, tractorFootprint } from './tractorSpots.ts';
 import {
   BERM,
   CENTRE,
@@ -1411,11 +1413,15 @@ function barnInside(L: number, W: number, eave: number, ridge: number, st: numbe
   const fx = L / 2 - 0.25,
     fz = W / 2 - 0.25;
   // The opening, kept inside the floor with a margin (a hole reaching past the floor's edge
-  // breaks the floor's shape and pokes it out through the walls).
-  const x0 = Math.max(-fx + 0.4, Math.min(...down.map((q) => q[0])) - 0.6),
+  // breaks the floor's shape and pokes it out through the walls). The trapdoor covers where the
+  // road goes down through it; boards are missing beyond, on toward the south end, so the
+  // racers below see up to the tractors parked over it. Narrow enough across for the
+  // tractors' wheels to stand on the floor either side.
+  const xd = Math.max(-fx + 0.4, Math.min(...down.map((q) => q[0])) - 0.6),
+    x0 = -fx + 0.4,
     x1 = Math.min(fx - 0.4, Math.max(...down.map((q) => q[0])) + 0.6),
-    z0 = Math.max(-fz + 0.4, Math.min(...down.map((q) => q[1])) - 1.1),
-    z1 = Math.min(fz - 0.4, Math.max(...down.map((q) => q[1])) + 1.1);
+    z0 = Math.max(-fz + 0.4, Math.min(...down.map((q) => q[1])) - 0.95),
+    z1 = Math.min(fz - 0.4, Math.max(...down.map((q) => q[1])) + 0.95);
   const floor = new THREE.Shape([
     new THREE.Vector2(-fx, -fz),
     new THREE.Vector2(fx, -fz),
@@ -1452,28 +1458,30 @@ function barnInside(L: number, W: number, eave: number, ridge: number, st: numbe
   lower.receiveShadow = true;
   (lower.material as THREE.MeshBasicMaterial).map!.repeat.set(L / 2.5, W / 2.5);
   inside.add(lower);
-  // The trapdoor: hinged along the side of the opening, swung up past upright beside the road.
-  const leafLen = x1 - x0,
+  // The trapdoor: hinged across the north end of the opening and thrown right over, lying open
+  // on the floor under the road as it comes in.
+  const leafLen = x1 - xd,
     leafW = z1 - z0;
   const leaf = new THREE.Mesh(
     new THREE.BoxGeometry(leafLen, 0.06, leafW),
     new THREE.MeshBasicMaterial({ map: boards(78, 5), color: 0x9a8a76 }),
   );
-  leaf.position.set(0, 0.03, -leafW / 2);
+  leaf.position.set(-leafLen / 2, 0.03, 0);
   const hinge = new THREE.Group();
-  hinge.position.set((x0 + x1) / 2, st - 0.08, z1);
-  hinge.rotation.x = Math.PI * 0.58;
+  hinge.position.set(x1, st - 0.08 + 0.06, (z0 + z1) / 2);
+  hinge.rotation.z = Math.PI;
   hinge.add(leaf);
-  // Two black strap hinges.
-  for (const xx of [-leafLen / 3, leafLen / 3]) {
+  // Two black strap hinges, on the face now turned up.
+  for (const zz of [-leafW / 3, leafW / 3]) {
     const strap = new THREE.Mesh(
-      new THREE.BoxGeometry(0.07, 0.02, 0.5),
+      new THREE.BoxGeometry(0.5, 0.02, 0.07),
       new THREE.MeshStandardMaterial({ color: 0x151515, metalness: 0.6, roughness: 0.5 }),
     );
-    strap.position.set(xx, 0.07, -0.25);
+    strap.position.set(-0.25, -0.01, zz);
     hinge.add(strap);
   }
   inside.add(hinge);
+  inside.userData.hole = { x0, x1, z0, z1, floor: st - 0.08 };
   return inside;
 }
 
@@ -2399,7 +2407,8 @@ export function buildBuildings(): Buildings {
   const house = farmhouse();
   add(place(house, F.house.main.c, F.house.angle));
   const birds = house.userData.birds as THREE.Object3D[];
-  add(place(barn(), F.barn.c, F.barn.angle ?? 50));
+  const barnG = barn();
+  add(place(barnG, F.barn.c, F.barn.angle ?? 50));
   const rg = redGarage();
   add(place(rg, F.red_garage.c, F.red_garage.angle ?? 65));
   add(place(shed(), F.shed.c, F.shed.angle ?? 50));
@@ -2483,8 +2492,16 @@ export function buildBuildings(): Buildings {
     { c: F.corn_crib, w: 2.8, h: 2.8, angle: 0 },
     { c: F.well, w: 2.4, h: 2.4, angle: 0 },
     { c: F.windmill, w: 3.2, h: 3.2, angle: F.farmGridDeg },
+    ...TRACTOR_SPOTS.map(tractorFootprint),
   ];
   applyBuildingAo(group);
+  // Grandpa's old tractors (Blender-built, after the bake so its build order stands): parked
+  // out on the farm, and their silhouettes over the opening in the dark barn's floor.
+  group.add(parkedTractors());
+  const inside = barnG.getObjectByName('barn-inside');
+  const hole = inside?.userData.hole as
+    { x0: number; x1: number; z0: number; z1: number; floor: number } | undefined;
+  if (inside && hole) inside.add(barnSilhouettes(hole, hole.floor, [-3.5, -8.1]));
   return { group, update, solids };
 }
 

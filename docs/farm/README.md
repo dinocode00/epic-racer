@@ -22,6 +22,10 @@ arborvitae along the driveway, a spruce row along the northeast line, mowed gras
 a wild field of weeds, grass and wildflowers. The red garage has a rooster weather vane.
 Two old flat wooden hay wagons stand in the grass east of the shed, one with pumpkins, and a
 mature lilac (purple blossoms) grows from the grass on each side at the bottom of the barn ramp.
+Two old tractors: a 1953 Case SC (Flambeau Red) parked in the pumpkin patch beside the pumpkin
+wagon, and a 1954 Allis-Chalmers WD45 (Persian Orange) on the grass beside the road past the
+greenhouse, before it enters the Christmas trees. In the race, giant black silhouettes of both
+stand over the opening in the dark barn's loft floor, and the racers drive under them.
 
 ## The picture to capture
 
