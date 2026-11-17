@@ -41,6 +41,11 @@ export const VEHICLE_SPECIALS: Record<string, { icon: string; name: string; text
     name: "Grandpa's Shortcut",
     text: 'Floors it across the field and rams racers aside.',
   },
+  nitemare: {
+    icon: '🔥',
+    name: 'Flame Vent',
+    text: 'Speed burst; a fire jet scorches anyone behind.',
+  },
 };
 const SPECIALS: Record<string, string> = Object.fromEntries(
   Object.entries(VEHICLE_SPECIALS).map(([id, sp]) => [id, `<b>${sp.name}</b>: ${sp.text}`]),

@@ -12,6 +12,7 @@ import landcruiserGlb from './models/landcruiser.glb?inline';
 import mach5Glb from './models/mach5.glb?inline';
 import mysteryGlb from './models/mystery.glb?inline';
 import nazgulGlb from './models/nazgul.glb?inline';
+import nitemareGlb from './models/nitemare.glb?inline';
 import podracerGlb from './models/podracer.glb?inline';
 import pumpkinsGlb from './models/pumpkins.glb?inline';
 import { wraithCloak } from './nazgul.ts';
@@ -48,6 +49,7 @@ export async function preloadRigged(): Promise<void> {
     ['mystery', mysteryGlb],
     ['batmobile', batmobileGlb],
     ['chevy', chevyGlb],
+    ['nitemare', nitemareGlb],
   ] as const) {
     try {
       loaded.set(id, await new GLTFLoader().parseAsync(bytes(glb), ''));

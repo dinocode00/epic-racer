@@ -32,6 +32,7 @@ const SPECS: Record<string, Spec> = {
   delorean: { file: 'delorean', hover: false },
   mystery: { file: 'mystery', hover: false, camHeight: 2.2 },
   chevy: { file: 'chevy', hover: false, camHeight: 2.2 },
+  nitemare: { file: 'nitemare', hover: false },
   bat: {
     file: 'batmobile',
     hover: false,

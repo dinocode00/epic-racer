@@ -503,6 +503,8 @@ export function buildCodeVehicle(id: string, accent: string): VehicleModel {
       return mysteryMachine(c);
     case 'chevy': // Blender only; the nearest code-built truck stands in if it failed to load
       return landCruiser(c);
+    case 'nitemare': // Blender only; the nearest code-built coupe stands in if it failed to load
+      return corolla(c);
     default:
       return batmobile(c);
   }
