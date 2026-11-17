@@ -231,6 +231,34 @@ describe('items', () => {
     expect(b!.stunTime > 0 || b!.immuneTime > 0).toBe(true);
   });
 
+  it("Rose's Hot Wheel: the Spark Burst stops every racer close by and boosts her away", () => {
+    const race = setup(
+      ['rose', 'bat', 'pod', 'mach5', 'corolla'],
+      [
+        [60, 0],
+        [72, 2], // just ahead
+        [50, -3], // just behind
+        [64, 0], // right alongside, but shielded
+        [140, 0], // far up the road
+      ],
+    );
+    const [r, ahead, behind, shielded, far] = race.karts;
+    for (const k of race.karts) k.speed = 30;
+    shielded!.shieldTime = 5;
+    give(r!, 'special');
+    race.items.use(r!);
+    expect(r!.special?.kind).toBe('burst');
+    expect(ahead!.stunTime).toBeGreaterThan(1);
+    expect(ahead!.speed).toBeLessThan(10);
+    expect(behind!.stunTime).toBeGreaterThan(1);
+    expect(shielded!.stunTime).toBe(0);
+    expect(shielded!.shieldTime).toBe(0);
+    expect(far!.stunTime).toBe(0);
+    expect(r!.stunTime).toBe(0);
+    run(race, 60);
+    expect(r!.speed).toBeGreaterThan(far!.speed);
+  });
+
   it('the Great Eagle carries you well up the road, safe, and sets you down on it', () => {
     const race = new Race(MIDDLE_EARTH, [{ vehicle: VEHICLES[1]!, human: true }], 2);
     race.phase = 'racing';

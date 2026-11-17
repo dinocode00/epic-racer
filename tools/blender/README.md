@@ -19,6 +19,7 @@ is rebuilt from scratch by one command and the script is the source of truth.
 | `batmobile.py` | `apps/game/src/render/models/batmobile.glb` (the 1989 Batmobile) | `apps/game/src/render/blenderVehicles.ts` |
 | `chevy.py` | `apps/game/src/render/models/chevy.glb` (grandpa's 1988-93 Chevy C1500 pickup) | `apps/game/src/render/blenderVehicles.ts` |
 | `nitemare.py` | `apps/game/src/render/models/nitemare.glb` (Westley's Hot Wheel, a red race coupe) | `apps/game/src/render/blenderVehicles.ts` |
+| `rose.py` | `apps/game/src/render/models/rose.glb` (Rose's Hot Wheel, a purple sports coupe) | `apps/game/src/render/blenderVehicles.ts` |
 | `buildings.py --what vehicle-<id> --normalize` | `apps/game/src/render/models/ao/<id>.jpg` + `.json` (each code-built vehicle; for the Blender-built ones, their stand-ins) | `apps/game/src/render/vehicleAo.ts` |
 | `grandpa.py` | `apps/game/src/farm/grandpa/skin.json` (skin weights) | `apps/game/src/farm/grandpa/skin.ts` |
 | `buildings.py` | `apps/game/src/farm/buildingsAo.jpg` + `.json` (baked soft shadows) | `apps/game/src/farm/buildingsAo.ts` |

@@ -26,6 +26,7 @@ export const VEHICLES: VehicleDef[] = [
     weight: 2.5,
     hover: false,
   },
+  { id: 'rose', name: "Rose's Hot Wheel", speed: 4.5, handling: 4, weight: 2, hover: false },
 ];
 
 export const vehicleById = (id: string): VehicleDef =>

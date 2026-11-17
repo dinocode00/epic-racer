@@ -19,7 +19,7 @@ import {
 
 export type ItemKind =
   'boost' | 'boost3' | 'shot' | 'homing' | 'trap' | 'shield' | 'whip' | 'special' | 'eagle';
-export type SpecialKind = 'morgul' | 'flame' | 'missile' | 'jacks';
+export type SpecialKind = 'morgul' | 'flame' | 'missile' | 'jacks' | 'burst';
 
 /** Each vehicle's special ability. */
 export const SPECIAL_OF: Record<string, SpecialKind> = {
@@ -33,6 +33,7 @@ export const SPECIAL_OF: Record<string, SpecialKind> = {
   mystery: 'missile',
   chevy: 'missile',
   nitemare: 'flame',
+  rose: 'burst',
 };
 /** Top-speed multiplier while a special runs (the jacks ride on a normal boost). */
 const SPECIAL_SPEED: Record<SpecialKind, number> = {
@@ -40,6 +41,7 @@ const SPECIAL_SPEED: Record<SpecialKind, number> = {
   flame: 1.42,
   missile: 1.35,
   jacks: 1.3,
+  burst: 1.4,
 };
 
 export interface KartParams {

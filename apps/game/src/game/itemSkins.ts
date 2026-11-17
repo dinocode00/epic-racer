@@ -35,6 +35,7 @@ export const SPECIAL_NAMES: Record<SpecialKind, ItemSkin> = {
   flame: { icon: '🔥', name: 'Flame Vent' },
   missile: { icon: '🚀', name: 'Batmissile' },
   jacks: { icon: '🅰️', name: 'Auto-Jacks + Robot' },
+  burst: { icon: '✨', name: 'Spark Burst' },
 };
 
 /** The Drefahl Farm: the shared items, with Angel Wings carrying you ahead. */

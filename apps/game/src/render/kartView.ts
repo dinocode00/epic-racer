@@ -1,5 +1,12 @@
 import * as THREE from 'three';
-import { CARRY_HOLD, CARRY_LIFT, type KartState, RESCUE_TIME, driftLevel } from '@epic/sim';
+import {
+  BURST_RADIUS,
+  CARRY_HOLD,
+  CARRY_LIFT,
+  type KartState,
+  RESCUE_TIME,
+  driftLevel,
+} from '@epic/sim';
 import { angelWings } from './angelWings.ts';
 import { greatEagle } from './eagle.ts';
 import { DRIFT_COLORS, type Effects, flame } from './effects.ts';
@@ -19,6 +26,14 @@ const ZERO = new THREE.Vector3();
 const BLADE_SPARK = new THREE.Color(0.6, 0.85, 1.6);
 const FLAME_RISE = new THREE.Vector3(0, 2, 0);
 const FLAME_SPARK = new THREE.Color(1.6, 0.55, 0.1);
+/** Spark Burst: purples, magentas and a few white-hot sparks. */
+const BURST_COLORS = [
+  new THREE.Color(0.55, 0.05, 1.1),
+  new THREE.Color(0.35, 0.03, 0.95),
+  new THREE.Color(0.8, 0.06, 0.85),
+  new THREE.Color(0.9, 0.55, 1.2),
+];
+const tV = new THREE.Vector3();
 const DRIFT_SMOKE = new THREE.Color(0.85, 0.85, 0.85);
 const WRAITH_SMOKE = new THREE.Color(0.06, 0.06, 0.09);
 const BUMP_SPARK = new THREE.Color(1.6, 1.2, 0.4);
@@ -99,7 +114,10 @@ export class KartView {
     jet: THREE.Mesh;
     held: THREE.Mesh;
     jacks: THREE.Group;
+    burst: THREE.Group;
   } | null = null;
+  /** Seconds since this kart's Spark Burst went off (-1: not bursting). */
+  private burstAge = -1;
 
   private buildFx() {
     const r = Math.max(1.6, this.bounds.radius * 0.95);
@@ -170,8 +188,34 @@ export class KartView {
       j.position.set(x, -0.3, z);
       jacks.add(j);
     }
-    this.root.add(shield, blade, jet, held, jacks);
-    return { shield, blade, jet, held, jacks };
+    // Spark Burst: a purple shockwave ring racing out to the blast's reach, and a flash.
+    const burst = new THREE.Group();
+    const glow = (color: number, opacity: number) =>
+      new THREE.MeshBasicMaterial({
+        color,
+        transparent: true,
+        opacity,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      });
+    const wave = new THREE.Mesh(
+      new THREE.RingGeometry(0.86, 1, 64).rotateX(-Math.PI / 2),
+      glow(0xb04dff, 0.9),
+    );
+    const inner = new THREE.Mesh(
+      new THREE.RingGeometry(0.55, 0.62, 64).rotateX(-Math.PI / 2),
+      glow(0xff6af0, 0.7),
+    );
+    const flash = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 12), glow(0x8a2be2, 0.35));
+    wave.name = 'wave';
+    inner.name = 'inner';
+    flash.name = 'flash';
+    burst.add(wave, inner, flash);
+    burst.position.y = 0.6;
+    burst.visible = false;
+    this.root.add(shield, blade, jet, held, jacks, burst);
+    return { shield, blade, jet, held, jacks, burst };
   }
 
   private itemVisuals(k: KartState, dt: number, fx: Effects): void {
@@ -207,6 +251,7 @@ export class KartView {
       }
     }
     P.jacks.visible = sp?.kind === 'jacks' && sp.time > 1.6;
+    this.sparkBurst(sp?.kind === 'burst', P.burst, dt, fx);
     // Batmissile: the car narrows into a long rocket with a roaring afterburner.
     const body = this.model.userData.body;
     const missile = sp?.kind === 'missile';
@@ -221,6 +266,57 @@ export class KartView {
       gold.group.position.set(0, this.lift === 'angel' ? 0 : 3.3, 0);
       gold.flap(this.t * 1.4);
     } else if (this.gold) this.gold.group.visible = false;
+  }
+
+  /** Rose's Spark Burst: a ring of purple sparks blasting out, then a sparkling trail. */
+  private sparkBurst(on: boolean, burst: THREE.Group, dt: number, fx: Effects): void {
+    if (!on) {
+      this.burstAge = -1;
+      burst.visible = false;
+      return;
+    }
+    const centre = tV.set(0, 0.8, 0);
+    this.root.localToWorld(centre);
+    if (this.burstAge < 0) {
+      this.burstAge = 0;
+      // The explosion: sparks flung out all round, low and fast, a few high.
+      for (let i = 0; i < 170; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const v = 30 + Math.random() * 45;
+        const up = i % 5 === 0 ? 8 + Math.random() * 14 : Math.random() * 5;
+        tmp.set(Math.cos(a) * v, up, Math.sin(a) * v);
+        const c = BURST_COLORS[i % BURST_COLORS.length]!;
+        fx.sparks.emit(centre, tmp, c, 0.5, 0.3 + Math.random() * 0.35, 0.7 + Math.random() * 0.5);
+      }
+      for (let i = 0; i < 10; i++) {
+        tmp.set((Math.random() - 0.5) * 8, Math.random() * 4, (Math.random() - 0.5) * 8);
+        fx.sparks.emit(centre, tmp, BURST_COLORS[1]!, 0.35, 1, 0.3, 2);
+      }
+    }
+    this.burstAge += dt;
+    const t = this.burstAge;
+    // The shockwave reaches the blast's full radius in half a second, then fades.
+    const grow = 1 - (1 - Math.min(1, t / 0.5)) ** 3;
+    const fade = Math.max(0, 1 - Math.max(0, t - 0.35) / 0.45);
+    burst.visible = fade > 0;
+    for (const m of burst.children as THREE.Mesh[]) {
+      const mat = m.material as THREE.MeshBasicMaterial;
+      if (m.name === 'flash') {
+        m.scale.setScalar(1.5 + 5 * grow);
+        mat.opacity = 0.35 * Math.max(0, 1 - t / 0.3);
+      } else {
+        m.scale.setScalar(Math.max(0.01, BURST_RADIUS * grow));
+        mat.opacity = (m.name === 'wave' ? 0.9 : 0.7) * fade;
+      }
+    }
+    // Then purple sparkles swirl round the car while the boost lasts.
+    for (let i = 0; i < 3; i++) {
+      const a = Math.random() * Math.PI * 2;
+      tmp.set(Math.cos(a) * 1.6, 0.3 + Math.random() * 1.2, Math.sin(a) * 2.4);
+      this.root.localToWorld(tmp);
+      tA.set(Math.cos(a) * 2, 1.5, Math.sin(a) * 2);
+      fx.sparks.emit(tmp, tA, BURST_COLORS[i % 3]!, 0.9, 0.35, 0.45);
+    }
   }
 
   private goldEagle() {

@@ -66,6 +66,9 @@ const IMMUNE_AFTER_HIT = 2;
 const MAX_TRAPS = 24;
 /** No whip in the closing stretch of the last lap. */
 const WHIP_CUTOFF = 0.92;
+/** Rose's Spark Burst: how far (m) the purple blast reaches, and how long it stops racers. */
+export const BURST_RADIUS = 30;
+const BURST_STUN = 1.3;
 /** A last-place eagle sets you down this far (m) behind the racer ahead. */
 const CHASE_BEHIND = 15;
 
@@ -429,6 +432,22 @@ export class ItemSystem {
         k.special = { kind, time: 3, side: 0 };
         k.drift = { active: false, dir: 0, charge: 0 };
         break;
+      case 'burst': {
+        // A blast of purple sparks: everyone close by is stopped in their tracks (a shield
+        // still blocks it), and you shoot off on a boost.
+        k.special = { kind, time: 2.5, side: 0 };
+        k.boostTime = Math.max(k.boostTime, 2.5);
+        for (const B of this.karts) {
+          if (B === k || B.finished) continue;
+          const rel = sub(B.pos, k.pos);
+          if (Math.hypot(rel.x, rel.y, rel.z) > BURST_RADIUS) continue;
+          if (this.hit(B, k.id, 1)) {
+            B.speed *= 0.2;
+            B.stunTime = B.stunTotal = BURST_STUN;
+          }
+        }
+        break;
+      }
       case 'jacks': {
         k.special = { kind, time: 2.2, side: 0 };
         if (!k.air) launch(k, 15);
@@ -644,7 +663,9 @@ export class ItemSystem {
               ? near((a, s) => a < -2 && a > -16 && Math.abs(s) < 3)
               : kind === 'missile'
                 ? near((a, s) => a > 0 && a < 30 && Math.abs(s) < 4)
-                : near((a) => a > 5 && a < 80);
+                : kind === 'burst'
+                  ? near((a, s) => Math.hypot(a, s) < BURST_RADIUS * 0.7)
+                  : near((a) => a > 5 && a < 80);
         if (go || t > 8) fire();
         break;
       }
