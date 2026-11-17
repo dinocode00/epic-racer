@@ -604,9 +604,9 @@ function renderLobby(): void {
         : m.key === 'keyboard2'
           ? 'A / D ride · Space ready'
           : '← → ride · Enter ready';
-    return `<div class="slot on ${m.connected ? '' : 'off'}" style="--c:${m.color}">
+    return `<div class="slot on ${m.connected ? '' : 'off'} ${m.ready ? 'is-ready' : ''}" style="--c:${m.color}">
       <div class="who"><span>${m.name}</span><span class="tag">${tag}</span></div>
-      <div class="veh">${VEHICLE_ICONS[v.id] ?? ''}<div class="vn">${m.ready ? '' : '◀ '}${v.name}${m.ready ? '' : ' ▶'}<small>${VEHICLES.indexOf(v) + 1} / ${VEHICLES.length}</small></div></div>
+      <div class="veh">${VEHICLE_ICONS[v.id] ?? ''}<div class="vn">${m.ready ? '' : '◀ '}${v.name}${m.ready ? '' : ' ▶'}<small>${VEHICLES.indexOf(v) + 1} / ${VEHICLES.length}</small></div>${m.ready ? '<div class="ready-banner">✔ READY</div>' : ''}</div>
       ${vehicleStatsHtml(v.id)}
       <div class="state ${m.ready ? 'ready' : ''}">${m.ready ? 'READY!' : m.kind === 'phone' ? 'choosing on phone…' : pick}</div>
     </div>`;

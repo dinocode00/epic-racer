@@ -450,6 +450,42 @@ body {
 .lobby .slot .state.ready {
   background: #3fbf5f;
 }
+/* Ready: a big banner stamped across the ride, and the whole card lit up green. */
+.lobby .slot.is-ready {
+  border-color: #3fbf5f;
+  box-shadow:
+    0 0 0 0.3vh rgba(0, 0, 0, 0.3),
+    0 0 3vh rgba(63, 191, 95, 0.75);
+}
+.lobby .slot .veh {
+  position: relative;
+}
+.lobby .slot .ready-banner {
+  position: absolute;
+  left: -2.4vh;
+  right: -2.4vh;
+  top: 50%;
+  transform: translateY(-50%) rotate(-6deg);
+  padding: 1vh 0;
+  text-align: center;
+  font-size: 4.6vh;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  color: #fff;
+  background: linear-gradient(90deg, #2a9a48, #46d26a 50%, #2a9a48);
+  border-top: 0.4vh solid #c8ffd6;
+  border-bottom: 0.4vh solid #c8ffd6;
+  text-shadow: 0 0.4vh 0 rgba(0, 0, 0, 0.35);
+  box-shadow: 0 1vh 2.4vh rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  animation: readystamp 0.35s cubic-bezier(0.2, 1.6, 0.4, 1);
+}
+@keyframes readystamp {
+  from {
+    transform: translateY(-50%) rotate(-6deg) scale(1.6);
+    opacity: 0;
+  }
+}
 .lobby .slot.off {
   opacity: 0.5;
 }
@@ -818,7 +854,9 @@ body {
   left: 3vw;
   font-size: 4.6vh;
   font-style: italic;
-  text-shadow: 0 0.5vh 0 var(--shadow), 0 0 3vh #0009;
+  text-shadow:
+    0 0.5vh 0 var(--shadow),
+    0 0 3vh #0009;
   opacity: 0;
   transform: translateY(1vh);
 }
@@ -826,9 +864,19 @@ body {
   animation: tourcap 6s ease forwards;
 }
 @keyframes tourcap {
-  0% { opacity: 0; transform: translateY(1vh); }
-  10%, 75% { opacity: 1; transform: none; }
-  100% { opacity: 0; transform: none; }
+  0% {
+    opacity: 0;
+    transform: translateY(1vh);
+  }
+  10%,
+  75% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+    transform: none;
+  }
 }
 .tour-hud .tour-foot {
   position: absolute;
