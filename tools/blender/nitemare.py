@@ -1,4 +1,4 @@
-"""The Nitemare GT: a candy-red widebody race coupe, modelled in Blender after a die-cast toy.
+"""Westley's Hot Wheel: a candy-red widebody race coupe, modelled in Blender after a die-cast toy.
 
     python tools/blender/nitemare.py -- apps/game/src/render/models/nitemare.glb [--preview DIR]
 
