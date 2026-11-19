@@ -31,6 +31,11 @@ builds only when something changed, starts the game and opens it in your browser
 run takes a few minutes; after that it starts in seconds. Keep its window open while you
 play (it shows the QR code for phones); close it to stop the game.
 
+**New version while it's running?** In the game on that computer, open **⚙ Settings → Game
+updates** and press **Check now**, then **Install**: it downloads the update, rebuilds and
+reloads the game (restarting the server by itself if it needs to). No need to close anything.
+This works in a cloned folder only, and only from the computer running the game.
+
 Prefer a terminal? `pnpm install` then `pnpm start` does the same with Node 22+ installed.
 
 1. On the computer, open `http://localhost:4000` and go fullscreen (F11). Mirror or cast

@@ -3,6 +3,7 @@
  *  - serves the game page (/) and the phone controller (/c/)
  *  - relays phone input to the game host over a WebSocket
  *  - prints the join URL and a QR code
+ *  - updates the game in place (⚙ Settings → Check for updates, on the laptop only)
  *
  * Phones join over HTTPS (with a certificate this server makes for itself), because iPhones
  * only let a page read the tilt sensors on a secure connection. The laptop's game page stays
@@ -14,7 +15,7 @@ import { createServer as createHttpsServer } from 'node:https';
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { networkInterfaces } from 'node:os';
 import { dirname, extname, join, normalize, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import QRCode from 'qrcode';
 import { generate as generateCert } from 'selfsigned';
 import { WebSocketServer, type WebSocket, type RawData } from 'ws';
@@ -155,8 +156,97 @@ async function info(): Promise<ServerInfo> {
   return { room: ROOM, controllerUrl, qrSvg, lanAddresses: lan };
 }
 
+// ---------- updates ----------
+// The game's ⚙ Settings → "Check for updates" asks here: GET /api/update checks GitHub for a
+// newer version; POST /api/update downloads it, installs and rebuilds (tools/update.mjs), and
+// GET /api/update/status follows along. Only the laptop itself may do this (never a phone on
+// the Wi-Fi). If the update changed this server, it stops afterwards and the launcher starts it
+// again on the new version.
+interface UpdateJob {
+  state: 'idle' | 'running' | 'done' | 'failed';
+  step: string;
+  error?: string;
+  restart?: boolean;
+  /** Restarting by itself: only when the launcher started us (it brings us back). */
+  autoRestart?: boolean;
+  changed?: boolean;
+  commit?: string;
+}
+let job: UpdateJob = { state: 'idle', step: '' };
+const updater = () =>
+  import(pathToFileURL(join(ROOT, 'tools/update.mjs')).href) as Promise<{
+    checkForUpdates(): Promise<unknown>;
+    applyUpdate(step: (s: string) => void): Promise<{
+      ok: boolean;
+      error?: string;
+      restart?: boolean;
+      changed?: boolean;
+      commit?: string;
+    }>;
+    RESTART_FLAG: string;
+  }>;
+const fromThisComputer = (req: IncomingMessage) =>
+  ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress ?? '');
+const json = (res: ServerResponse, code: number, body: unknown) =>
+  void res
+    .writeHead(code, { 'content-type': 'application/json', 'cache-control': 'no-store' })
+    .end(JSON.stringify(body));
+
+async function handleUpdate(
+  req: IncomingMessage,
+  res: ServerResponse,
+  path: string,
+): Promise<void> {
+  if (!fromThisComputer(req))
+    return json(res, 403, { error: 'Only on the laptop running the game.' });
+  if (path === '/api/update/status') return json(res, 200, job);
+  if (req.method === 'GET') {
+    if (job.state === 'running') return json(res, 200, { git: true, busy: true });
+    try {
+      return json(res, 200, await (await updater()).checkForUpdates());
+    } catch (e) {
+      return json(res, 200, { git: false, error: (e as Error).message });
+    }
+  }
+  if (req.method !== 'POST') return json(res, 405, {});
+  if (job.state === 'running') return json(res, 200, job);
+  job = { state: 'running', step: 'Starting…' };
+  json(res, 200, job);
+  try {
+    const u = await updater();
+    const r = await u.applyUpdate((step) => {
+      job.step = step;
+      console.log(`  [update] ${step}`);
+    });
+    if (!r.ok) {
+      job = { state: 'failed', step: '', error: r.error };
+      console.log(`  [update] failed: ${r.error}`);
+      return;
+    }
+    const autoRestart = !!r.restart && process.env.EPIC_LAUNCHER === '1';
+    job = {
+      state: 'done',
+      step: '',
+      restart: r.restart,
+      autoRestart,
+      changed: r.changed,
+      commit: r.commit,
+    };
+    console.log(`  [update] done${r.commit ? `: ${r.commit}` : ''}`);
+    if (autoRestart) {
+      // Give the game a moment to hear it's done, then hand over to the new version.
+      await writeFile(u.RESTART_FLAG, String(Date.now()));
+      setTimeout(() => process.exit(0), 1500);
+    }
+  } catch (e) {
+    job = { state: 'failed', step: '', error: (e as Error).message };
+  }
+}
+
 async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const url = new URL(req.url ?? '/', 'http://x');
+  if (url.pathname === '/api/update' || url.pathname === '/api/update/status')
+    return handleUpdate(req, res, url.pathname);
   if (url.pathname === '/api/info') {
     res.writeHead(200, { 'content-type': 'application/json' });
     return void res.end(JSON.stringify(await info()));

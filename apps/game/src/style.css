@@ -1312,3 +1312,17 @@ body {
   font-weight: 800;
   font-size: 2.4vh;
 }
+
+/* ⚙ Settings → Game updates (on the laptop only). */
+.set-row.set-update .set-val {
+  padding-right: 0.6vh;
+}
+.set-row.set-update.busy .set-val {
+  opacity: 0.85;
+  animation: set-update-pulse 1.2s ease-in-out infinite;
+}
+@keyframes set-update-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}

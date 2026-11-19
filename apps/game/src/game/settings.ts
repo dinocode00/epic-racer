@@ -38,10 +38,10 @@ export function saveSettings(s: RaceSettings): void {
 }
 
 const LEVEL_NOTES = [
-  'The AI eases off: you can catch them.',
-  'A fair race.',
-  'The AI drives nearly flat out.',
-  'The AI drives flat out and fights back when it falls behind.',
+  'Gentle: the AI takes it easy and makes plenty of mistakes.',
+  'A fair race: the AI is quick but slips up now and then.',
+  'The AI pushes hard and rarely slips.',
+  'The AI races close to flat out and fights back when it falls behind.',
 ];
 
 /** Tracks a tournament can use (the gray-box test track only if it's the one picked). */

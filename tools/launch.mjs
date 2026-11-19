@@ -3,59 +3,29 @@
 // starts the server and opens the game in the browser. Uses only Node's built-ins, because
 // it runs before the project's own dependencies are installed.
 import { spawn, spawnSync } from 'node:child_process';
-import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { existsSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import {
+  RESTART_FLAG,
+  ROOT,
+  WIN,
+  ensurePnpmShim,
+  env,
+  lockHash as currentLockHash,
+  newestSource,
+  pnpmCommand,
+  readState,
+  writeState,
+} from './update.mjs';
 
-const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const PORT = Number(process.env.PORT ?? 4000);
 const URL = `http://localhost:${PORT}/`;
-const WIN = process.platform === 'win32';
-const STATE_FILE = join(ROOT, '.tools', 'launch-state.json');
 
 const say = (msg) => console.log(`  ${msg}`);
 const fail = (msg) => {
   console.error(`\n  ✖ ${msg}\n`);
   process.exit(1);
 };
-
-function readState() {
-  try {
-    return JSON.parse(readFileSync(STATE_FILE, 'utf8'));
-  } catch {
-    return {};
-  }
-}
-function writeState(s) {
-  mkdirSync(dirname(STATE_FILE), { recursive: true });
-  writeFileSync(STATE_FILE, JSON.stringify(s, null, 2));
-}
-
-/** pnpm via the corepack that ships with this Node (no global installs needed). */
-function pnpmCommand() {
-  const local = join(dirname(process.execPath), WIN ? 'corepack.cmd' : 'corepack');
-  return existsSync(local) ? local : 'corepack';
-}
-const env = { ...process.env, COREPACK_ENABLE_DOWNLOAD_PROMPT: '0', COREPACK_ENABLE_STRICT: '0' };
-// Make sure child processes find this same Node first (matters for the portable copy).
-// Package scripts call plain `pnpm`, so put a corepack shim for it on PATH (in .tools/, no global install).
-const SHIM_DIR = join(ROOT, '.tools', 'bin');
-env.PATH =
-  SHIM_DIR +
-  (WIN ? ';' : ':') +
-  dirname(process.execPath) +
-  (WIN ? ';' : ':') +
-  (env.PATH ?? env.Path ?? '');
-function ensurePnpmShim() {
-  mkdirSync(SHIM_DIR, { recursive: true });
-  spawnSync(pnpmCommand(), ['enable', '--install-directory', SHIM_DIR, 'pnpm'], {
-    cwd: ROOT,
-    env,
-    stdio: 'ignore',
-    shell: WIN,
-  });
-}
 
 function pnpm(args, what) {
   say(what);
@@ -67,26 +37,6 @@ function pnpm(args, what) {
   });
   return r.status === 0;
 }
-
-/** Newest modification time of the source that goes into the build. */
-function newestSource() {
-  let newest = 0;
-  const walk = (dir) => {
-    if (!existsSync(dir)) return;
-    for (const name of readdirSync(dir)) {
-      if (name === 'node_modules' || name === 'dist' || name.startsWith('.')) continue;
-      const p = join(dir, name);
-      const st = statSync(p);
-      if (st.isDirectory()) walk(p);
-      else newest = Math.max(newest, st.mtimeMs);
-    }
-  };
-  for (const d of ['apps', 'packages']) walk(join(ROOT, d));
-  return newest;
-}
-
-const hashFile = (p) =>
-  existsSync(p) ? createHash('sha256').update(readFileSync(p)).digest('hex') : '';
 
 async function running() {
   try {
@@ -136,7 +86,7 @@ ensurePnpmShim();
 
 // 2. Install dependencies when they're missing or the lockfile changed.
 const state = readState();
-const lockHash = hashFile(join(ROOT, 'pnpm-lock.yaml'));
+const lockHash = currentLockHash();
 if (!existsSync(join(ROOT, 'node_modules')) || state.lockHash !== lockHash) {
   if (
     !pnpm(
@@ -161,15 +111,29 @@ if (!built || state.builtStamp !== stamp) {
   writeState(state);
 }
 
-// 4. Start the server, open the browser once it answers, keep running until closed.
+// 4. Start the server, open the browser once it answers, keep running until closed. When the
+// game installs an update that changes the server itself (⚙ Settings → Check for updates), the
+// server leaves RESTART_FLAG, stops, and comes straight back up here, running the new version.
+let server;
+function startServer() {
+  server = spawn(pnpmCommand(), ['pnpm', '--filter', '@epic/server', 'start'], {
+    cwd: ROOT,
+    env,
+    stdio: 'inherit',
+    shell: WIN,
+  });
+  server.on('exit', (code) => {
+    if (existsSync(RESTART_FLAG)) {
+      rmSync(RESTART_FLAG, { force: true });
+      say('Restarting with the update…\n');
+      startServer();
+    } else process.exit(code ?? 0);
+  });
+}
+rmSync(RESTART_FLAG, { force: true });
+env.EPIC_LAUNCHER = '1'; // tells the server it will be restarted after an update
 say('Starting…\n');
-const server = spawn(pnpmCommand(), ['pnpm', '--filter', '@epic/server', 'start'], {
-  cwd: ROOT,
-  env,
-  stdio: 'inherit',
-  shell: WIN,
-});
-server.on('exit', (code) => process.exit(code ?? 0));
+startServer();
 for (let i = 0; i < 100; i++) {
   await new Promise((r) => setTimeout(r, 300));
   if (await running()) {
@@ -177,7 +141,8 @@ for (let i = 0; i < 100; i++) {
     console.log(
       '  The game is open in your browser (press F11, or Ctrl+Cmd+F on a Mac, for fullscreen).',
     );
-    console.log('  Keep this window open while you play. Close it to stop the game.\n');
+    console.log('  Keep this window open while you play. Close it to stop the game.');
+    console.log('  New versions: ⚙ Settings → Check for updates (no need to close this).\n');
     break;
   }
 }

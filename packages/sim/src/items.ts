@@ -1,4 +1,5 @@
 import type { PadState } from '@epic/shared';
+import { AI_THINK, type AiStyle } from './ai.ts';
 import { sDelta } from './hazards.ts';
 import { EAGLE_CARRY, type ItemKind, type KartState, SPECIAL_OF, launch, spinOut } from './kart.ts';
 import type { Track } from './track.ts';
@@ -157,6 +158,9 @@ export class ItemSystem {
     private karts: KartState[],
     private isAi: boolean[],
     private laps: number,
+    /** Each AI's style and the difficulty: how quick and how cunning it is with its items. */
+    private aiStyles: (AiStyle | null)[] = [],
+    private aiLevel = 1,
   ) {
     for (const s of track.def.itemRows ?? []) {
       const w = track.frameAtS(s).width;
@@ -618,7 +622,13 @@ export class ItemSystem {
     if (k.rollTime > 0 || k.stunTime > 0) return;
     this.aiTimer[k.id] = (this.aiTimer[k.id] ?? 0) + dt;
     const t = this.aiTimer[k.id]!;
-    if (t < 0.6) return; // a moment's thought
+    const lv = Math.max(0, Math.min(3, Math.round(this.aiLevel)));
+    const temper = this.aiStyles[k.id]?.items ?? 'quick';
+    // A moment's thought: longer on the easier levels, shorter for the trigger-happy.
+    const think = AI_THINK[lv]! * (temper === 'aggressive' ? 0.6 : temper === 'patient' ? 1.4 : 1);
+    if (t < think) return;
+    const wait = (x: number) =>
+      think + x * (temper === 'patient' ? 1.8 : temper === 'aggressive' ? 0.5 : 1);
     const right = cross(k.fwd, k.up);
     const near = (pred: (along: number, side: number) => boolean) =>
       this.karts.some((q) => {
@@ -630,29 +640,43 @@ export class ItemSystem {
       this.aiTimer[k.id] = 0;
       this.use(k, back);
     };
+    // Patient drivers save a boost for a straight (no sharp bend coming up).
+    const straight = () => {
+      const far = this.track.frameAtS(k.s + 40).tan;
+      return dot(far, k.fwd) > 0.95;
+    };
+    // How wide a shot it takes: the aggressive fire at anything near their line.
+    const cone = temper === 'aggressive' ? 3 : temper === 'patient' ? 1.1 : 1.6;
     switch (k.item) {
       case 'boost':
       case 'boost3':
       case 'eagle':
       case 'whip':
-        if (t > 1.2) fire();
+        if (temper === 'patient' ? (t > wait(0.6) && straight()) || t > wait(6) : t > wait(0.6))
+          fire();
         break;
       case 'shield':
-        if (k.threat || t > 6) fire();
+        // The defensive keep it up their sleeve for when something's coming.
+        if (k.threat || t > wait(temper === 'defensive' ? 30 : 5)) fire();
         break;
       case 'shot':
         k.trailing = true;
-        if (near((a, s) => a > 4 && a < 45 && Math.abs(s) < 1.6)) fire();
-        else if (near((a, s) => a < -3 && a > -25 && Math.abs(s) < 1.6)) fire(true);
-        else if (t > 12) fire();
+        if (near((a, s) => a > 4 && a < 45 && Math.abs(s) < cone)) fire();
+        else if (near((a, s) => a < -3 && a > -25 && Math.abs(s) < cone)) fire(true);
+        else if (t > wait(temper === 'defensive' ? 20 : 11)) fire();
         break;
       case 'homing':
         k.trailing = true;
-        if (t > 2.5) fire();
+        if (temper === 'defensive' ? near((a) => a < -3 && a > -20) || t > wait(12) : t > wait(1.5))
+          fire();
         break;
       case 'trap':
         k.trailing = true;
-        if (near((a) => a < -3 && a > -30) || t > 10) fire(true);
+        if (
+          near((a) => a < -3 && a > -(temper === 'aggressive' ? 40 : 25)) ||
+          t > wait(temper === 'defensive' ? 25 : 9)
+        )
+          fire(true);
         break;
       case 'special': {
         const kind = SPECIAL_OF[k.vehicle.id];
@@ -666,7 +690,7 @@ export class ItemSystem {
                 : kind === 'burst'
                   ? near((a, s) => Math.hypot(a, s) < BURST_RADIUS * 0.7)
                   : near((a) => a > 5 && a < 80);
-        if (go || t > 8) fire();
+        if (go || t > wait(7)) fire();
         break;
       }
     }

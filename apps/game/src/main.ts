@@ -32,6 +32,7 @@ import {
   loadSettings,
   saveSettings,
 } from './game/settings.ts';
+import { GameUpdates } from './game/updates.ts';
 import { TRACKS, trackById } from './game/tracks.ts';
 import { itemSkin } from './game/itemSkins.ts';
 import { AutoQuality, FpsMeter, LEVELS } from './game/quality.ts';
@@ -290,18 +291,26 @@ settingsEl.addEventListener('click', (e) => {
   if (e.target === settingsEl) toggleSettings(false);
 });
 let settingsSel = 0;
+/** The last row of the menu is "Check for updates" (on the laptop running the game only). */
+const updateRow = () => (updates.enabled ? SETTING_ROWS.length : -1);
+const settingsCount = () => SETTING_ROWS.length + (updates.enabled ? 1 : 0);
 function renderSettings(): void {
   const h = humansNow();
+  const u = updates.view();
+  const updRow = updates.enabled
+    ? `<div class="set-row set-update ${settingsSel === updateRow() ? 'sel' : ''} ${u.busy ? 'busy' : ''}" data-i="${updateRow()}" data-update="1"><span class="set-label">Game updates</span><span class="set-val"><span>${u.action}</span></span><div class="set-note">${u.note}</div></div>`
+    : '';
   settingsEl.innerHTML = `<div class="pause-menu settings-menu"><h2>RACE SETTINGS</h2>${SETTING_ROWS.map(
     (r, i) =>
       `<div class="set-row ${i === settingsSel ? 'sel' : ''}" data-i="${i}"><span class="set-label">${r.label}</span><span class="set-val"><b data-d="-1">◀</b><span>${r.value(settings, h)}</span><b data-d="1">▶</b></span><div class="set-note">${r.note(settings, h)}</div></div>`,
   ).join(
     '',
-  )}<div class="set-done" id="set-done">DONE</div><div class="pause-hint">↑ ↓ choose · ← → change · Enter / A / Esc / B done · saved for next time</div></div>`;
+  )}${updRow}<div class="set-done" id="set-done">DONE</div><div class="pause-hint">↑ ↓ choose · ← → change · Esc / B done · saved for next time</div></div>`;
   document.getElementById('set-done')!.onclick = () => toggleSettings(false);
   settingsEl.querySelectorAll<HTMLElement>('.set-row').forEach((row) => {
     row.onclick = () => {
       settingsSel = Number(row.dataset.i);
+      if (row.dataset.update) updates.press();
       renderSettings();
     };
     row.querySelectorAll<HTMLElement>('b[data-d]').forEach((b) => {
@@ -314,6 +323,7 @@ function renderSettings(): void {
   });
 }
 function changeSetting(dir: number): void {
+  if (settingsSel === updateRow()) return;
   SETTING_ROWS[settingsSel]!.step(settings, dir);
   saveSettings(settings);
   renderSettings();
@@ -329,9 +339,19 @@ function toggleSettings(open = settingsEl.hidden): void {
   renderLobby();
 }
 function moveSettings(d: number): void {
-  settingsSel = (settingsSel + d + SETTING_ROWS.length) % SETTING_ROWS.length;
+  settingsSel = (settingsSel + d + settingsCount()) % settingsCount();
   renderSettings();
 }
+/** Enter / A in the settings: on "Game updates" it checks or installs; anywhere else, done. */
+function settingsConfirm(): void {
+  if (settingsSel === updateRow()) {
+    updates.press();
+    renderSettings();
+  } else toggleSettings(false);
+}
+const updates = new GameUpdates(() => {
+  if (!settingsEl.hidden) renderSettings();
+});
 
 // Menu buttons on the Xbox pads: the guide and the pause menu take them first.
 const padWas = new Map<number, Record<string, boolean>>();
@@ -365,7 +385,8 @@ function pollMenuButtons(): void {
       if (hit('down')) moveSettings(1);
       if (hit('left')) changeSetting(-1);
       if (hit('right')) changeSetting(1);
-      if (hit('a') || hit('b') || hit('start')) toggleSettings(false);
+      if (hit('a')) settingsConfirm();
+      else if (hit('b') || hit('start')) toggleSettings(false);
       continue;
     }
     if (state === 'lobby' && hit('start')) toggleSettings(true);
@@ -875,8 +896,8 @@ window.addEventListener('keydown', (e) => {
     else if (e.code === 'ArrowDown' || e.code === 'KeyS') moveSettings(1);
     else if (e.code === 'ArrowLeft' || e.code === 'KeyA') changeSetting(-1);
     else if (e.code === 'ArrowRight' || e.code === 'KeyD') changeSetting(1);
-    else if (['Enter', 'NumpadEnter', 'Escape', 'KeyO', 'Backspace', 'Space'].includes(e.code))
-      toggleSettings(false);
+    else if (['Enter', 'NumpadEnter', 'Space'].includes(e.code)) settingsConfirm();
+    else if (['Escape', 'KeyO', 'Backspace'].includes(e.code)) toggleSettings(false);
     return;
   }
   if (state === 'lobby' && e.code === 'KeyO') {

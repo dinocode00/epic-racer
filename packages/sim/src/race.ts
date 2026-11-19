@@ -1,8 +1,15 @@
 import { type PadState, type TrackDef, type VehicleDef, neutralPad } from '@epic/shared';
-import { AI_POWER, type AiBrain, aiDrive, createBrain } from './ai.ts';
+import { AI_POWER, AI_STYLES, type AiBrain, aiDrive, createBrain } from './ai.ts';
 import { type HazardState, collideHazards, createHazards, updateHazards } from './hazards.ts';
 import { ItemSystem } from './items.ts';
-import { type KartState, type TrackRules, createKart, spinOut, stepKart } from './kart.ts';
+import {
+  type KartParams,
+  type KartState,
+  type TrackRules,
+  createKart,
+  spinOut,
+  stepKart,
+} from './kart.ts';
 import { Track } from './track.ts';
 import { addScaled, cross, dist2, dot, norm, reject, sub } from './vec.ts';
 
@@ -29,6 +36,8 @@ export class Race {
   private padCooldown: number[] = [];
   readonly hazards: HazardState[];
   readonly rules: TrackRules;
+  /** Each AI kart's engine: as tuned to the difficulty, and at full power for a jump. */
+  private aiEngine: ({ full: KartParams; tuned: KartParams } | null)[] = [];
   readonly items: ItemSystem;
 
   /** `aiLevel`: AI difficulty, 0 easy .. 3 expert (see AI_LEVELS). */
@@ -41,15 +50,33 @@ export class Race {
       const col = i % 2 === 0 ? -1 : 1;
       const s = this.track.length - 8 - row * 8 - (col > 0 ? 4 : 0);
       const k = createKart(i, e.vehicle, this.track, s, col * 3.6);
-      // AI karts' engines follow the difficulty (players' never change).
+      // AI karts' engines follow the difficulty (players' never change): top speed and pick-up
+      // both, except on the run-up to a jump over a gap, where they get full power to clear it.
       if (!e.human) {
         const lv = Math.max(0, Math.min(3, Math.round(aiLevel)));
-        k.params = { ...k.params, topSpeed: k.params.topSpeed * AI_POWER[lv]! };
+        const full = k.params;
+        const p = AI_POWER[lv]!;
+        this.aiEngine[i] = {
+          full,
+          tuned: { ...full, topSpeed: full.topSpeed * p, accel: full.accel * p },
+        };
+        k.params = this.aiEngine[i]!.tuned;
       }
       return k;
     });
+    // Every AI drives its own way: styles dealt round the grid, starting somewhere different on
+    // each track (so the same car isn't always the same kind of driver).
+    const deal = Math.floor(this.track.length) % AI_STYLES.length;
+    let dealt = 0;
     this.brains = entrants.map((e, i) =>
-      e.human ? null : createBrain(i + 1, 0.55 + (0.45 * ((i * 37) % 10)) / 10, aiLevel),
+      e.human
+        ? null
+        : createBrain(
+            i + 1,
+            0.55 + (0.45 * ((i * 37) % 10)) / 10,
+            aiLevel,
+            AI_STYLES[(deal + dealt++) % AI_STYLES.length],
+          ),
     );
     this.firstThrottle = entrants.map(() => NaN);
     this.padCooldown = entrants.map(() => 0);
@@ -59,6 +86,8 @@ export class Race {
       this.karts,
       this.brains.map((b) => b !== null),
       laps,
+      this.brains.map((b) => b?.style ?? null),
+      aiLevel,
     );
     const L = this.track.length;
     const inRanges = (ranges: [number, number][] | undefined) => (s: number) =>
@@ -136,7 +165,12 @@ export class Race {
     this.karts.forEach((k, i) => {
       const brain = this.brains[i];
       let pad = brain
-        ? aiDrive(brain, k, this.track, lead, dt, this.hazards)
+        ? aiDrive(brain, k, this.track, lead, dt, this.hazards, {
+            karts: this.karts,
+            raceLength: this.track.length * this.laps,
+            runUp: this.rules.runUp,
+            countdown: frozen ? { left: -this.time } : undefined,
+          })
         : (pads[i] ?? neutralPad());
       if (k.finished) pad = brain ? pad : { ...neutralPad(), throttle: 0.4 };
 
@@ -146,6 +180,8 @@ export class Race {
           this.firstThrottle[i] = this.time;
         if (pad.throttle < 0.1) this.firstThrottle[i] = NaN;
       }
+      const engine = this.aiEngine[i];
+      if (engine) k.params = this.rules.runUp?.(k.s) ? engine.full : engine.tuned;
       stepKart(k, pad, this.track, dt, frozen, this.rules);
       if (!frozen) collideHazards(k, this.hazards, this.track);
     });
