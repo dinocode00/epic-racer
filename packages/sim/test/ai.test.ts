@@ -24,7 +24,7 @@ describe('AI difficulty', () => {
 });
 
 describe('Kids level', () => {
-  it('is far slower than Easy, bumps into the walls, and never carries an attack item', () => {
+  it('is far slower than Easy, bumps into things, and still picks up items', () => {
     const kids = lapTime(AI_KIDS);
     expect(kids).toBeGreaterThan(lapTime(AI_KIDS + 1) * 1.25);
     const race = new Race(
@@ -48,7 +48,7 @@ describe('Kids level', () => {
       });
     }
     expect(bumps).toBeGreaterThan(10);
-    for (const it of items) expect(['boost', 'shield']).toContain(it);
+    expect(items.size).toBeGreaterThan(1);
   });
 
   it('waits for the players when it gets far ahead', () => {

@@ -46,7 +46,7 @@ export function saveSettings(s: RaceSettings): void {
 }
 
 const LEVEL_NOTES = [
-  'For little racers: the AI dawdles, bumps into the walls and waits for you.',
+  'For little racers: the AI drives badly, bumps into walls and each other, and falls behind.',
   'Gentle: the AI takes it easy and makes plenty of mistakes.',
   'A fair race: the AI is quick but slips up now and then.',
   'The AI pushes hard and rarely slips.',

@@ -207,10 +207,8 @@ export interface AiBrain {
   skill: number;
   /** Difficulty: 0 kids, 1 easy, 2 normal, 3 hard, 4 expert (see AI_LEVELS). */
   level: number;
-  /** Kids level: seconds left wandering into a wall, which side, and the wait until the next. */
-  wall: number;
-  wallSide: number;
-  wallWait: number;
+  /** Kids level: the habits of a clumsy little driver (see clumsy()). */
+  kid?: KidHabits;
   style: AiStyle;
   laneTimer: number;
   /** A slip in progress: seconds left, and what it is (lift off, or a twitch of the wheel). */
@@ -241,11 +239,88 @@ export function createBrain(
     slipKind: 'lift',
     slipDir: 1,
     phase: (s % 628) / 100,
-    wall: 0,
-    wallSide: 1,
-    wallWait: 2 + (s % 300) / 100,
     seed: s,
   };
+}
+
+/** The habits that make the kids-level AI a clumsy driver, each on its own clock. */
+interface KidHabits {
+  /** Wandering into a wall: which side (0 = not now), seconds left, and until the next time. */
+  wall: number;
+  wallT: number;
+  wallWait: number;
+  /** Bumper cars: steering into the nearest racer. */
+  ram: boolean;
+  ramT: number;
+  ramWait: number;
+  /** How far down the gas pedal is, and until it changes. */
+  foot: number;
+  footT: number;
+  /** A drift for no reason. */
+  silly: boolean;
+  sillyT: number;
+  sillyWait: number;
+  /** Stopping to look around. */
+  look: boolean;
+  lookT: number;
+  lookWait: number;
+  /** Where the wheel actually is (it turns slowly). */
+  steer: number;
+}
+
+/** Tick the kids-level habits; returns what it's up to now. */
+function clumsy(b: AiBrain, dt: number): KidHabits {
+  const r = () => rand(b);
+  const h = (b.kid ??= {
+    wall: 0,
+    wallT: 0,
+    wallWait: 2 + r() * 4,
+    ram: false,
+    ramT: 0,
+    ramWait: 3 + r() * 6,
+    foot: 0.7,
+    footT: 0,
+    silly: false,
+    sillyT: 0,
+    sillyWait: 6 + r() * 10,
+    look: false,
+    lookT: 0,
+    lookWait: 12 + r() * 15,
+    steer: 0,
+  });
+  // Into a wall every few seconds, scraping along it for a moment or two.
+  if ((h.wallT -= dt) <= 0) h.wall = 0;
+  if (!h.wall && (h.wallWait -= dt) <= 0) {
+    h.wall = r() < 0.5 ? -1 : 1;
+    h.wallT = 1 + r() * 1.5;
+    h.wallWait = 3 + r() * 5;
+  }
+  // Bumper cars now and then.
+  if ((h.ramT -= dt) <= 0) h.ram = false;
+  if (!h.ram && (h.ramWait -= dt) <= 0) {
+    h.ram = true;
+    h.ramT = 1.2 + r() * 1.3;
+    h.ramWait = 4 + r() * 6;
+  }
+  // The foot on the gas: anywhere from half to all the way, and now and then right off it.
+  if ((h.footT -= dt) <= 0) {
+    const x = r();
+    h.foot = x < 0.12 ? 0 : 0.45 + r() * 0.55;
+    h.footT = h.foot === 0 ? 0.3 + r() * 0.5 : 0.6 + r() * 1.6;
+  }
+  if ((h.sillyT -= dt) <= 0) h.silly = false;
+  if (!h.silly && (h.sillyWait -= dt) <= 0) {
+    h.silly = true;
+    h.sillyT = 0.6 + r() * 0.8;
+    h.sillyWait = 6 + r() * 10;
+  }
+  if ((h.lookT -= dt) <= 0) h.look = false;
+  if (!h.look && (h.lookWait -= dt) <= 0) {
+    h.look = true;
+    h.lookT = 0.8 + r() * 1;
+    h.lookWait = 12 + r() * 16;
+  }
+  return h;
 }
 
 /** AI difficulty levels, easiest first. */
@@ -369,18 +444,27 @@ export function aiDrive(
     }
   }
   lane = Math.max(-halfW, Math.min(halfW, lane));
-  // Kids level: every few seconds it loses its line and wanders off into a wall, bumping and
-  // scraping along it for a moment. Never on the run-up to a jump.
+  // Kids level: a clumsy little driver, wandering into walls and into the others.
   const kids = lv === AI_KIDS && !runUp;
-  if (kids) {
-    if (b.wall > 0) {
-      b.wall -= dt;
-      lane = b.wallSide * (frame.width / 2 + 3);
-    } else if ((b.wallWait -= dt) <= 0) {
-      b.wall = 1 + rand(b) * 1.4;
-      b.wallSide = rand(b) < 0.5 ? -1 : 1;
-      b.wallWait = 3 + rand(b) * 5;
+  const kid = kids ? clumsy(b, dt) : null;
+  if (kid?.wall) lane = kid.wall * (frame.width / 2 + 3);
+  else if (kid?.ram && ctx.karts) {
+    // Bumper cars: steer into whoever is nearest, alongside or just ahead.
+    let best: KartState | null = null,
+      bestD = 30;
+    for (const q of ctx.karts) {
+      if (q === k || q.finished) continue;
+      const ahead = sDelta(k.s, q.s, track.length);
+      const d = ahead < -4 ? Infinity : Math.abs(ahead);
+      if (d < bestD) {
+        best = q;
+        bestD = d;
+      }
     }
+    if (best) {
+      lane = best.lat + Math.sign(best.lat - k.lat || 1) * 1.5;
+      kid.foot = 1; // and floors it to catch them
+    } else kid.ram = false;
   }
   const target = track.pointAt(k.s + look, lane, 0);
   const to = sub(target, k.pos);
@@ -391,11 +475,28 @@ export function aiDrive(
     ? 0
     : (st.wobble + (kids ? 0.07 : 0)) * (Math.sin(b.phase) + 0.5 * Math.sin(b.phase * 2.3));
   pad.steer = clamp((angle + waver) * st.steer, -1, 1);
+  if (kid) {
+    // Slow hands: the wheel only gets round so fast, so it swings wide in the bends and weaves.
+    kid.steer += clamp(pad.steer * 0.8 - kid.steer, -dt * 1.6, dt * 1.6);
+    pad.steer = kid.steer;
+  }
 
   // Better drivers, and bolder ones, lift later and brake later for the bends.
   pad.throttle = bend > LIFT[lv]! + st.corner && k.speed > 26 ? 0.5 : 1;
   if (bend > BRAKE[lv]! + st.corner && k.speed > 22) pad.brake = 0.6;
   pad.drift = bend > st.drift && k.speed > 18 && Math.abs(angle) > 0.12;
+
+  if (kid) {
+    // Never quite flat out: the foot goes up and down on the pedal. A drift for no reason now
+    // and then, and the odd stop to look around.
+    pad.throttle = Math.min(pad.throttle, kid.foot);
+    if (kid.silly) pad.drift = true;
+    if (kid.look) {
+      pad.throttle = 0;
+      pad.brake = k.speed > 6 ? 0.7 : 0;
+      pad.drift = false;
+    }
+  }
 
   // Slip-ups: a moment off the gas, or a twitch of the wheel. Never on the run-up to a jump.
   if (b.slip > 0) {

@@ -193,9 +193,6 @@ export class ItemSystem {
     if (k.place === 1) gap = 0;
     else gap = Math.max(0.01, gap);
     if (this.isAi[k.id]) gap *= 0.6;
-    // Kids level: the AI only ever gets a boost or a shield, nothing to knock a player out with.
-    if (this.isAi[k.id] && aiLevelIndex(this.aiLevel) === AI_KIDS)
-      return this.rand() < 0.65 ? 'boost' : 'shield';
     const table = TABLES.find((t) => gap <= t.maxGap)!.table;
     const leader = this.karts.find((q) => q.place === 1);
     const lateRace = leader ? leader.progress > this.raceLength * WHIP_CUTOFF : false;
@@ -643,6 +640,9 @@ export class ItemSystem {
       this.aiTimer[k.id] = 0;
       this.use(k, back);
     };
+    // Kids level: whatever it has, it uses as soon as it thinks of it, without aiming
+    // (shots and traps go off any old way, now and then backwards).
+    if (lv === AI_KIDS) return fire(TRAILABLE.has(k.item) && this.rand() < 0.3);
     // Patient drivers save a boost for a straight (no sharp bend coming up).
     const straight = () => {
       const far = this.track.frameAtS(k.s + 40).tan;
