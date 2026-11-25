@@ -2,7 +2,9 @@
  * "Game updates" in ⚙ Settings: on the laptop running the game, check GitHub for a newer
  * version and install it without closing the program. The local server does the work
  * (apps/server: /api/update, using tools/update.mjs); this follows along and reloads the game
- * when it's done. Shown only when the game is opened on the laptop itself (localhost).
+ * when it's done. Shown only when the game is opened on the laptop itself (localhost), or in
+ * the Fire TV app showing the laptop's game (the server checks that request comes from the
+ * screen the game is on).
  */
 
 type Phase =
@@ -45,8 +47,11 @@ async function getJson<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export class GameUpdates {
-  /** Only on the laptop: phones and other computers can't update it. */
-  readonly enabled = ['localhost', '127.0.0.1', '[::1]', '::1'].includes(location.hostname);
+  /** Only on the laptop or the TV showing its game: phones and other computers can't update it. */
+  readonly enabled =
+    ['localhost', '127.0.0.1', '[::1]', '::1'].includes(location.hostname) ||
+    // The Fire TV app on the laptop's game (plain http); its hosted copy (https) has no server.
+    (/EpicRacerTV\//.test(navigator.userAgent) && location.protocol === 'http:');
   private phase: Phase = 'idle';
   private note = '';
   private commits: string[] = [];

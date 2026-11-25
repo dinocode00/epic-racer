@@ -146,10 +146,44 @@ export class PhoneSource implements InputSource {
   }
 }
 
+/**
+ * Inside the Fire TV app (firetv/), controllers come from the app itself: an Android WebView
+ * can't be relied on to see them, and not at all on the plain-http laptop address. The app
+ * hands over each pad already in the standard (Xbox) layout, one slot per controller.
+ */
+interface TvBridge {
+  pads(): string;
+}
+type TvPad = { i: number; id: string; t: number; a: number[]; b: number[] } | null;
+let tvRead: { at: number; pads: (Gamepad | null)[] } | null = null;
+function tvGamepads(tv: TvBridge): (Gamepad | null)[] {
+  const now = performance.now();
+  if (tvRead && now - tvRead.at < 4) return tvRead.pads; // read once per frame, not per call
+  const raw = JSON.parse(tv.pads()) as TvPad[];
+  const pads = raw.map((p) =>
+    p
+      ? ({
+          index: p.i,
+          id: p.id,
+          connected: true,
+          mapping: 'standard',
+          timestamp: p.t,
+          axes: p.a,
+          buttons: p.b.map((v) => ({ value: v, pressed: v > 0.1, touched: v > 0.1 })),
+          vibrationActuator: null,
+        } as unknown as Gamepad)
+      : null,
+  );
+  tvRead = { at: now, pads };
+  return pads;
+}
+
 /** Lists connected gamepads, keyed by index. */
 /** Safe getGamepads: some embedded pages forbid controller access and throw. */
 export function gamepads(): (Gamepad | null)[] {
   try {
+    const tv = (window as { EpicTV?: TvBridge }).EpicTV;
+    if (tv) return tvGamepads(tv);
     return [...(navigator.getGamepads?.() ?? [])];
   } catch {
     return [];

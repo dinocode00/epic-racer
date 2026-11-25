@@ -1,0 +1,58 @@
+// The Fire TV app: a full-screen web view around the game, plus controller support.
+// Built by .github/workflows/fire-tv.yml (gradle assembleRelease); see README "On a Fire TV".
+plugins {
+    id 'com.android.application' version '8.13.2'
+}
+
+// Where "Play" loads the game from: the copy GitHub Pages hosts, rebuilt on every push.
+def hostedUrl = project.findProperty('hostedUrl') ?: 'https://dinocode00.github.io/epic-racer/'
+
+android {
+    namespace 'com.epicracer.tv'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.epicracer.tv'
+        minSdk 22
+        targetSdk 35
+        // Each CI build counts up, so Android always takes a new download as an update.
+        versionCode((project.findProperty('buildNumber') ?: '1') as int)
+        versionName '1.0'
+        buildConfigField 'String', 'HOSTED_URL', "\"${hostedUrl}\""
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    // One fixed key, kept in the repo, so each new build installs over the last one.
+    // (Android refuses an update signed with a different key.) It only signs this home app.
+    signingConfigs {
+        home {
+            storeFile file('epic-racer-tv.keystore')
+            storePassword 'epicracer'
+            keyAlias 'epicracer'
+            keyPassword 'epicracer'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.home
+        }
+        debug {
+            signingConfig signingConfigs.home
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        abortOnError false
+        checkReleaseBuilds false
+    }
+}

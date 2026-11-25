@@ -54,6 +54,38 @@ Any static copy of `apps/game/dist` (e.g. the hosted build) runs without the ser
 lobby switches to **couch mode** for the keyboard (up to two players) and Xbox controllers.
 Phones need the home setup above.
 
+### On a Fire TV (or any Android TV)
+
+The Fire TV app (`firetv/`) opens on a menu with two ways to play:
+
+- **Play**: the copy of the game GitHub publishes online, rebuilt on every push, so it's
+  always the newest version. No computer needed. Xbox controllers paired to the Fire TV (up to
+  4) or the remote (arrows drive, middle button = Enter).
+- **Play with phones**: finds Epic Racer running on a computer on the same Wi-Fi and shows its
+  game on the TV. Phones join the computer as usual. The computer keeps the game up to date,
+  and **⚙ Settings → Game updates** works from the TV too.
+
+On the remote, **Back** returns to the menu (Back again closes the app) and **≡** pauses.
+
+**One-time GitHub setup** (the repo owner): in the repo's **Settings → Pages → Build and
+deployment**, set **Source** to **GitHub Actions**. Every push to the default branch then
+publishes the game at `https://dinocode00.github.io/epic-racer/` and the app at
+`https://dinocode00.github.io/epic-racer/tv.apk` (`.github/workflows/fire-tv.yml`).
+
+**Install on the Fire TV** (one time; it isn't in Amazon's store, so it's sideloaded):
+
+1. Search for and install **Downloader** (by AFTVnews) from the Fire TV's app store.
+2. **Settings → My Fire TV → Developer options → Install unknown apps → Downloader: ON.**
+   No **Developer options**? Go to **Settings → My Fire TV → About**, click the device name 7
+   times, then go back.
+3. Open Downloader, type `dinocode00.github.io/epic-racer/tv.apk`, **Go**, then **Install**.
+   Afterwards, delete the downloaded file when it offers.
+4. Pair controllers in **Settings → Controllers & Bluetooth Devices → Game Controllers**.
+
+Epic Racer then appears under **Your Apps & Channels** (move it to the home row if you like).
+The game itself updates without reinstalling; the app around it rarely changes, and when it
+does, repeat step 3 to install the new one over the old one.
+
 ## Controls
 
 | Action                     | Keyboard (solo) | Keyboard P1 / P2 (shared) | Xbox controller    | Phone                 |
@@ -105,4 +137,5 @@ apps/controller  Phone controller page
 apps/server      Local server: serves pages, relays phone input, QR code
 packages/sim     Pure, deterministic race simulation (unit tested)
 packages/shared  Protocol and data types
+firetv           Fire TV / Android TV app (Java, Gradle): the game in a full-screen web view
 ```

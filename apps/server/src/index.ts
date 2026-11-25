@@ -3,7 +3,8 @@
  *  - serves the game page (/) and the phone controller (/c/)
  *  - relays phone input to the game host over a WebSocket
  *  - prints the join URL and a QR code
- *  - updates the game in place (⚙ Settings → Check for updates, on the laptop only)
+ *  - updates the game in place (⚙ Settings → Check for updates, on the laptop or the TV
+ *    showing its game)
  *
  * Phones join over HTTPS (with a certificate this server makes for itself), because iPhones
  * only let a page read the tilt sensors on a secure connection. The laptop's game page stays
@@ -159,7 +160,8 @@ async function info(): Promise<ServerInfo> {
 // ---------- updates ----------
 // The game's ⚙ Settings → "Check for updates" asks here: GET /api/update checks GitHub for a
 // newer version; POST /api/update downloads it, installs and rebuilds (tools/update.mjs), and
-// GET /api/update/status follows along. Only the laptop itself may do this (never a phone on
+// GET /api/update/status follows along. Only the laptop itself, or the screen the game is
+// showing on (the Fire TV app, while it's connected as the game host), may do this (never a phone on
 // the Wi-Fi). If the update changed this server, it stops afterwards and the launcher starts it
 // again on the new version.
 interface UpdateJob {
@@ -187,6 +189,9 @@ const updater = () =>
   }>;
 const fromThisComputer = (req: IncomingMessage) =>
   ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress ?? '');
+/** The laptop, or the device the game window is open on right now (e.g. the Fire TV app). */
+const fromGameScreen = (req: IncomingMessage) =>
+  fromThisComputer(req) || (!!hostAddress && req.socket.remoteAddress === hostAddress);
 const json = (res: ServerResponse, code: number, body: unknown) =>
   void res
     .writeHead(code, { 'content-type': 'application/json', 'cache-control': 'no-store' })
@@ -197,8 +202,8 @@ async function handleUpdate(
   res: ServerResponse,
   path: string,
 ): Promise<void> {
-  if (!fromThisComputer(req))
-    return json(res, 403, { error: 'Only on the laptop running the game.' });
+  if (!fromGameScreen(req))
+    return json(res, 403, { error: 'Only on the screen showing the game.' });
   if (path === '/api/update/status') return json(res, 200, job);
   if (req.method === 'GET') {
     if (job.state === 'running') return json(res, 200, { git: true, busy: true });
@@ -267,6 +272,8 @@ interface PadConn {
 }
 
 let hostWs: WebSocket | null = null;
+/** Where the game window is connected from (the laptop itself, or a TV on the Wi-Fi). */
+let hostAddress: string | null = null;
 const pads = new Map<number, PadConn>();
 
 const sendHost = (m: ServerToHost) => hostWs?.readyState === 1 && hostWs.send(JSON.stringify(m));
@@ -291,6 +298,7 @@ wss.on('connection', (ws, req) => {
   if (role === 'host') {
     hostWs?.close(4000, 'replaced by a new game window');
     hostWs = ws;
+    hostAddress = req.socket.remoteAddress ?? null;
     console.log('[host] game window connected');
     for (const p of pads.values())
       if (p.ws) sendHost({ t: 'padJoined', slot: p.slot, playerId: p.playerId, name: p.name });
@@ -307,7 +315,10 @@ wss.on('connection', (ws, req) => {
       }
     });
     ws.on('close', () => {
-      if (hostWs === ws) hostWs = null;
+      if (hostWs === ws) {
+        hostWs = null;
+        hostAddress = null;
+      }
       console.log('[host] game window disconnected');
     });
     return;

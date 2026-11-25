@@ -1,0 +1,69 @@
+# Builds the Fire TV app (firetv/) and the game, and on the default branch publishes both with
+# GitHub Pages: the game at https://<owner>.github.io/<repo>/ (what the app's "Play" opens) and
+# the app itself at .../tv.apk (what you type into Downloader on the Fire TV).
+# One-time setup: repo Settings → Pages → Build and deployment → Source: "GitHub Actions".
+name: Fire TV app & online game
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fire-tv-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      - run: pnpm build
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.14.3'
+      - name: Build the Fire TV app
+        env:
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+        run: >
+          gradle -p firetv assembleRelease --no-daemon
+          -PhostedUrl="https://${OWNER,,}.github.io/${REPO}/"
+          -PbuildNumber="${{ github.run_number }}"
+      - name: Put the app next to the game
+        run: cp firetv/build/outputs/apk/release/epic-racer-tv-release.apk apps/game/dist/tv.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: epic-racer-tv
+          path: apps/game/dist/tv.apk
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: apps/game/dist
+
+  deploy:
+    # Pages only takes the default branch; other branches just check that everything builds.
+    if: github.ref_name == github.event.repository.default_branch
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Epic Racer</title>
+<style>
+  :root {
+    --bg: #0c0f1a;
+    --card: #161b2e;
+    --card-focus: #222a48;
+    --text: #f3f5fb;
+    --muted: #9aa3bf;
+    --accent: #ff5a36;
+    --accent2: #ffc53d;
+    --ring: #ffd25a;
+    --bad: #ff7b6b;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  body {
+    background: radial-gradient(120% 90% at 50% 0%, #1d2650 0%, var(--bg) 60%);
+    color: var(--text);
+    font: 16px/1.35 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 4vh 5vw;
+  }
+  h1 {
+    margin: 0 0 1vh; font-size: 9vh; font-style: italic; font-weight: 900; letter-spacing: .04em;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .sub { color: var(--muted); font-size: 2.8vh; margin: 0 0 4vh; }
+  .note {
+    display: none; max-width: 80vw; margin: 0 0 3vh; padding: 1.4vh 2.4vh; border-radius: 1.4vh;
+    background: rgba(255, 123, 107, .12); border: 1px solid rgba(255, 123, 107, .5);
+    color: var(--bad); font-size: 2.6vh; text-align: center;
+  }
+  .note.show { display: block; }
+  .cards { display: flex; gap: 3vw; }
+  button, input {
+    font: inherit; color: inherit; border: 0; outline: none;
+  }
+  .card {
+    width: 36vw; min-height: 34vh; padding: 3.4vh 3vh; border-radius: 2.4vh; text-align: left;
+    background: var(--card); box-shadow: 0 0 0 .5vh transparent;
+    transition: transform .12s, background .12s, box-shadow .12s; cursor: pointer;
+  }
+  .card .icon { font-size: 7vh; line-height: 1; }
+  .card .name { font-size: 4.6vh; font-weight: 800; margin: 1.6vh 0 1vh; }
+  .card .what { color: var(--muted); font-size: 2.5vh; }
+  .card:focus, .btn:focus, input:focus {
+    background: var(--card-focus); box-shadow: 0 0 0 .5vh var(--ring); transform: scale(1.04);
+  }
+  .panel { display: none; width: min(72vw, 900px); flex-direction: column; gap: 1.6vh; }
+  .panel.show { display: flex; }
+  .panel h2 { margin: 0; font-size: 4vh; }
+  .panel p { margin: 0; color: var(--muted); font-size: 2.5vh; }
+  .list { display: flex; flex-direction: column; gap: 1.2vh; }
+  .btn {
+    padding: 1.8vh 2.4vh; border-radius: 1.6vh; background: var(--card); text-align: left;
+    font-size: 2.9vh; font-weight: 600; transition: transform .12s, box-shadow .12s; cursor: pointer;
+  }
+  .btn small { display: block; color: var(--muted); font-weight: 400; font-size: 2.2vh; }
+  .row { display: flex; gap: 1.2vw; }
+  input {
+    flex: 1; padding: 1.8vh 2.4vh; border-radius: 1.6vh; background: var(--card); font-size: 2.9vh;
+  }
+  input::placeholder { color: #6b7391; }
+  .status { min-height: 3.4vh; }
+  .spin {
+    display: inline-block; width: 2.4vh; height: 2.4vh; margin-right: 1vh; vertical-align: -.4vh;
+    border: .4vh solid #3a4366; border-top-color: var(--accent2); border-radius: 50%;
+    animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .help { position: fixed; bottom: 3vh; left: 0; right: 0; text-align: center; color: #6b7391; font-size: 2.2vh; }
+</style>
+</head>
+<body>
+  <h1>EPIC RACER</h1>
+  <div class="note" id="note"></div>
+
+  <div id="home">
+    <p class="sub" style="text-align:center">How do you want to play?</p>
+    <div class="cards">
+      <button class="card" id="online">
+        <div class="icon">🎮</div>
+        <div class="name">Play</div>
+        <div class="what">Xbox controllers paired to this TV, or the remote. Always the newest
+          version, no computer needed.</div>
+      </button>
+      <button class="card" id="phones">
+        <div class="icon">📱</div>
+        <div class="name">Play with phones</div>
+        <div class="what">Uses Epic Racer running on your computer. Phones (and controllers)
+          join, and the computer keeps the game up to date.</div>
+      </button>
+    </div>
+  </div>
+
+  <div class="panel" id="panel">
+    <h2>Play with phones</h2>
+    <p>Start Epic Racer on the computer first (double-click the launcher). It must be on the
+      same Wi-Fi as this TV.</p>
+    <div class="status" id="status"></div>
+    <div class="list" id="list"></div>
+    <div class="row">
+      <input id="addr" placeholder="Or type its address, like 192.168.1.23" inputmode="url"
+        autocomplete="off" autocapitalize="off" spellcheck="false">
+      <button class="btn" id="go">Go</button>
+    </div>
+    <div class="row">
+      <button class="btn" id="again">Look again</button>
+      <button class="btn" id="cancel">Back</button>
+    </div>
+  </div>
+
+  <div class="help" id="help">Back on the remote returns here · Back again closes the app</div>
+
+<script>
+  var tv = window.EpicTV;
+  var st = {};
+  try { st = JSON.parse(tv.state()); } catch (e) {}
+  var $ = function (id) { return document.getElementById(id); };
+  var panelOpen = false, searching = false;
+
+  if (st.note) { $('note').textContent = st.note; $('note').classList.add('show'); }
+  if (st.version) $('help').textContent += ' · v' + st.version;
+
+  function focusables() {
+    var root = panelOpen ? $('panel') : $('home');
+    return Array.prototype.slice.call(root.querySelectorAll('button, input'));
+  }
+  function move(step) {
+    var list = focusables();
+    var i = list.indexOf(document.activeElement);
+    var next = list[Math.max(0, Math.min(list.length - 1, i < 0 ? 0 : i + step))];
+    if (next) next.focus();
+  }
+
+  function playComputer(address) {
+    if (!tv.playComputer(address)) {
+      $('status').textContent = "That doesn't look like an address. It's numbers like 192.168.1.23.";
+      $('addr').focus();
+    } else {
+      $('status').innerHTML = '<span class="spin"></span>Connecting to ' + address + '…';
+    }
+  }
+
+  function computerButton(address, label, detail) {
+    var b = document.createElement('button');
+    b.className = 'btn';
+    b.textContent = label;
+    var s = document.createElement('small');
+    s.textContent = detail;
+    b.appendChild(s);
+    b.onclick = function () { playComputer(address); };
+    return b;
+  }
+
+  function search() {
+    if (searching) return;
+    searching = true;
+    $('status').innerHTML = '<span class="spin"></span>Looking for your computer…';
+    tv.findComputers();
+  }
+  window.tvFound = function (found) {
+    searching = false;
+    var list = $('list');
+    list.innerHTML = '';
+    found.forEach(function (f) {
+      list.appendChild(computerButton(f.address, 'Computer at ' + f.address, 'Epic Racer is running · room ' + f.room));
+    });
+    var lastAddr = (st.computer || '').replace(/:4000$/, '');
+    var seen = found.some(function (f) { return f.address === lastAddr; });
+    if (lastAddr && !seen)
+      list.appendChild(computerButton(st.computer, 'Last time: ' + lastAddr, "Didn't answer just now, but you can try it"));
+    $('status').textContent = found.length
+      ? (found.length === 1 ? 'Found it:' : 'Found these:')
+      : "Couldn't find Epic Racer on this Wi-Fi. Is it running on the computer? You can also type its address.";
+    var first = list.querySelector('button');
+    if (panelOpen && (!document.activeElement || document.activeElement === document.body ||
+        document.activeElement === $('again'))) (first || $('addr')).focus();
+  };
+
+  function openPanel() {
+    panelOpen = true;
+    $('home').style.display = 'none';
+    $('panel').classList.add('show');
+    $('again').focus();
+    search();
+  }
+  function closePanel() {
+    panelOpen = false;
+    $('panel').classList.remove('show');
+    $('home').style.display = '';
+    $('phones').focus();
+  }
+  window.tvBack = function () {
+    if (panelOpen) { closePanel(); return true; }
+    return false;
+  };
+
+  $('online').onclick = function () { tv.playOnline(); };
+  $('phones').onclick = openPanel;
+  $('go').onclick = function () { playComputer($('addr').value); };
+  $('again').onclick = search;
+  $('cancel').onclick = closePanel;
+  $('addr').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); playComputer($('addr').value); }
+  });
+
+  // Remote: arrows move between buttons (inside the address box, left/right move the cursor).
+  document.addEventListener('keydown', function (e) {
+    var inBox = document.activeElement === $('addr');
+    if (e.key === 'ArrowDown' || (e.key === 'ArrowRight' && !inBox)) { move(1); e.preventDefault(); }
+    else if (e.key === 'ArrowUp' || (e.key === 'ArrowLeft' && !inBox)) { move(-1); e.preventDefault(); }
+    else if (e.key === 'Escape') { if (!window.tvBack()) tv.quit(); }
+  });
+
+  // Controllers: stick or D-pad to move, A to choose, B to go back.
+  var held = {}, repeatAt = 0;
+  function poll(now) {
+    var pads = [];
+    try { pads = JSON.parse(tv.pads()); } catch (e) {}
+    var dir = 0, a = false, b = false;
+    pads.forEach(function (p) {
+      if (!p) return;
+      var x = p.a[0], y = p.a[1];
+      if (p.b[13] > 0.5 || p.b[15] > 0.5 || y > 0.6 || x > 0.6) dir = 1;
+      if (p.b[12] > 0.5 || p.b[14] > 0.5 || y < -0.6 || x < -0.6) dir = -1;
+      a = a || p.b[0] > 0.5;
+      b = b || p.b[1] > 0.5;
+    });
+    if (dir && (held.dir !== dir || now > repeatAt)) {
+      move(dir);
+      repeatAt = now + (held.dir === dir ? 160 : 400);
+    }
+    held.dir = dir;
+    if (a && !held.a && document.activeElement && document.activeElement.click) {
+      if (document.activeElement === $('addr')) playComputer($('addr').value);
+      else document.activeElement.click();
+    }
+    if (b && !held.b) { if (!window.tvBack()) tv.quit(); }
+    held.a = a; held.b = b;
+    requestAnimationFrame(poll);
+  }
+  requestAnimationFrame(poll);
+
+  (st.last === 'computer' ? $('phones') : $('online')).focus();
+</script>
+</body>
+</html>
