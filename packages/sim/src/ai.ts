@@ -205,8 +205,12 @@ export interface AiBrain {
   lane: number;
   /** 0..1, scales top-speed discipline and reaction. */
   skill: number;
-  /** Difficulty: 0 easy, 1 normal, 2 hard, 3 expert. */
+  /** Difficulty: 0 kids, 1 easy, 2 normal, 3 hard, 4 expert (see AI_LEVELS). */
   level: number;
+  /** Kids level: seconds left wandering into a wall, which side, and the wait until the next. */
+  wall: number;
+  wallSide: number;
+  wallWait: number;
   style: AiStyle;
   laneTimer: number;
   /** A slip in progress: seconds left, and what it is (lift off, or a twitch of the wheel). */
@@ -223,7 +227,7 @@ export interface AiBrain {
 export function createBrain(
   seed: number,
   skill: number,
-  level = 1,
+  level = AI_NORMAL,
   style: AiStyle = STEADY,
 ): AiBrain {
   const s = seed * 9301 + 49297;
@@ -237,27 +241,37 @@ export function createBrain(
     slipKind: 'lift',
     slipDir: 1,
     phase: (s % 628) / 100,
+    wall: 0,
+    wallSide: 1,
+    wallWait: 2 + (s % 300) / 100,
     seed: s,
   };
 }
 
 /** AI difficulty levels, easiest first. */
-export const AI_LEVELS = ['Easy', 'Normal', 'Hard', 'Expert'] as const;
+export const AI_LEVELS = ['Kids', 'Easy', 'Normal', 'Hard', 'Expert'] as const;
+/** The level index of Normal, the default. */
+export const AI_NORMAL = 2;
+/** The easiest level: so gentle that small children beat it. */
+export const AI_KIDS = 0;
+/** A level as an index into the tables below. */
+export const aiLevelIndex = (level: number): number =>
+  Math.max(0, Math.min(AI_LEVELS.length - 1, Math.round(level)));
 /** How close to its top speed an AI dares to drive at each level (before its own skill). */
-const PACE = [0.74, 0.85, 0.92, 0.97];
-const PACE_SPAN = [0.06, 0.06, 0.05, 0.04];
+const PACE = [0.5, 0.74, 0.85, 0.92, 0.97];
+const PACE_SPAN = [0.04, 0.06, 0.06, 0.05, 0.04];
 /** How sharp a bend ahead (radians) has it lift off, and brake. */
-const LIFT = [0.6, 0.78, 0.92, 1.05];
-const BRAKE = [1.2, 1.42, 1.62, 1.82];
+const LIFT = [0.4, 0.6, 0.78, 0.92, 1.05];
+const BRAKE = [0.9, 1.2, 1.42, 1.62, 1.82];
 /** An AI kart's engine against a player's at each level (the classic arcade handicap). */
-export const AI_POWER = [0.84, 0.9, 0.94, 0.98];
+export const AI_POWER = [0.68, 0.84, 0.9, 0.94, 0.98];
 /** How much harder it pushes when it's behind the leader. */
-const CATCH_UP = [0.01, 0.04, 0.07, 0.09];
+const CATCH_UP = [0, 0.01, 0.04, 0.07, 0.09];
 /** How often it slips up, against its style's rate. */
-const SLIPS = [1.8, 1.1, 0.6, 0.3];
+const SLIPS = [3.5, 1.8, 1.1, 0.6, 0.3];
 /** How long it thinks before using an item (seconds), and how often it goes for the start boost. */
-export const AI_THINK = [1.6, 1.0, 0.7, 0.45];
-const LAUNCH = [0, 0.3, 0.6, 0.9];
+export const AI_THINK = [3.5, 1.6, 1.0, 0.7, 0.45];
+const LAUNCH = [0, 0, 0.3, 0.6, 0.9];
 
 function rand(b: AiBrain): number {
   b.seed = (b.seed * 16807) % 2147483647;
@@ -272,6 +286,8 @@ export interface AiContext {
   raceLength?: number;
   /** Is a jump over a gap coming up? There it drives flat out, no slips. */
   runUp?: (s: number) => boolean;
+  /** How far the best human player has got (the kids level waits for them). */
+  humanBest?: number;
   /** The countdown is on (the start boost). */
   countdown?: { left: number };
 }
@@ -288,7 +304,7 @@ export function aiDrive(
 ): PadState {
   const pad = neutralPad();
   const st = b.style;
-  const lv = Math.max(0, Math.min(3, Math.round(b.level)));
+  const lv = aiLevelIndex(b.level);
   // The start: a launcher hits the gas in the last second for the boost, a wild one sometimes
   // revs too early and spins, the rest go on green.
   if (ctx.countdown) {
@@ -353,12 +369,27 @@ export function aiDrive(
     }
   }
   lane = Math.max(-halfW, Math.min(halfW, lane));
+  // Kids level: every few seconds it loses its line and wanders off into a wall, bumping and
+  // scraping along it for a moment. Never on the run-up to a jump.
+  const kids = lv === AI_KIDS && !runUp;
+  if (kids) {
+    if (b.wall > 0) {
+      b.wall -= dt;
+      lane = b.wallSide * (frame.width / 2 + 3);
+    } else if ((b.wallWait -= dt) <= 0) {
+      b.wall = 1 + rand(b) * 1.4;
+      b.wallSide = rand(b) < 0.5 ? -1 : 1;
+      b.wallWait = 3 + rand(b) * 5;
+    }
+  }
   const target = track.pointAt(k.s + look, lane, 0);
   const to = sub(target, k.pos);
   const right = cross(k.fwd, k.up);
   const angle = Math.atan2(dot(to, right), dot(to, k.fwd));
   b.phase += dt * (1.7 + b.skill);
-  const waver = runUp ? 0 : st.wobble * (Math.sin(b.phase) + 0.5 * Math.sin(b.phase * 2.3));
+  const waver = runUp
+    ? 0
+    : (st.wobble + (kids ? 0.07 : 0)) * (Math.sin(b.phase) + 0.5 * Math.sin(b.phase * 2.3));
   pad.steer = clamp((angle + waver) * st.steer, -1, 1);
 
   // Better drivers, and bolder ones, lift later and brake later for the bends.
@@ -392,6 +423,14 @@ export function aiDrive(
     st.pace +
     arc +
     clamp((gap / 300) * st.catchUp, -0.05, CATCH_UP[lv]! * st.catchUp);
+  // Kids level: ahead of every player, it dawdles, and well ahead it crawls, so they catch up.
+  const lead = ctx.humanBest === undefined ? -Infinity : k.progress - ctx.humanBest;
+  const dawdle = lv !== AI_KIDS ? 0 : lead > 120 ? 0.15 : lead > 25 ? 0.35 : 0;
   if (!runUp && k.speed > k.params.topSpeed * discipline && k.boostTime <= 0) pad.throttle = 0.2;
+  if (dawdle && !runUp && k.speed > k.params.topSpeed * dawdle) {
+    pad.throttle = 0;
+    pad.drift = false;
+    if (k.speed > k.params.topSpeed * dawdle * 1.3) pad.brake = 0.4;
+  }
   return pad;
 }

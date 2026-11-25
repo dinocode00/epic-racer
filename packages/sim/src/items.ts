@@ -1,5 +1,5 @@
 import type { PadState } from '@epic/shared';
-import { AI_THINK, type AiStyle } from './ai.ts';
+import { AI_KIDS, AI_NORMAL, AI_THINK, type AiStyle, aiLevelIndex } from './ai.ts';
 import { sDelta } from './hazards.ts';
 import { EAGLE_CARRY, type ItemKind, type KartState, SPECIAL_OF, launch, spinOut } from './kart.ts';
 import type { Track } from './track.ts';
@@ -160,7 +160,7 @@ export class ItemSystem {
     private laps: number,
     /** Each AI's style and the difficulty: how quick and how cunning it is with its items. */
     private aiStyles: (AiStyle | null)[] = [],
-    private aiLevel = 1,
+    private aiLevel = AI_NORMAL,
   ) {
     for (const s of track.def.itemRows ?? []) {
       const w = track.frameAtS(s).width;
@@ -193,6 +193,9 @@ export class ItemSystem {
     if (k.place === 1) gap = 0;
     else gap = Math.max(0.01, gap);
     if (this.isAi[k.id]) gap *= 0.6;
+    // Kids level: the AI only ever gets a boost or a shield, nothing to knock a player out with.
+    if (this.isAi[k.id] && aiLevelIndex(this.aiLevel) === AI_KIDS)
+      return this.rand() < 0.65 ? 'boost' : 'shield';
     const table = TABLES.find((t) => gap <= t.maxGap)!.table;
     const leader = this.karts.find((q) => q.place === 1);
     const lateRace = leader ? leader.progress > this.raceLength * WHIP_CUTOFF : false;
@@ -622,7 +625,7 @@ export class ItemSystem {
     if (k.rollTime > 0 || k.stunTime > 0) return;
     this.aiTimer[k.id] = (this.aiTimer[k.id] ?? 0) + dt;
     const t = this.aiTimer[k.id]!;
-    const lv = Math.max(0, Math.min(3, Math.round(this.aiLevel)));
+    const lv = aiLevelIndex(this.aiLevel);
     const temper = this.aiStyles[k.id]?.items ?? 'quick';
     // A moment's thought: longer on the easier levels, shorter for the trigger-happy.
     const think = AI_THINK[lv]! * (temper === 'aggressive' ? 0.6 : temper === 'patient' ? 1.4 : 1);

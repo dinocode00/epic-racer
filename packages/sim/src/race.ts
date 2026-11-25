@@ -1,5 +1,13 @@
 import { type PadState, type TrackDef, type VehicleDef, neutralPad } from '@epic/shared';
-import { AI_POWER, AI_STYLES, type AiBrain, aiDrive, createBrain } from './ai.ts';
+import {
+  AI_NORMAL,
+  AI_POWER,
+  AI_STYLES,
+  type AiBrain,
+  aiDrive,
+  aiLevelIndex,
+  createBrain,
+} from './ai.ts';
 import { type HazardState, collideHazards, createHazards, updateHazards } from './hazards.ts';
 import { ItemSystem } from './items.ts';
 import {
@@ -40,8 +48,8 @@ export class Race {
   private aiEngine: ({ full: KartParams; tuned: KartParams } | null)[] = [];
   readonly items: ItemSystem;
 
-  /** `aiLevel`: AI difficulty, 0 easy .. 3 expert (see AI_LEVELS). */
-  constructor(def: TrackDef, entrants: Entrant[], laps = def.laps, aiLevel = 1) {
+  /** `aiLevel`: AI difficulty, 0 kids .. 4 expert (see AI_LEVELS). */
+  constructor(def: TrackDef, entrants: Entrant[], laps = def.laps, aiLevel = AI_NORMAL) {
     this.track = new Track(def);
     this.laps = laps;
     // Grid: two columns, staggered, behind the start line.
@@ -53,7 +61,7 @@ export class Race {
       // AI karts' engines follow the difficulty (players' never change): top speed and pick-up
       // both, except on the run-up to a jump over a gap, where they get full power to clear it.
       if (!e.human) {
-        const lv = Math.max(0, Math.min(3, Math.round(aiLevel)));
+        const lv = aiLevelIndex(aiLevel);
         const full = k.params;
         const p = AI_POWER[lv]!;
         this.aiEngine[i] = {
@@ -162,6 +170,11 @@ export class Race {
     const leaderLap = Math.max(1, Math.floor(lead / this.track.length) + 1);
     updateHazards(this.hazards, this.time, leaderLap);
 
+    // How far the best human has got (the kids-level AI waits for them).
+    let humanBest: number | undefined;
+    this.karts.forEach((k, i) => {
+      if (this.brains[i] === null) humanBest = Math.max(humanBest ?? -Infinity, k.progress);
+    });
     this.karts.forEach((k, i) => {
       const brain = this.brains[i];
       let pad = brain
@@ -169,6 +182,7 @@ export class Race {
             karts: this.karts,
             raceLength: this.track.length * this.laps,
             runUp: this.rules.runUp,
+            humanBest,
             countdown: frozen ? { left: -this.time } : undefined,
           })
         : (pads[i] ?? neutralPad());

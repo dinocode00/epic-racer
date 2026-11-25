@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { type PadState, type TrackDef, VEHICLES, neutralPad, vehicleById } from '@epic/shared';
-import { type AiBrain, COUNTDOWN, Race, STEP, aiDrive, createBrain } from '@epic/sim';
+import { AI_NORMAL, type AiBrain, COUNTDOWN, Race, STEP, aiDrive, createBrain } from '@epic/sim';
 import { HazardViews } from '../render/hazardViews.ts';
 import { ItemViews } from '../render/itemViews.ts';
 import { KartView } from '../render/kartView.ts';
@@ -84,8 +84,8 @@ export class RaceSession {
     laps = track.laps,
     total = 8,
     theme?: Theme,
-    /** AI difficulty, 0 easy .. 3 expert. */
-    aiLevel = 1,
+    /** AI difficulty, 0 kids .. 4 expert (see AI_LEVELS). */
+    aiLevel = AI_NORMAL,
   ) {
     // AI fills the front of the grid; humans start at the back, like the classics.
     const aiCount = Math.max(0, total - players.length);

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { VEHICLES } from '@epic/shared';
-import { AI_LEVELS, AI_STYLES, PROVING, Race } from '../src/index.ts';
+import { AI_KIDS, AI_LEVELS, AI_NORMAL, AI_STYLES, PROVING, Race } from '../src/index.ts';
 
 /** One AI kart round the proving ground at a given difficulty: its finishing time. */
 function lapTime(level: number): number {
@@ -14,11 +14,57 @@ function lapTime(level: number): number {
 }
 
 describe('AI difficulty', () => {
-  it('has four levels, and each is quicker than the one below', () => {
-    expect(AI_LEVELS.length).toBe(4);
+  it('has five levels, Kids first, and each is quicker than the one below', () => {
+    expect(AI_LEVELS).toEqual(['Kids', 'Easy', 'Normal', 'Hard', 'Expert']);
+    expect(AI_LEVELS[AI_NORMAL]).toBe('Normal');
     const t = AI_LEVELS.map((_, i) => lapTime(i));
     for (const x of t) expect(Number.isFinite(x)).toBe(true);
     for (let i = 1; i < t.length; i++) expect(t[i]!).toBeLessThan(t[i - 1]!);
+  });
+});
+
+describe('Kids level', () => {
+  it('is far slower than Easy, bumps into the walls, and never carries an attack item', () => {
+    const kids = lapTime(AI_KIDS);
+    expect(kids).toBeGreaterThan(lapTime(AI_KIDS + 1) * 1.25);
+    const race = new Race(
+      PROVING,
+      Array.from({ length: 7 }, (_, i) => ({
+        vehicle: VEHICLES[i % VEHICLES.length]!,
+        human: false,
+      })),
+      2,
+      AI_KIDS,
+    );
+    let bumps = 0;
+    const items = new Set<string>();
+    const was = race.karts.map(() => 0);
+    for (let n = 0; n < 60 * 120; n++) {
+      race.step([]);
+      race.karts.forEach((k, i) => {
+        if (k.bump > 0.3 && was[i]! <= 0.3) bumps++;
+        was[i] = k.bump;
+        if (k.item) items.add(k.item);
+      });
+    }
+    expect(bumps).toBeGreaterThan(10);
+    for (const it of items) expect(['boost', 'shield']).toContain(it);
+  });
+
+  it('waits for the players when it gets far ahead', () => {
+    const race = new Race(
+      PROVING,
+      [
+        { vehicle: VEHICLES[0]!, human: false },
+        { vehicle: VEHICLES[1]!, human: true },
+      ],
+      3,
+      AI_KIDS,
+    );
+    // The player never moves: the AI soon dawdles, a little way up the road.
+    for (let n = 0; n < 60 * 60; n++) race.step([undefined, undefined]);
+    const gap = race.karts[0]!.progress - race.karts[1]!.progress;
+    expect(gap).toBeLessThan(400);
   });
 });
 
@@ -31,7 +77,7 @@ describe('AI driving styles', () => {
         human: false,
       })),
       2,
-      1,
+      AI_NORMAL,
     );
 
   it('deals every AI racer in a full grid a different style', () => {

@@ -1,4 +1,4 @@
-import { AI_LEVELS } from '@epic/sim';
+import { AI_LEVELS, AI_NORMAL } from '@epic/sim';
 import { TRACKS } from './tracks.ts';
 
 /**
@@ -8,7 +8,7 @@ import { TRACKS } from './tracks.ts';
 export interface RaceSettings {
   /** AI racers to fill the grid with (0-7; there are never more than 8 racers in all). */
   ai: number;
-  /** AI difficulty: 0 easy, 1 normal, 2 hard, 3 expert. */
+  /** AI difficulty: 0 kids, 1 easy, 2 normal, 3 hard, 4 expert (see AI_LEVELS). */
   level: number;
   /** Laps per race; 0 = each track's own. */
   laps: number;
@@ -16,13 +16,21 @@ export interface RaceSettings {
   cupRaces: number;
 }
 
-export const DEFAULT_SETTINGS: RaceSettings = { ai: 7, level: 1, laps: 0, cupRaces: 0 };
+export const DEFAULT_SETTINGS: RaceSettings = { ai: 7, level: AI_NORMAL, laps: 0, cupRaces: 0 };
+/** Saved with the settings: how many AI levels there were (Kids was added below Easy). */
+const LEVEL_SCALE = AI_LEVELS.length;
 export const MAX_RACERS = 8;
 const KEY = 'epic-racer-settings';
 
 export function loadSettings(): RaceSettings {
   try {
-    const s = JSON.parse(localStorage.getItem(KEY) ?? '{}') as Partial<RaceSettings>;
+    const raw = JSON.parse(localStorage.getItem(KEY) ?? '{}') as Partial<RaceSettings> & {
+      levelScale?: number;
+    };
+    const { levelScale, ...s } = raw;
+    // Saved before Kids was added: the same level is one further up the list now.
+    if (s.level !== undefined && levelScale !== LEVEL_SCALE)
+      s.level = Math.min(AI_LEVELS.length - 1, s.level + 1);
     return { ...DEFAULT_SETTINGS, ...s };
   } catch {
     return { ...DEFAULT_SETTINGS };
@@ -31,13 +39,14 @@ export function loadSettings(): RaceSettings {
 
 export function saveSettings(s: RaceSettings): void {
   try {
-    localStorage.setItem(KEY, JSON.stringify(s));
+    localStorage.setItem(KEY, JSON.stringify({ ...s, levelScale: LEVEL_SCALE }));
   } catch {
     // Storage blocked (private window): the settings just last for this visit.
   }
 }
 
 const LEVEL_NOTES = [
+  'For little racers: the AI dawdles, bumps into the walls and waits for you.',
   'Gentle: the AI takes it easy and makes plenty of mistakes.',
   'A fair race: the AI is quick but slips up now and then.',
   'The AI pushes hard and rarely slips.',
