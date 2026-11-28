@@ -128,9 +128,10 @@ export interface KartState {
   /** Carried forward by a Great Eagle (the track item). */
   eagleTime: number;
   /**
-   * Used from last place, the eagle (Angel Wings at the farm) flies the kart all the way up to
-   * just behind the racer ahead. The items keep `goal` (race progress to reach) and `pace` (that
-   * racer's speed) up to date; `v` is how fast we're flying, `time` how long we've been at it.
+   * The eagle (Angel Wings at the farm) flies the kart up to the racer just ahead and sets it
+   * down in front of them (just behind them when they lead). The items keep `goal` (race
+   * progress to reach) and `pace` (that racer's speed) up to date; `v` is how fast we're flying,
+   * `time` how long we've been at it.
    */
   eagleChase: EagleChase | null;
   /** An attack is closing in (for the HUD warning). */
@@ -510,8 +511,10 @@ export function stepKart(
 }
 
 export interface EagleChase {
-  /** The racer we're flying up behind. */
+  /** The racer we're flying up to. */
   target: number;
+  /** Where we set down: this far (m) in front of them (negative: behind). */
+  offset: number;
   goal: number;
   pace: number;
   v: number;
@@ -523,8 +526,6 @@ export interface EagleChase {
 /** The Great Eagle carries the kart forward high over the road, then sets it down. */
 const EAGLE_SPEED = 70;
 const EAGLE_HEIGHT = 7;
-/** The plain carry's length (m), roughly: a chase is only worth it for a bigger gap than this. */
-export const EAGLE_CARRY = EAGLE_SPEED * 2.6;
 /** Chasing: top flying speed (m/s), how fast it gets there, and the longest a chase may last. */
 const CHASE_MAX = 600;
 const CHASE_ACCEL = 260;
@@ -538,7 +539,12 @@ function stepEagle(k: KartState, track: Track, dt: number, rules: TrackRules): v
   if (c) {
     c.time += dt;
     const left = c.goal - k.progress;
-    if (!c.done && (left < 3 || c.time > CHASE_LIMIT)) c.done = true;
+    if (!c.done && (left < 3 || c.time > CHASE_LIMIT)) {
+      c.done = true;
+      // There: set down at their pace now, not carried on up the road past them.
+      k.eagleTime = Math.min(k.eagleTime, CHASE_HOLD);
+      c.v = Math.min(c.v, Math.max(c.pace, 30) + 4);
+    }
     if (!c.done) {
       k.eagleTime = Math.max(k.eagleTime, CHASE_HOLD);
       // Close the gap fast, easing off to the other racer's pace as we come up behind them.

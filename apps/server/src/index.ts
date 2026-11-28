@@ -12,7 +12,7 @@
 import type { Duplex } from 'node:stream';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { createServer as createHttpsServer } from 'node:https';
-import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises';
 import { networkInterfaces } from 'node:os';
 import { dirname, extname, join, normalize, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -20,12 +20,14 @@ import QRCode from 'qrcode';
 import { generate as generateCert } from 'selfsigned';
 import { WebSocketServer, type WebSocket, type RawData } from 'ws';
 import {
+  type BestTimes,
   DEFAULT_PORT,
   type HostToServer,
   type PadToHost,
   type ServerInfo,
   type ServerToHost,
   WS_PATH,
+  mergeBestTimes,
   prefixSlot,
 } from '@epic/shared';
 
@@ -243,8 +245,58 @@ async function handleUpdate(
   }
 }
 
+// ---- Best times: the 5 fastest race times on each track, kept in a file between sessions ----
+const TIMES_FILE = join(ROOT, 'saves', 'best-times.json');
+let times: BestTimes | null = null;
+let saving: Promise<void> = Promise.resolve();
+async function loadTimes(): Promise<BestTimes> {
+  if (!times) {
+    try {
+      times = mergeBestTimes({}, JSON.parse(await readFile(TIMES_FILE, 'utf8')));
+    } catch {
+      times = {};
+    }
+  }
+  return times;
+}
+function readBody(req: IncomingMessage, max = 64_000): Promise<string> {
+  return new Promise((ok, fail) => {
+    let body = '';
+    req.on('data', (c: Buffer) => {
+      body += c.toString();
+      if (body.length > max) (req.destroy(), fail(new Error('too big')));
+    });
+    req.on('end', () => ok(body));
+    req.on('error', fail);
+  });
+}
+async function handleTimes(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const board = await loadTimes();
+  if (req.method === 'GET') return json(res, 200, board);
+  if (req.method !== 'POST') return json(res, 405, {});
+  try {
+    times = mergeBestTimes(board, JSON.parse(await readBody(req)));
+  } catch {
+    return json(res, 400, { error: 'Bad times.' });
+  }
+  const snapshot = JSON.stringify(times, null, 2);
+  // One write at a time, via a temporary file, so a crash never leaves half a file.
+  saving = saving.then(async () => {
+    try {
+      await mkdir(dirname(TIMES_FILE), { recursive: true });
+      await writeFile(TIMES_FILE + '.tmp', snapshot);
+      await rename(TIMES_FILE + '.tmp', TIMES_FILE);
+    } catch (e) {
+      console.log(`  Couldn't save the best times: ${(e as Error).message}`);
+    }
+  });
+  await saving;
+  return json(res, 200, times);
+}
+
 async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const url = new URL(req.url ?? '/', 'http://x');
+  if (url.pathname === '/api/times') return handleTimes(req, res);
   if (url.pathname === '/api/update' || url.pathname === '/api/update/status')
     return handleUpdate(req, res, url.pathname);
   if (url.pathname === '/api/info') {

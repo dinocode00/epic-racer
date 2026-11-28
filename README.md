@@ -90,7 +90,16 @@ Racing tips:
 - **Specials**: sometimes a box gives your vehicle's own ability: the Nazgûl's Morgul
   Charge (a blade that cuts racers alongside), the Pod Racer's Flame Vent (scorches anyone
   behind), the Batmissile (ram straight through) and the Mach 5's Auto-Jacks + robot bird.
-- **Great Eagle** (Middle-earth's own item): carried up the road, safe from everything.
+- **Great Eagle / Angel Wings** (the back of the field gets it): carried up the road, safe from
+  everything, and set down just in front of the racer ahead of you. From 2nd it only takes
+  you up right behind the leader.
+
+## Best times
+
+The 5 fastest race times on each track (for each number of laps) are kept between sessions.
+They show on the results screen after every race (new ones marked **NEW!**), and the lobby
+shows the track's record. The laptop's server saves them in `saves/best-times.json` in the game
+folder (not uploaded anywhere); a copy is kept in the browser too.
 
 ## Developer URL options
 

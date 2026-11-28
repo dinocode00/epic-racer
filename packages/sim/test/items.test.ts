@@ -277,65 +277,85 @@ describe('items', () => {
     expect(gap).toBeUndefined();
   });
 
-  it('from last place the eagle flies you all the way up to just behind the racer ahead', () => {
-    for (const def of [MIDDLE_EARTH, FARM_TRACK]) {
-      const n = 8;
-      const race = new Race(
-        def,
-        Array.from({ length: n }, (_, i) => ({
-          vehicle: VEHICLES[i % VEHICLES.length]!,
-          human: true,
-        })),
-        2,
-      );
-      race.phase = 'racing';
-      race.time = 1;
-      // Seventh place well up the road, the rest of the field ahead of it, us far behind.
-      const at = [3200, 3260, 3320, 3380, 3440, 3500, 2600, 300];
-      race.karts.forEach((k, i) => place(race, k, at[i]!, 0));
+  /** Eight racers spread out, us (the last kart) at `me`; flies our eagle, returns the gaps. */
+  function eagleFrom(def: typeof MIDDLE_EARTH, at: number[]) {
+    const n = at.length;
+    const race = new Race(
+      def,
+      Array.from({ length: n }, (_, i) => ({
+        vehicle: VEHICLES[i % VEHICLES.length]!,
+        human: true,
+      })),
+      2,
+    );
+    race.phase = 'racing';
+    race.time = 1;
+    race.karts.forEach((k, i) => place(race, k, at[i]!, 0));
+    run(race, 1);
+    const me = race.karts[n - 1]!;
+    const placeBefore = me.place;
+    const ahead = race.karts.find((q) => q.place === placeBefore - 1)!;
+    give(me, 'eagle');
+    race.items.use(me);
+    expect(me.eagleChase).not.toBeNull();
+    let steps = 0;
+    while ((me.eagleTime > 0 || me.eagleChase) && steps < 60 * 20) {
       run(race, 1);
-      const me = race.karts[n - 1]!;
-      const seventh = race.karts[n - 2]!;
-      expect(me.place).toBe(n);
-      expect(seventh.place).toBe(n - 1);
-      give(me, 'eagle');
-      race.items.use(me);
-      expect(me.eagleChase).not.toBeNull();
-      let steps = 0;
-      while ((me.eagleTime > 0 || me.eagleChase) && steps < 60 * 20) {
-        run(race, 1);
-        steps++;
-      }
-      expect(me.eagleTime).toBe(0);
-      expect(me.rescueTime).toBe(0);
-      const behind = seventh.progress - me.progress;
-      expect(behind).toBeGreaterThan(0);
-      expect(behind).toBeLessThan(40);
-      expect(steps / 60).toBeLessThan(15);
-      run(race, 60 * 2);
-      expect(me.rescueTime).toBe(0);
+      steps++;
+    }
+    expect(me.eagleTime).toBe(0);
+    expect(me.rescueTime).toBe(0);
+    expect(steps / 60).toBeLessThan(15);
+    const gap = me.progress - ahead.progress;
+    run(race, 60 * 2);
+    expect(me.rescueTime).toBe(0);
+    return { placeBefore, gap };
+  }
+
+  it('the eagle drops you just in front of the racer ahead: from last you overtake seventh', () => {
+    for (const def of [MIDDLE_EARTH, FARM_TRACK]) {
+      // Seventh place well up the road, the rest of the field ahead of it, us far behind.
+      const { placeBefore, gap } = eagleFrom(def, [3200, 3260, 3320, 3380, 3440, 3500, 2600, 300]);
+      expect(placeBefore).toBe(8);
+      expect(gap).toBeGreaterThan(0);
+      expect(gap).toBeLessThan(30);
     }
   });
 
-  it('not in last place (or close behind the racer ahead), the eagle is the usual carry', () => {
+  it('from the middle of the field, even close behind, you still overtake the racer ahead', () => {
+    // Fifth, 60 m behind fourth: set down in front of fourth.
+    const { placeBefore, gap } = eagleFrom(
+      MIDDLE_EARTH,
+      [3600, 3500, 3400, 3000, 200, 150, 100, 2940],
+    );
+    expect(placeBefore).toBe(5);
+    expect(gap).toBeGreaterThan(0);
+    expect(gap).toBeLessThan(30);
+  });
+
+  it('from second the eagle only brings you up right behind the leader', () => {
+    for (const def of [MIDDLE_EARTH, FARM_TRACK]) {
+      const { placeBefore, gap } = eagleFrom(def, [3400, 100, 150, 200, 250, 300, 350, 1200]);
+      expect(placeBefore).toBe(2);
+      expect(gap).toBeLessThan(0);
+      expect(gap).toBeGreaterThan(-40);
+    }
+  });
+
+  it('in the lead the eagle is the usual carry up the road', () => {
     const race = setup(
-      ['bat', 'pod', 'nazgul'],
+      ['bat', 'pod'],
       [
         [1200, 0],
         [400, 0],
-        [100, 0],
       ],
     );
     run(race, 1);
-    const [, second, last] = race.karts;
-    give(second!, 'eagle');
-    race.items.use(second!);
-    expect(second!.eagleChase).toBeNull();
-    // Last, but only a short hop behind: the plain carry already gets you there.
-    place(race, last!, 330, 0);
-    give(last!, 'eagle');
-    race.items.use(last!);
-    expect(last!.eagleChase).toBeNull();
+    const [first] = race.karts;
+    give(first!, 'eagle');
+    race.items.use(first!);
+    expect(first!.eagleChase).toBeNull();
+    expect(first!.eagleTime).toBeGreaterThan(0);
   });
 
   it("the Balrog's whip warns the leader, then lashes; late in the race it becomes boosts", () => {

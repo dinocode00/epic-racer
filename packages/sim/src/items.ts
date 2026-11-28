@@ -1,7 +1,7 @@
 import type { PadState } from '@epic/shared';
 import { AI_KIDS, AI_NORMAL, AI_THINK, type AiStyle, aiLevelIndex } from './ai.ts';
 import { sDelta } from './hazards.ts';
-import { EAGLE_CARRY, type ItemKind, type KartState, SPECIAL_OF, launch, spinOut } from './kart.ts';
+import { type ItemKind, type KartState, SPECIAL_OF, launch, spinOut } from './kart.ts';
 import type { Track } from './track.ts';
 import { cross, dot, sub } from './vec.ts';
 
@@ -70,7 +70,11 @@ const WHIP_CUTOFF = 0.92;
 /** Rose's Spark Burst: how far (m) the purple blast reaches, and how long it stops racers. */
 export const BURST_RADIUS = 30;
 const BURST_STUN = 1.3;
-/** A last-place eagle sets you down this far (m) behind the racer ahead. */
+/**
+ * The eagle (Angel Wings at the farm) flies you up to the racer just ahead and sets you down
+ * this far (m) in front of them, or, when that racer is the leader, this far behind them.
+ */
+const CHASE_AHEAD = 10;
 const CHASE_BEHIND = 15;
 
 type Table = [ItemKind, number][];
@@ -357,20 +361,21 @@ export class ItemSystem {
       case 'eagle': {
         k.eagleTime = 2.6;
         k.drift = { active: false, dir: 0, charge: 0 };
-        // From last place it flies you all the way up to just behind the racer ahead (seventh
-        // of eight), when that's further than the plain carry would take you.
-        const ahead = k.place === this.karts.length ? this.neighbour(k, 1) : undefined;
-        k.eagleChase =
-          ahead && ahead.progress - k.progress > EAGLE_CARRY + CHASE_BEHIND
-            ? {
-                target: ahead.id,
-                goal: ahead.progress - CHASE_BEHIND,
-                pace: ahead.speed,
-                v: Math.max(k.speed, 40),
-                time: 0,
-                done: false,
-              }
-            : null;
+        // Flies you up to the racer just ahead and drops you in front of them: you always
+        // overtake one. Except from second: then it only brings you up right behind the leader.
+        // (In the lead there's no one to catch: the plain carry up the road.)
+        const ahead = this.ahead(k);
+        k.eagleChase = ahead
+          ? {
+              target: ahead.id,
+              offset: ahead.place === 1 ? -CHASE_BEHIND : CHASE_AHEAD,
+              goal: ahead.progress + (ahead.place === 1 ? -CHASE_BEHIND : CHASE_AHEAD),
+              pace: ahead.speed,
+              v: Math.max(k.speed, 40),
+              time: 0,
+              done: false,
+            }
+          : null;
         break;
       }
       case 'special':
@@ -379,7 +384,7 @@ export class ItemSystem {
     }
   }
 
-  /** Keep each last-place eagle aimed just behind the racer it's catching up with. */
+  /** Keep each eagle aimed at its spot by the racer it's catching up with. */
   private eagleChases(): void {
     for (const k of this.karts) {
       const c = k.eagleChase;
@@ -389,11 +394,18 @@ export class ItemSystem {
         c.done = true;
         continue;
       }
-      c.goal = t.progress - CHASE_BEHIND;
+      c.goal = t.progress + c.offset;
       c.pace = t.air ? Math.hypot(t.vel.x, t.vel.y, t.vel.z) : Math.max(0, t.speed);
     }
   }
 
+  /** The nearest racer still racing ahead of k in the running order. */
+  private ahead(k: KartState): KartState | undefined {
+    let best: KartState | undefined;
+    for (const q of this.karts)
+      if (!q.finished && q.place < k.place && (!best || q.place > best.place)) best = q;
+    return best;
+  }
   /** The racer directly ahead (dir 1) or behind (dir -1) in the running order. */
   private neighbour(k: KartState, dir: number): KartState | undefined {
     return this.karts.find((q) => q.place === k.place - dir && !q.finished);

@@ -236,6 +236,51 @@ body {
   font-size: 2.4vh;
 }
 
+.results:has(.best-times) {
+  min-width: min(92vw, 80vh);
+}
+.best-times {
+  margin-top: 2.4vh;
+  padding-top: 1.6vh;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+.best-times h3 {
+  margin: 0 0 1vh;
+  color: var(--gold);
+  font-size: 2.6vh;
+  text-align: center;
+  letter-spacing: 0.05em;
+}
+.best-times .row {
+  display: grid;
+  grid-template-columns: 5vh 1fr 13vh 16vh;
+  column-gap: 1.5vh;
+  align-items: center;
+  font-size: 2.5vh;
+  padding: 0.4vh 1vh;
+  border-radius: 8px;
+}
+.best-times .row.new {
+  background: rgba(255, 210, 74, 0.22);
+}
+.best-times .new-tag {
+  color: var(--gold);
+  font-size: 0.8em;
+}
+.best-times .day {
+  opacity: 0.6;
+  font-size: 0.85em;
+  text-align: right;
+}
+.best-times .none {
+  text-align: center;
+  opacity: 0.7;
+  font-size: 2.3vh;
+}
+.lobby .record b {
+  color: var(--gold);
+}
+
 /* ---------- lobby ---------- */
 .lobby {
   position: fixed;

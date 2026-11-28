@@ -3,3 +3,4 @@ export * from './track-format.ts';
 export * from './vehicles.ts';
 export * from './icons.ts';
 export * from './howto.ts';
+export * from './bestTimes.ts';

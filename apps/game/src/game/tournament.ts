@@ -95,7 +95,7 @@ export class Tournament {
   }
 
   /** The between-races (or final) screen. */
-  html(order: Finisher[], trackName: (id: string) => string, hint: string): string {
+  html(order: Finisher[], trackName: (id: string) => string, hint: string, extra = ''): string {
     const S = this.standings();
     const race = order
       .map(
@@ -129,6 +129,7 @@ export class Tournament {
         <div class="cup-col"><h3>${this.last ? 'FINAL RACE' : 'THIS RACE'}</h3>${race}</div>
         <div class="cup-col"><h3>${this.last ? 'FINAL STANDINGS' : 'STANDINGS'}</h3>${table}</div>
       </div>
+      ${extra}
       <div class="hint">${hint}</div>
     </div>`;
   }

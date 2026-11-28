@@ -33,6 +33,7 @@ import {
   saveSettings,
 } from './game/settings.ts';
 import { GameUpdates } from './game/updates.ts';
+import { BestTimesBoard } from './game/bestTimes.ts';
 import { TRACKS, trackById } from './game/tracks.ts';
 import { itemSkin } from './game/itemSkins.ts';
 import { AutoQuality, FpsMeter, LEVELS } from './game/quality.ts';
@@ -99,6 +100,10 @@ let tour: MapTour | null = null;
 let cupMode = params.has('cup');
 /** Race settings from the lobby (⚙ Settings), remembered between visits. */
 const settings: RaceSettings = loadSettings();
+/** The 5 fastest times on each track, kept between sessions (see game/bestTimes.ts). */
+const bestTimes = new BestTimesBoard(() => {
+  if (state === 'lobby') renderLobby();
+});
 /** Laps for the current track under the settings. */
 const lapsFor = () => settings.laps || track().def.laps;
 /** Humans in the next race (at least one, for the counts shown before anyone joins). */
@@ -658,7 +663,7 @@ function renderLobby(): void {
     <div class="foot"><span class="track">${
       cupMode
         ? `First track: <b>${track().def.name}</b> <i class="hint">(LB/RB or T to change)</i>`
-        : `Track: <b>${track().def.name}</b> · ${track().blurb} <i class="hint">(LB/RB or T to change)</i>`
+        : `Track: <b>${track().def.name}</b> · ${track().blurb}${recordNote()} <i class="hint">(LB/RB or T to change)</i>`
     }</span><span class="go" id="go">${allReady ? 'Starting…' : members.length ? 'Waiting for everyone to be ready' : ''}</span></div>
   </div>`;
   document.getElementById('howto-btn')!.onclick = () => toggleHowTo(true);
@@ -687,6 +692,12 @@ function modeInfo(): string {
   </div>`;
 }
 
+/** " · ⏱ Record 92.31s · Rex" for the picked track and laps, if anyone has set one. */
+function recordNote(): string {
+  const line = bestTimes.recordLine(trackId, lapsFor());
+  return line ? ` · <span class="record">${line}</span>` : '';
+}
+
 /** Laps for the line under the slots: one number, or "each track's own". */
 function lapsText(): string {
   return settings.laps ? `${settings.laps} laps a race` : "each track's own laps";
@@ -707,6 +718,12 @@ function startRace(players: PlayerSetup[], laps = lapsFor()): void {
     setPaused(false);
     state = 'results';
     resultsAt = performance.now();
+    const fresh = bestTimes.record(
+      trackId,
+      laps,
+      order.filter((r) => r.human).map((r) => ({ name: r.name, vehicle: r.vehicle, time: r.time })),
+    );
+    const board = bestTimes.html(trackId, track().def.name, laps, fresh);
     if (cup) {
       cup.score(order);
       ui.innerHTML = cup.html(
@@ -715,6 +732,7 @@ function startRace(players: PlayerSetup[], laps = lapsFor()): void {
         cup.last
           ? 'Press A / Enter, or tap Continue on your phone, to return to the lobby'
           : `Next race: <b>${trackById(cup.tracks[cup.race + 1]!).def.name}</b> · press A / Enter, or tap Continue on your phone`,
+        board,
       );
     } else
       ui.innerHTML = `<div class="results"><h2>RESULTS</h2>${order
@@ -722,7 +740,9 @@ function startRace(players: PlayerSetup[], laps = lapsFor()): void {
           (r, i) =>
             `<div class="row ${r.human ? 'human' : ''}"><span>${i + 1}</span><span><i class="sw" style="background:${r.color}"></i>${r.name} · ${r.vehicle}</span><span>${Number.isNaN(r.time) ? '--' : r.time.toFixed(2) + 's'}</span></div>`,
         )
-        .join('')}<div class="hint">Press A / Enter, or tap Continue on your phone</div></div>`;
+        .join(
+          '',
+        )}${board}<div class="hint">Press A / Enter, or tap Continue on your phone</div></div>`;
     order.forEach((r, i) => {
       const m = members.find((x) => x.name === r.name && r.human);
       if (m?.kind === 'phone' && m.slot !== undefined)
